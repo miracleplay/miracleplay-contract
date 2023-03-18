@@ -1,5 +1,10 @@
-// SPDX-License-Identifier: MIT
-// Staking ERC 1155 Node And Mint Reward Token
+// SPDX-License-Identifier: UNLICENSED
+
+/* 
+*This code is subject to the Copyright License
+* Copyright (c) 2023 Sevenlinelabs
+* All rights reserved.
+*/
 pragma solidity ^0.8.17;
 
 // Token
@@ -313,7 +318,7 @@ contract SevenlineStakingPool is
         address[] memory _array = StakePlayers;
         for (uint i = 0; i < _array.length; i++) {
             if (_array[i] == _user) {
-                StakePlayers = _array[_array.length - 1];
+                StakePlayers[i] = _array[_array.length - 1];
                 StakePlayers.pop();
                 break;
             }
@@ -350,17 +355,12 @@ contract SevenlineStakingPool is
 
 
     //  =====   View  =====
-    function getStakePlayers()
-    public
-    view 
-    returns (address[] memory) 
-    {
+    function getStakePlayers() public view returns (address[] memory) {
         require(msg.sender != _owner, "This can only be called by the contract owner");
         return StakePlayers;
     }
 
-    function getStakePlayer(uint256 _playerSeq)
-    public
+    function getStakePlayer(uint256 _playerSeq) public
     view
     returns (address _playerAddress)
     {
