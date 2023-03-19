@@ -248,65 +248,57 @@ contract SevenlineStakingPool is
     // Calculate the rewards the player is owed since last time they were paid out
     // This is calculated using block.timestamp and the playerLastUpdate.
     // If playerLastUpdate or playerNode is not set, then the player has no rewards.
-    function calculateRewards(address _player)
-        public
-        view
-        returns (uint256 _PlayerReward, uint256 _DaoReward, uint256 _PoolReward)
-            {
-                // If playerLastUpdate or playerNode is not set, then the player has no rewards.
-                if (
-                    !playerLastUpdate[_player].isData || !playerNode[_player].isData
-                ) {
-                    return (0,0,0);
-                }
+    function calculateRewards(address _player) public view returns (uint256 _PlayerReward, uint256 _DaoReward, uint256 _PoolReward) {
+        // If playerLastUpdate or playerNode is not set, then the player has no rewards.
+        if (
+            !playerLastUpdate[_player].isData || !playerNode[_player].isData
+        ) {
+            return (0,0,0);
+        }
 
-                // Calculate the time difference between now and the last time they staked/withdrew/claimed their rewards
-                uint256 timeDifference = block.timestamp - playerLastUpdate[_player].value;
+        // Calculate the time difference between now and the last time they staked/withdrew/claimed their rewards
+        uint256 timeDifference = block.timestamp - playerLastUpdate[_player].value;
 
-                // Calculate the rewards they are owed
-                // R1, All NFT have the same value
-                uint256 TotalRewards = (((timeDifference * rewardPerHour) * playerNode[_player].amount) * INVERSE_BASIS_POINT) / 60;
-                // Cal DAO Reward
-                uint256 DAOReward = ((TotalRewards * DaoRoyalty[StakingSection-1]) / INVERSE_BASIS_POINT) / 100;
-                // Cal Agent Reward
-                uint256 PoolReward = ((TotalRewards * PoolRoyalty) / INVERSE_BASIS_POINT) / 100;
-                // Cal Player Reward
-                uint256 PlayerReward = (TotalRewards / INVERSE_BASIS_POINT) - (DAOReward + PoolReward);
+        // Calculate the rewards they are owed
+        // R1, All NFT have the same value
+        uint256 TotalRewards = (((timeDifference * rewardPerHour) * playerNode[_player].amount) * INVERSE_BASIS_POINT) / 60;
+        // Cal DAO Reward
+        uint256 DAOReward = ((TotalRewards * DaoRoyalty[StakingSection-1]) / INVERSE_BASIS_POINT) / 100;
+        // Cal Agent Reward
+        uint256 PoolReward = ((TotalRewards * PoolRoyalty) / INVERSE_BASIS_POINT) / 100;
+        // Cal Player Reward
+        uint256 PlayerReward = (TotalRewards / INVERSE_BASIS_POINT) - (DAOReward + PoolReward);
 
-                // Return the rewards
-                return (PlayerReward, DAOReward, PoolReward);
-            }
+        // Return the rewards
+        return (PlayerReward, DAOReward, PoolReward);
+    }
 
-    function calculateAgentRewards(address _player)
-        public
-        view
-        returns (uint256 _PlayerReward, uint256 _DaoReward, uint256 _PoolReward, uint256 _AgentReward)
-            {
-                // If playerLastUpdate or playerNode is not set, then the player has no rewards.
-                if (
-                    !playerLastUpdate[_player].isData || !playerNode[_player].isData
-                ) {
-                    return (0,0,0,0);
-                }
+    function calculateAgentRewards(address _player) public view returns (uint256 _PlayerReward, uint256 _DaoReward, uint256 _PoolReward, uint256 _AgentReward) {
+        // If playerLastUpdate or playerNode is not set, then the player has no rewards.
+        if (
+            !playerLastUpdate[_player].isData || !playerNode[_player].isData
+        ) {
+            return (0,0,0,0);
+        }
 
-                // Calculate the time difference between now and the last time they staked/withdrew/claimed their rewards
-                uint256 timeDifference = block.timestamp - playerLastUpdate[_player].value;
+        // Calculate the time difference between now and the last time they staked/withdrew/claimed their rewards
+        uint256 timeDifference = block.timestamp - playerLastUpdate[_player].value;
 
-                // Calculate the rewards they are owed
-                // R1, All NFT have the same value
-                uint256 TotalRewards = (((timeDifference * rewardPerHour) * playerNode[_player].amount) * INVERSE_BASIS_POINT) / 3600;
-                // Cal DAO Reward
-                uint256 DAOReward = ((TotalRewards * DaoRoyalty[StakingSection-1]) / INVERSE_BASIS_POINT) / 100;
-                // Cal Agent Reward
-                uint256 PoolReward = ((TotalRewards * PoolRoyalty) / INVERSE_BASIS_POINT) / 100;
-                // Cal Agent Reward
-                uint256 AgentReward = (TotalRewards * AgentRoyalty) / INVERSE_BASIS_POINT / 100;
-                // Cal Player Reward
-                uint256 PlayerReward = (TotalRewards / INVERSE_BASIS_POINT) - (DAOReward + AgentReward + PoolReward) ;
+        // Calculate the rewards they are owed
+        // R1, All NFT have the same value
+        uint256 TotalRewards = (((timeDifference * rewardPerHour) * playerNode[_player].amount) * INVERSE_BASIS_POINT) / 3600;
+        // Cal DAO Reward
+        uint256 DAOReward = ((TotalRewards * DaoRoyalty[StakingSection-1]) / INVERSE_BASIS_POINT) / 100;
+        // Cal Agent Reward
+        uint256 PoolReward = ((TotalRewards * PoolRoyalty) / INVERSE_BASIS_POINT) / 100;
+        // Cal Agent Reward
+        uint256 AgentReward = (TotalRewards * AgentRoyalty) / INVERSE_BASIS_POINT / 100;
+        // Cal Player Reward
+        uint256 PlayerReward = (TotalRewards / INVERSE_BASIS_POINT) - (DAOReward + AgentReward + PoolReward) ;
 
-                // Return the rewards
-                return (PlayerReward, DAOReward, PoolReward, AgentReward);
-            }
+        // Return the rewards
+        return (PlayerReward, DAOReward, PoolReward, AgentReward);
+    }
 
     function removePlayer(address _user) internal
     {

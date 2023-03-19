@@ -31,8 +31,8 @@ contract SevenlineStakingPool is
     address public DaoAddress;
     /// @dev The percentage of royalty how much royalty in basis points.
     uint256[] public DaoRoyalty;
-    /// @dev The rewards rate is [_rewardPerHour] per 1 Hour.
-    uint256 public rewardPerHour;
+    /// @dev The rewards rate is [_rewardPerMin] per 1 Min.
+    uint256 public rewardPerMin;
     /// @dev Operation status of the Pool.
     bool public PausePool;
     /// @dev Operation claim of the Pool.
@@ -73,13 +73,13 @@ contract SevenlineStakingPool is
             DropERC1155 _NodeNFTToken, 
             TokenERC20 _RewardToken,
             address _DaoAddress,
-            uint256 _rewardPerHour
+            uint256 _rewardPerMin
             ) {
             StakingSection = _StakingSection;
             NodeNftCollection = _NodeNFTToken;
             rewardsToken = _RewardToken;
             DaoAddress = _DaoAddress;
-            rewardPerHour = _rewardPerHour;
+            rewardPerMin = _rewardPerMin;
 
             //Section
             
@@ -253,65 +253,57 @@ contract SevenlineStakingPool is
     // Calculate the rewards the player is owed since last time they were paid out
     // This is calculated using block.timestamp and the playerLastUpdate.
     // If playerLastUpdate or playerNode is not set, then the player has no rewards.
-    function calculateRewards(address _player)
-        public
-        view
-        returns (uint256 _PlayerReward, uint256 _DaoReward, uint256 _PoolReward)
-            {
-                // If playerLastUpdate or playerNode is not set, then the player has no rewards.
-                if (
-                    !playerLastUpdate[_player].isData || !playerNode[_player].isData
-                ) {
-                    return (0,0,0);
-                }
+    function calculateRewards(address _player) public view  returns (uint256 _PlayerReward, uint256 _DaoReward, uint256 _PoolReward) {
+        // If playerLastUpdate or playerNode is not set, then the player has no rewards.
+        if (
+            !playerLastUpdate[_player].isData || !playerNode[_player].isData
+        ) {
+            return (0,0,0);
+        }
 
-                // Calculate the time difference between now and the last time they staked/withdrew/claimed their rewards
-                uint256 timeDifference = block.timestamp - playerLastUpdate[_player].value;
+        // Calculate the time difference between now and the last time they staked/withdrew/claimed their rewards
+        uint256 timeDifference = block.timestamp - playerLastUpdate[_player].value;
 
-                // Calculate the rewards they are owed
-                // R1, All NFT have the same value
-                uint256 TotalRewards = (((timeDifference * rewardPerHour) * playerNode[_player].amount) * INVERSE_BASIS_POINT) / 60;
-                // Cal DAO Reward
-                uint256 DAOReward = ((TotalRewards * DaoRoyalty[StakingSection-1]) / INVERSE_BASIS_POINT) / 100;
-                // Cal Agent Reward
-                uint256 PoolReward = ((TotalRewards * PoolRoyalty) / INVERSE_BASIS_POINT) / 100;
-                // Cal Player Reward
-                uint256 PlayerReward = (TotalRewards / INVERSE_BASIS_POINT) - (DAOReward + PoolReward);
+        // Calculate the rewards they are owed
+        // R1, All NFT have the same value
+        uint256 TotalRewards = (((timeDifference * rewardPerMin) * playerNode[_player].amount) * INVERSE_BASIS_POINT) / 60;
+        // Cal DAO Reward
+        uint256 DAOReward = ((TotalRewards * DaoRoyalty[StakingSection-1]) / INVERSE_BASIS_POINT) / 100;
+        // Cal Agent Reward
+        uint256 PoolReward = ((TotalRewards * PoolRoyalty) / INVERSE_BASIS_POINT) / 100;
+        // Cal Player Reward
+        uint256 PlayerReward = (TotalRewards / INVERSE_BASIS_POINT) - (DAOReward + PoolReward);
 
-                // Return the rewards
-                return (PlayerReward, DAOReward, PoolReward);
-            }
+        // Return the rewards
+        return (PlayerReward, DAOReward, PoolReward);
+    }
 
-    function calculateAgentRewards(address _player)
-        public
-        view
-        returns (uint256 _PlayerReward, uint256 _DaoReward, uint256 _PoolReward, uint256 _AgentReward)
-            {
-                // If playerLastUpdate or playerNode is not set, then the player has no rewards.
-                if (
-                    !playerLastUpdate[_player].isData || !playerNode[_player].isData
-                ) {
-                    return (0,0,0,0);
-                }
+    function calculateAgentRewards(address _player) public view returns (uint256 _PlayerReward, uint256 _DaoReward, uint256 _PoolReward, uint256 _AgentReward) {
+        // If playerLastUpdate or playerNode is not set, then the player has no rewards.
+        if (
+            !playerLastUpdate[_player].isData || !playerNode[_player].isData
+        ) {
+            return (0,0,0,0);
+        }
 
-                // Calculate the time difference between now and the last time they staked/withdrew/claimed their rewards
-                uint256 timeDifference = block.timestamp - playerLastUpdate[_player].value;
+        // Calculate the time difference between now and the last time they staked/withdrew/claimed their rewards
+        uint256 timeDifference = block.timestamp - playerLastUpdate[_player].value;
 
-                // Calculate the rewards they are owed
-                // R1, All NFT have the same value
-                uint256 TotalRewards = (((timeDifference * rewardPerHour) * playerNode[_player].amount) * INVERSE_BASIS_POINT) / 3600;
-                // Cal DAO Reward
-                uint256 DAOReward = ((TotalRewards * DaoRoyalty[StakingSection-1]) / INVERSE_BASIS_POINT) / 100;
-                // Cal Agent Reward
-                uint256 PoolReward = ((TotalRewards * PoolRoyalty) / INVERSE_BASIS_POINT) / 100;
-                // Cal Agent Reward
-                uint256 AgentReward = (TotalRewards * AgentRoyalty) / INVERSE_BASIS_POINT / 100;
-                // Cal Player Reward
-                uint256 PlayerReward = (TotalRewards / INVERSE_BASIS_POINT) - (DAOReward + AgentReward + PoolReward) ;
+        // Calculate the rewards they are owed
+        // R1, All NFT have the same value
+        uint256 TotalRewards = (((timeDifference * rewardPerMin) * playerNode[_player].amount) * INVERSE_BASIS_POINT) / 60;
+        // Cal DAO Reward
+        uint256 DAOReward = ((TotalRewards * DaoRoyalty[StakingSection-1]) / INVERSE_BASIS_POINT) / 100;
+        // Cal Agent Reward
+        uint256 PoolReward = ((TotalRewards * PoolRoyalty) / INVERSE_BASIS_POINT) / 100;
+        // Cal Agent Reward
+        uint256 AgentReward = (TotalRewards * AgentRoyalty) / INVERSE_BASIS_POINT / 100;
+        // Cal Player Reward
+        uint256 PlayerReward = (TotalRewards / INVERSE_BASIS_POINT) - (DAOReward + AgentReward + PoolReward) ;
 
-                // Return the rewards
-                return (PlayerReward, DAOReward, PoolReward, AgentReward);
-            }
+        // Return the rewards
+        return (PlayerReward, DAOReward, PoolReward, AgentReward);
+    }
 
     function removePlayer(address _user) internal
     {
@@ -334,8 +326,8 @@ contract SevenlineStakingPool is
         PauseClaim = status;
     }
 
-    function setrewardPerHour(uint256 _rewardPerHour) external onlyRole(DEFAULT_ADMIN_ROLE){
-        rewardPerHour = _rewardPerHour;
+    function setrewardPerMin(uint256 _rewardPerMin) external onlyRole(DEFAULT_ADMIN_ROLE){
+        rewardPerMin = _rewardPerMin;
     }
 
     function addStakingPool(address _poolAddress) external onlyRole(DEFAULT_ADMIN_ROLE){
@@ -360,28 +352,17 @@ contract SevenlineStakingPool is
         return StakePlayers;
     }
 
-    function getStakePlayer(uint256 _playerSeq) public
-    view
-    returns (address _playerAddress)
-    {
+    function getStakePlayer(uint256 _playerSeq) public view returns (address _playerAddress) {
         require(msg.sender != _owner, "This can only be called by the contract owner");
         return StakePlayers[_playerSeq];
     }
 
-    function getStakingPool(uint256 _PoolSeq)
-    public
-    view
-    returns (address _poolAddress)
-    {
+    function getStakingPool(uint256 _PoolSeq) public view returns (address _poolAddress) {
         require(msg.sender != _owner, "This can only be called by the contract owner");
         return StakingPool[_PoolSeq];
     }
 
-    function getStakePlayerCount()
-    public
-    view
-    returns (uint256 _playerCount)
-    {
+    function getStakePlayerCount() public view returns (uint256 _playerCount) {
         return StakePlayers.length;
     }
 
