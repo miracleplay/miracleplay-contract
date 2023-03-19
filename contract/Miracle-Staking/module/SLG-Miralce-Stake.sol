@@ -10,12 +10,13 @@ pragma solidity ^0.8.17;
 // Token
 import "@thirdweb-dev/contracts/drop/DropERC1155.sol"; // For my collection of Node
 import "@thirdweb-dev/contracts/token/TokenERC20.sol"; // For my ERC-20 Token contract
+import "@thirdweb-dev/contracts/openzeppelin-presets/utils/ERC1155/ERC1155Holder.sol";
 
 // Access Control + security
 import "@thirdweb-dev/contracts/extension/PermissionsEnumerable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-contract StakeMiracle is ReentrancyGuard, PermissionsEnumerable
+contract StakeMiracle is ReentrancyGuard, PermissionsEnumerable, ERC1155Holder
 {
     // Store our two other contracts here (Edition Drop and Token)
     DropERC1155 public NodeNftCollection;
@@ -59,9 +60,12 @@ contract StakeMiracle is ReentrancyGuard, PermissionsEnumerable
     // Multiply by 1000 for the decimal division calculation and divide 1000 after the operation is completed.
     uint256 private constant INVERSE_BASIS_POINT = 1000; //Using point
 
-    /**
-     * @dev Returns the address of the current owner.
-     */
+    event Staked(address indexed user, uint256 _amount);       
+    event unStaked(address indexed user, uint256 _amount);    
+    event RewardPaid(address indexed user, uint256 _userReward, uint256 _daoReward, uint256 _poolReward, uint256 _agentReward);
+
+
+    // @dev Returns the address of the current owner.
     function owner() public view returns (address) {
         return hasRole(DEFAULT_ADMIN_ROLE, _owner) ? _owner : address(0);
     }
@@ -101,6 +105,8 @@ contract StakeMiracle is ReentrancyGuard, PermissionsEnumerable
         StakePlayer[msg.sender].updateTime = block.timestamp;
         StakePlayer[msg.sender].poolID = _poolID;
         StakePlayer[msg.sender].amount = _totalStakeAmount;
+
+        emit Staked(msg.sender, _depositAmount);
     }
 
     function _withdraw(address _user, uint256 withdrawAmount) internal {
@@ -131,21 +137,24 @@ contract StakeMiracle is ReentrancyGuard, PermissionsEnumerable
             StakePlayer[_user].updateTime = block.timestamp;
             StakePlayer[_user].amount = _totalAmount;
         }
+
+        emit unStaked(_user, withdrawAmount);
     }
 
-    function _claim(address _player) internal {
+    function _claim(address _user) internal {
         require(!PausePool, "Pool is in Pause state.");
         require(!PauseClaim, "Claim is in Pause state.");
 
         // Calculate the rewards they are owed, and pay them out.
-        (uint256 _MyReward, uint256 _DaoReward, uint _PoolReward) = _calculateRewards(_player);
+        (uint256 _MyReward, uint256 _DaoReward, uint _PoolReward) = _calculateRewards(_user);
 
-        rewardsToken.mintTo(StakingPool[StakePlayer[_player].poolID], _PoolReward);
-        rewardsToken.mintTo(_player, _MyReward);
+        rewardsToken.mintTo(StakingPool[StakePlayer[_user].poolID], _PoolReward);
+        rewardsToken.mintTo(_user, _MyReward);
         rewardsToken.mintTo(DaoAddress, _DaoReward);
 
         // Update the playerLastUpdate mapping
-        StakePlayer[_player].updateTime = block.timestamp;
+        StakePlayer[_user].updateTime = block.timestamp;
+        emit RewardPaid(_user, _MyReward, _DaoReward, _PoolReward, 0);
     }
 
     function _claimAgent(address _user) internal {
@@ -162,6 +171,7 @@ contract StakeMiracle is ReentrancyGuard, PermissionsEnumerable
         
         // Update the playerLastUpdate mapping
         StakePlayer[_user].updateTime = block.timestamp;
+        emit RewardPaid(_user, _MyReward, _DaoReward, _PoolReward, _AgentReward);
     }
 
     // ===== Internal =====
