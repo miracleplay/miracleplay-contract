@@ -16,10 +16,7 @@ import "@thirdweb-dev/contracts/openzeppelin-presets/utils/ERC1155/ERC1155Holder
 import "@thirdweb-dev/contracts/extension/PermissionsEnumerable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-contract SevenlineStakingPool is
-    ReentrancyGuard, 
-    ERC1155Holder,
-    PermissionsEnumerable
+contract SevenlineStakingPool is ReentrancyGuard, ERC1155Holder, PermissionsEnumerable
 {
     // Store our two other contracts here (Edition Drop and Token)
     DropERC1155 public immutable NodeNftCollection;
@@ -67,22 +64,13 @@ contract SevenlineStakingPool is
     // Multiply by 1000 for the decimal division calculation and divide 1000 after the operation is completed.
     uint256 private constant INVERSE_BASIS_POINT = 1000; //Using point
 
-    constructor(
-            address _defaultAdmin,
-            uint256 _StakingSection,
-            DropERC1155 _NodeNFTToken, 
-            TokenERC20 _RewardToken,
-            address _DaoAddress,
-            uint256 _rewardPerMin
-            ) {
+    constructor(address _defaultAdmin, uint256 _StakingSection, DropERC1155 _NodeNFTToken, TokenERC20 _RewardToken, address _DaoAddress, uint256 _rewardPerMin) {
             StakingSection = _StakingSection;
             NodeNftCollection = _NodeNFTToken;
             rewardsToken = _RewardToken;
             DaoAddress = _DaoAddress;
             rewardPerMin = _rewardPerMin;
-
-            //Section
-            
+           
             //Fee Definition
             DaoRoyalty = [10, 15, 20, 25, 30, 35, 40, 45, 50];
             PoolRoyalty = 5;
@@ -104,7 +92,8 @@ contract SevenlineStakingPool is
     ///     =====   External functions  =====
     function stake(uint256 _tokenId, uint256 _depositAmount, uint256 _poolID) external nonReentrant {
         // Ensure the player has at least 1 of the token they are trying to stake
-        require(StakingSection-1 == _tokenId, "Node not available for this session.");
+        require(StakingSection - 1 == _tokenId, "Node not available for this session.");
+        require(_depositAmount > 0, "Please enter more than 0 staking amount.")
         require(
             NodeNftCollection.balanceOf(msg.sender, _tokenId) >= _depositAmount,
             "You must have deposit amount node you are trying to stake"
@@ -121,7 +110,6 @@ contract SevenlineStakingPool is
             if(!PauseClaim){
                 // Calculate the rewards they are owed, and pay them out.
                 (uint256 _MyReward, uint256 _DaoReward, uint _PoolReward) = calculateRewards(msg.sender);
-
                 rewardsToken.mintTo(StakingPool[playerNode[msg.sender].poolID], _PoolReward);
                 rewardsToken.mintTo(msg.sender, _MyReward);
                 rewardsToken.mintTo(DaoAddress, _DaoReward);
