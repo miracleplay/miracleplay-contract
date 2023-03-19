@@ -164,23 +164,25 @@ contract StakeMiracle is ReentrancyGuard, PermissionsEnumerable
         StakePlayer[_user].updateTime = block.timestamp;
     }
 
-    // ===== Internal ===== \\
+    // ===== Internal =====
 
     // Calculate the rewards the player is owed since last time they were paid out
     // This is calculated using block.timestamp and the playerLastUpdate.
     // If playerLastUpdate or playerNode is not set, then the player has no rewards.
+    function _calculateToTalReward(address _player) internal view returns (uint256 _totalReward) {
+        // Calculate the time difference between now and the last time they staked/withdrew/claimed their rewards
+        uint256 timeDifference = block.timestamp - StakePlayer[_player].updateTime;
+        // Calculate the rewards they are owed
+        // R1, All NFT have the same value
+        return _totalReward = (((timeDifference * rewardPerMin) * StakePlayer[_player].amount) * INVERSE_BASIS_POINT) / 60;
+    }
+
     function _calculateRewards(address _player) internal view  returns (uint256 _PlayerReward, uint256 _DaoReward, uint256 _PoolReward) {
         // If playerLastUpdate or playerNode is not set, then the player has no rewards.
         if (StakePlayer[_player].isStake == false) {
             return (0,0,0);
         }
-
-        // Calculate the time difference between now and the last time they staked/withdrew/claimed their rewards
-        uint256 timeDifference = block.timestamp - StakePlayer[_player].updateTime;
-
-        // Calculate the rewards they are owed
-        // R1, All NFT have the same value
-        uint256 TotalRewards = (((timeDifference * rewardPerMin) * StakePlayer[_player].amount) * INVERSE_BASIS_POINT) / 60;
+        uint256 TotalRewards = _calculateToTalReward(_player);
         // Cal DAO Reward
         _DaoReward = ((TotalRewards * DaoRoyalty[IStakingSection]) / INVERSE_BASIS_POINT) / 100;
         // Cal Agent Reward
@@ -197,13 +199,7 @@ contract StakeMiracle is ReentrancyGuard, PermissionsEnumerable
         if (StakePlayer[_player].isStake == false) {
             return (0,0,0,0);
         }
-
-        // Calculate the time difference between now and the last time they staked/withdrew/claimed their rewards
-        uint256 timeDifference = block.timestamp - StakePlayer[_player].updateTime;
-
-        // Calculate the rewards they are owed
-        // R1, All NFT have the same value
-        uint256 TotalRewards = (((timeDifference * rewardPerMin) * StakePlayer[_player].amount) * INVERSE_BASIS_POINT) / 60;
+        uint256 TotalRewards = _calculateToTalReward(_player);
         // Cal DAO Reward
         _DaoReward = ((TotalRewards * DaoRoyalty[StakingSection-1]) / INVERSE_BASIS_POINT) / 100;
         // Cal Agent Reward
@@ -259,20 +255,27 @@ contract StakeMiracle is ReentrancyGuard, PermissionsEnumerable
 
 
     //  =====   View  =====
-    function getStakePlayers() internal view returns (address[] memory) {
+    function _getStakePlayers() internal view returns (address[] memory) {
         return StakePlayers;
     }
 
-    function getStakePlayer(uint256 _playerSeq) internal view returns (address _playerAddress) {
-        return StakePlayers[_playerSeq];
-    }
-
-    function getStakingPool(uint256 _PoolSeq) internal view returns (address _poolAddress) {
+    function _getStakingPool(uint256 _PoolSeq) internal view returns (address _poolAddress) {
         return StakingPool[_PoolSeq];
     }
 
-    function getStakePlayerCount() internal view returns (uint256 _playerCount) {
+    function _getStakePlayerCount() internal view returns (uint256 _playerCount) {
         return StakePlayers.length;
+    }
+
+    function _getTotalUnClaim() internal view returns (uint256 _totalUnClaim) {
+        address[] memory _stakePlayers = StakePlayers;
+        for(uint256 i = 0; i < _stakePlayers.length; i++)
+        {   
+            address _player = _stakePlayers[i];
+            _totalUnClaim = _totalUnClaim + _calculateToTalReward(_player);
+        }
+
+        return _totalUnClaim;
     }
 
 }

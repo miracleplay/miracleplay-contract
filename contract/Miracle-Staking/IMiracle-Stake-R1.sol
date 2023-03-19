@@ -41,16 +41,15 @@ contract IStakeMiracle is StakeMiracle
         _setupRole(DEFAULT_ADMIN_ROLE, _defaultAdmin);
     }
 
+    // ===================================================================================
+    // User Function 
+    // ===================================================================================
     function stake(uint256 _depositAmount, uint256 _poolID) external nonReentrant{
         _stake(_depositAmount, _poolID);
     }
 
     function withdraw(uint256 _withdrawAmount) external nonReentrant {
         _withdraw(msg.sender, _withdrawAmount);
-    }
-
-    function withdrawUser(address _user, uint256 _withdrawAmount) external onlyRole(DEFAULT_ADMIN_ROLE) nonReentrant {
-        _withdraw(_user, _withdrawAmount);
     }
 
     function claim() external nonReentrant {
@@ -61,12 +60,43 @@ contract IStakeMiracle is StakeMiracle
         _claimAgent(_user);
     }
 
-    function calculateRewards() external view returns (uint256 _PlayerReward, uint256 _DaoReward, uint256 _PoolReward) {
-        return _calculateRewards(msg.sender);
+    function calculateRewards() external view returns (uint256 _MyReward, uint256 _DaoReward, uint256 _PoolReward) {
+        (_MyReward, _DaoReward, _PoolReward) = _calculateRewards(msg.sender);
     }
 
     function calculateAgentRewards() external view returns (uint256 _PlayerReward, uint256 _DaoReward, uint256 _PoolReward, uint256 _AgentReward) {
-        return _calculateAgentRewards(msg.sender);
+        (_PlayerReward, _DaoReward, _PoolReward, _AgentReward) = _calculateAgentRewards(msg.sender);
     }
 
+    // ===================================================================================
+    // Admin Function 
+    // ===================================================================================
+
+    function withdrawUser(address _user, uint256 _withdrawAmount) external onlyRole(DEFAULT_ADMIN_ROLE) nonReentrant {
+        _withdraw(_user, _withdrawAmount);
+    }
+
+    function calculateRewardsUser(address _user) external view onlyRole(DEFAULT_ADMIN_ROLE) returns (uint256 _PlayerReward, uint256 _DaoReward, uint256 _PoolReward) {
+        (_PlayerReward, _DaoReward, _PoolReward) = _calculateRewards(_user);
+    }
+
+    function calculateAgentRewardsUser(address _user) external view onlyRole(DEFAULT_ADMIN_ROLE) returns (uint256 _PlayerReward, uint256 _DaoReward, uint256 _PoolReward, uint256 _AgentReward) {
+        (_PlayerReward, _DaoReward, _PoolReward, _AgentReward) = _calculateAgentRewards(_user);
+    }
+
+    function getStakePlayerCount() external view onlyRole(DEFAULT_ADMIN_ROLE) returns (uint256 _playerCount) {
+        return _getStakePlayerCount();
+    }
+
+    function getStakePlayers() external view onlyRole(DEFAULT_ADMIN_ROLE) returns (address[] memory _stakeplayers){
+        return _getStakePlayers();
+    }
+
+    function getStakingPool(uint256 _PoolSeq) external view onlyRole(DEFAULT_ADMIN_ROLE) returns (address _poolAddress) {
+        return _getStakingPool(_PoolSeq);
+    }
+
+    function getTotalUnClaim() external view returns (uint256 _totalUnClaim) {
+        return _getTotalUnClaim();
+    }
 }
