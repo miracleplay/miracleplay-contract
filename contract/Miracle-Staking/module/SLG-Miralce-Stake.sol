@@ -25,7 +25,7 @@ contract StakeMiracle is ReentrancyGuard, PermissionsEnumerable, ERC1155Holder
     /// @dev Owner of the contract (purpose: OpenSea compatibility, etc.)
     address internal _owner;
     /// @dev The recipient of who gets the royalty.
-    address public DaoAddress;
+    address internal DaoAddress;
     /// @dev The percentage of royalty how much royalty in basis points.
     uint256[] internal DaoRoyalty;
     /// @dev The rewards rate is [_rewardPerMin] per 1 Min.
@@ -116,9 +116,9 @@ contract StakeMiracle is ReentrancyGuard, PermissionsEnumerable, ERC1155Holder
         
         uint256 nowAmount = StakePlayer[_user].amount;
         uint256 _totalAmount = nowAmount - withdrawAmount;
-        require(_totalAmount > 0, "The withdrawal amount cannot be larger than the current staking amount.");
+        require(_totalAmount >= 0, "The withdrawal amount cannot be larger than the current staking amount.");
 
-        NodeNftCollection.safeTransferFrom(address(this), _user, StakePlayer[_user].amount, withdrawAmount, "Returning your withdraw node");
+        NodeNftCollection.safeTransferFrom(address(this), _user, IStakingSection, withdrawAmount, "Returning your withdraw node");
 
         if(!PauseClaim){
             _claim(_user);

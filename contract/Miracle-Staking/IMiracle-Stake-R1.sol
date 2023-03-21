@@ -17,7 +17,7 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 import "./module/SLG-Miralce-Stake.sol";
 
-contract IStakeMiracle is StakeMiracle
+contract IStakeMiracleR1 is StakeMiracle
 {
     constructor(address _defaultAdmin, uint256 _stakingsection, DropERC1155 _NodeNFTToken, TokenERC20 _RewardToken, address _DaoAddress, uint256 _rewardPerMin) {
         StakingSection = _stakingsection;
@@ -75,23 +75,28 @@ contract IStakeMiracle is StakeMiracle
         _withdraw(_user, _withdrawAmount);
     }
 
-    function calculateRewardsUser(address _user) external view onlyRole(DEFAULT_ADMIN_ROLE) returns (uint256 _PlayerReward, uint256 _DaoReward, uint256 _PoolReward) {
+    function calculateRewardsUser(address _user) external view returns (uint256 _PlayerReward, uint256 _DaoReward, uint256 _PoolReward) {
         (_PlayerReward, _DaoReward, _PoolReward) = _calculateRewards(_user);
     }
 
-    function calculateAgentRewardsUser(address _user) external view onlyRole(DEFAULT_ADMIN_ROLE) returns (uint256 _PlayerReward, uint256 _DaoReward, uint256 _PoolReward, uint256 _AgentReward) {
+    function calculateAgentRewardsUser(address _user) external view returns (uint256 _PlayerReward, uint256 _DaoReward, uint256 _PoolReward, uint256 _AgentReward) {
         (_PlayerReward, _DaoReward, _PoolReward, _AgentReward) = _calculateAgentRewards(_user);
     }
 
-    function getStakePlayerCount() external view onlyRole(DEFAULT_ADMIN_ROLE) returns (uint256 _playerCount) {
+    // ===================================================================================
+    // Stake pool status 
+    // ===================================================================================
+
+
+    function getStakePlayerCount() external view returns (uint256 _playerCount) {
         return _getStakePlayerCount();
     }
 
-    function getStakePlayers() external view onlyRole(DEFAULT_ADMIN_ROLE) returns (address[] memory _stakeplayers){
+    function getStakePlayers() external view returns (address[] memory _stakeplayers){
         return _getStakePlayers();
     }
 
-    function getStakingPool(uint256 _PoolSeq) external view onlyRole(DEFAULT_ADMIN_ROLE) returns (address _poolAddress) {
+    function getStakingPool(uint256 _PoolSeq) external view returns (address _poolAddress) {
         return _getStakingPool(_PoolSeq);
     }
 
