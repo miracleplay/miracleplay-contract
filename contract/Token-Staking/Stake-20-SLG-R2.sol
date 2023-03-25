@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract StakingContract is Ownable {
+contract TokenStakingR2 is Ownable {
     IERC20 public stakingToken;
     IERC20 public rewardToken;
 
