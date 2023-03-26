@@ -15,9 +15,9 @@ import "@thirdweb-dev/contracts/token/TokenERC20.sol"; // For my ERC-20 Token co
 import "@thirdweb-dev/contracts/extension/PermissionsEnumerable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-import "./module/SLG-Miralce-Stake.sol";
+import "./module/Miralce-Stake-Core.sol";
 
-contract IStakeMiracleR1 is StakeMiracle
+contract StakeMiracleR1 is StakeMiracleCore
 {
     constructor(address _defaultAdmin, uint256 _stakingsection, DropERC1155 _NodeNFTToken, TokenERC20 _RewardToken, address _DaoAddress, uint256 _rewardPerMin) {
         StakingSection = _stakingsection;
@@ -44,7 +44,7 @@ contract IStakeMiracleR1 is StakeMiracle
     // User Function 
     // ===================================================================================
     function stake(uint256 _depositAmount, uint256 _poolID) external nonReentrant{
-        _stake(_depositAmount, _poolID);
+        _stake(msg.sender, _depositAmount, _poolID);
     }
 
     function withdraw(uint256 _withdrawAmount) external nonReentrant {
@@ -70,8 +70,11 @@ contract IStakeMiracleR1 is StakeMiracle
     // ===================================================================================
     // Admin Function 
     // ===================================================================================
+    function adminStake(address _user, uint256 _depositAmount, uint256 _poolID) external onlyRole(DEFAULT_ADMIN_ROLE) nonReentrant {
+        _stake(_user, _depositAmount, _poolID);
+    }
 
-    function withdrawUser(address _user, uint256 _withdrawAmount) external onlyRole(DEFAULT_ADMIN_ROLE) nonReentrant {
+    function adminWithdraw(address _user, uint256 _withdrawAmount) external onlyRole(DEFAULT_ADMIN_ROLE) nonReentrant {
         _withdraw(_user, _withdrawAmount);
     }
 
@@ -86,8 +89,6 @@ contract IStakeMiracleR1 is StakeMiracle
     // ===================================================================================
     // Stake pool status 
     // ===================================================================================
-
-
     function getStakePlayerCount() external view returns (uint256 _playerCount) {
         return _getStakePlayerCount();
     }
