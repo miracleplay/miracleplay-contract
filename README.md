@@ -1,7 +1,6 @@
 # Sevenline-Games-Contract
-
 ## 1. Miracle Staking
-Miracle Staking is a smart contract platform that allows users to stake their ERC-1155 NFTs in order to earn rewards in a ERC-20 token. The platform also allows for agent rewards and DAO royalties.
+>Miracle Staking is a smart contract platform that allows users to stake their ERC-1155 NFTs in order to earn rewards in a ERC-20 token. The platform also allows for agent rewards and DAO royalties.
 ### Overview
 The Miracle Staking platform consists of several contracts that work together to allow for staking and reward distribution. The main contracts are:
 - `SLG-Miracle-Stake.sol`: This is the main staking contract, which allows users to stake their NFTs and earn rewards.
@@ -17,9 +16,11 @@ The Miracle Staking platform consists of several contracts that work together to
 - `Miralce-Stake-Core.sol`: This is the main staking contract, which allows users to stake their NFTs and earn rewards.
 - `TokenERC20.sol`: This is the ERC-20 token contract that is used for rewards.
 - `DropERC1155.sol`: This is the ERC-1155 NFT contract that is used for staking.
+
 ## 2. SLG Token Staking
+
 ## 3. Miracle Tounermant
-Miracle Tournament is a smart contract platform that allows users to participate in tournaments and compete for prizes. The platform uses a single-elimination format, and allows for multiple rounds of play.
+> Miracle Tournament is a smart contract platform that allows users to participate in tournaments and compete for prizes. The platform uses a single-elimination format, and allows for multiple rounds of play.
 ### Overview
 The Miracle Tournament platform consists of several contracts that work together to allow for tournament creation, match reporting, and reward distribution. The main contracts are:
 - `Tournament.sol` This is the main tournament contract, which allows players to register for the tournament, create matches, report match winners, and advance to the next round.
