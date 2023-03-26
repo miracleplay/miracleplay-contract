@@ -39,6 +39,7 @@ contract StakeMiracleCore is ReentrancyGuard, PermissionsEnumerable, ERC1155Hold
     uint256 PoolRoyalty;                    // The royalty percentage for the pool.
     uint256 public StakingSection;          // The section ID of the staking pool.
     uint256 internal IStakingSection;       // An internal variable to store the staking section ID.
+    uint256 totalClaimed;                   // The total amount of rewards claimed by users.
 
     mapping(address => StakeMap) public StakePlayer;  // A mapping to store staking details for each user.
 
@@ -143,7 +144,7 @@ contract StakeMiracleCore is ReentrancyGuard, PermissionsEnumerable, ERC1155Hold
         rewardsToken.mintTo(DaoAddress, _DaoReward); // @dev Mint the DAO's share of the rewards to the DAO contract.
 
         StakePlayer[_user].updateTime = block.timestamp; // @dev Update the last claimed time for the user.
-
+        totalClaimed = totalClaimed + _MyReward + _DaoReward + _PoolReward;
         emit RewardPaid(_user, _MyReward, _DaoReward, _PoolReward, 0); // @dev Emit an event for the reward payment.
     }
 
@@ -155,16 +156,16 @@ contract StakeMiracleCore is ReentrancyGuard, PermissionsEnumerable, ERC1155Hold
         require(!PausePool, "Pool is in Pause state."); // @dev The staking pool must not be paused.
         require(!PauseClaim, "Claim is in Pause state."); // @dev The claim function must not be paused.
 
-        (uint256 _MyReward, uint256 _DaoReward,  uint _PoolReward, uint256 _AgentReward) = _calculateAgentRewards(msg.sender); // @dev Calculate the rewards for the agent.
+        (uint256 _PlayerReward, uint256 _DaoReward,  uint _PoolReward, uint256 _AgentReward) = _calculateAgentRewards(msg.sender); // @dev Calculate the rewards for the agent.
 
         rewardsToken.mintTo(StakingPool[StakePlayer[_user].poolID], _PoolReward); // @dev Mint the staking pool's share of the rewards to the staking pool contract.
-        rewardsToken.mintTo(_user, _MyReward); // @dev Mint the user's share of the rewards to their account.
+        rewardsToken.mintTo(_user, _PlayerReward); // @dev Mint the user's share of the rewards to their account.
         rewardsToken.mintTo(DaoAddress, _DaoReward); // @dev Mint the DAO's share of the rewards to the DAO contract.
         rewardsToken.mintTo(msg.sender, _AgentReward); // @dev Mint the agent's share of the rewards to the agent's account.
 
         StakePlayer[_user].updateTime = block.timestamp; // @dev Update the last claimed time for the user.
-
-        emit RewardPaid(_user, _MyReward, _DaoReward, _PoolReward, _AgentReward); // @dev Emit an event for the reward payment.
+        totalClaimed = totalClaimed + _PoolReward + _PlayerReward + _DaoReward + _PoolReward;
+        emit RewardPaid(_user, _PlayerReward, _DaoReward, _PoolReward, _AgentReward); // @dev Emit an event for the reward payment.
     }
 
     /*///////////////////////////////////////////////////////////////
@@ -212,9 +213,9 @@ contract StakeMiracleCore is ReentrancyGuard, PermissionsEnumerable, ERC1155Hold
             return (0,0,0,0);
         }
         uint256 TotalRewards = _calculateToTalReward(_player); // @dev Calculate the total rewards for the staker.
-        _DaoReward = ((TotalRewards * DaoRoyalty[StakingSection-1]) / INVERSE_BASIS_POINT) / 100; // @dev Calculate the DAO's share of the rewards.
+        _DaoReward = ((TotalRewards * DaoRoyalty[StakingSection]) / INVERSE_BASIS_POINT) / 100; // @dev Calculate the DAO's share of the rewards.
         _PoolReward = ((TotalRewards * PoolRoyalty) / INVERSE_BASIS_POINT) / 100; // @dev Calculate the staking pool's share of the rewards.
-        _AgentReward = (TotalRewards * AgentRoyalty) / INVERSE_BASIS_POINT / 100; // @dev Calculate the agent's share of the rewards.
+        _AgentReward = ((TotalRewards * AgentRoyalty) / INVERSE_BASIS_POINT) / 100; // @dev Calculate the agent's share of the rewards.
         _PlayerReward = (TotalRewards / INVERSE_BASIS_POINT) - (_DaoReward + _AgentReward + _PoolReward) ; // @dev Calculate the staker's share of the rewards.
 
         return (_PlayerReward, _DaoReward, _PoolReward, _AgentReward);
@@ -324,10 +325,17 @@ contract StakeMiracleCore is ReentrancyGuard, PermissionsEnumerable, ERC1155Hold
         for(uint256 i = 0; i < _stakePlayers.length; i++)
         {   
             address _player = _stakePlayers[i];
-            _totalUnClaim = _totalUnClaim + _calculateToTalReward(_player);
+            _totalUnClaim = (_totalUnClaim + _calculateToTalReward(_player)) / INVERSE_BASIS_POINT;
         }
-
         return _totalUnClaim;
+    }
+
+    /**
+    @dev A function to get the total amount of rewards claimed by users.
+    @return _totalClaimed The total amount of rewards claimed.
+    */
+    function _getTotalClaimed() internal view returns (uint256 _totalClaimed) {
+        return totalClaimed;
     }
 
 }

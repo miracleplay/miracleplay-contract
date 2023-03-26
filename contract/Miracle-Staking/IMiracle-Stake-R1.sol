@@ -17,9 +17,9 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 import "./module/Miralce-Stake-Core.sol";
 
-contract StakeMiracleR1 is StakeMiracleCore
+contract StakeMiracleR2 is StakeMiracleCore
 {
-    constructor(address _defaultAdmin, uint256 _stakingsection, DropERC1155 _NodeNFTToken, TokenERC20 _RewardToken, address _DaoAddress, uint256 _rewardPerMin) {
+    constructor(address _defaultAdmin, uint256 _stakingsection, DropERC1155 _NodeNFTToken, TokenERC20 _RewardToken, address _DaoAddress, uint256 _rewardPerMin, uint256 _alreadyClaimed) {
         StakingSection = _stakingsection;
         IStakingSection = _stakingsection - 1;
         
@@ -37,6 +37,7 @@ contract StakeMiracleR1 is StakeMiracleCore
         PausePool = false;
         PauseClaim = false;
         _owner = _defaultAdmin;
+        totalClaimed = _alreadyClaimed;
         _setupRole(DEFAULT_ADMIN_ROLE, _defaultAdmin);
     }
 
@@ -57,6 +58,10 @@ contract StakeMiracleR1 is StakeMiracleCore
 
     function claimAgent(address _user) external onlyRole(DEFAULT_ADMIN_ROLE) nonReentrant{
         _claimAgent(_user);
+    }
+
+    function calculateTotalReward() external view returns (uint256 _totalReward) {
+        _totalReward = _calculateToTalReward(msg.sender);
     }
 
     function calculateRewards() external view returns (uint256 _MyReward, uint256 _DaoReward, uint256 _PoolReward) {
@@ -87,7 +92,7 @@ contract StakeMiracleR1 is StakeMiracleCore
     }
 
     // ===================================================================================
-    // Stake pool status 
+    // View Function 
     // ===================================================================================
     function getStakePlayerCount() external view returns (uint256 _playerCount) {
         return _getStakePlayerCount();
@@ -103,5 +108,9 @@ contract StakeMiracleR1 is StakeMiracleCore
 
     function getTotalUnClaim() external view returns (uint256 _totalUnClaim) {
         return _getTotalUnClaim();
+    }
+
+    function getTotalCalimed() external view returns (uint256 _totalClaimed){
+        return _getTotalClaimed();
     }
 }
