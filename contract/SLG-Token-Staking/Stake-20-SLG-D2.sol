@@ -1,6 +1,13 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: UNLICENSED
 
-pragma solidity ^0.8.0;
+/* 
+*This code is subject to the Copyright License
+* Copyright (c) 2023 Sevenlinelabs
+* All rights reserved.
+*/
+
+
+pragma solidity ^0.8.17;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
