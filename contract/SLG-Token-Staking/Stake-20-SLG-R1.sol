@@ -4,7 +4,7 @@ pragma solidity ^0.8.17;
 import "@thirdweb-dev/contracts/base/Staking20Base.sol";
 import "@thirdweb-dev/contracts/token/TokenERC20.sol";
 
-contract StakingContract is Staking20Base {
+contract SLGStakingTo is Staking20Base {
     constructor(
         uint256 _timeUnit,
         uint256 _rewardRatioNumerator,
