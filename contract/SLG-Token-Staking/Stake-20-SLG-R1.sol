@@ -4,7 +4,7 @@ pragma solidity ^0.8.17;
 import "@thirdweb-dev/contracts/base/Staking20Base.sol";
 import "@thirdweb-dev/contracts/token/TokenERC20.sol";
 
-contract SLGStakingTo is Staking20Base {
+contract SLGStakingToFTN is Staking20Base {
     constructor(
         uint256 _timeUnit,
         uint256 _rewardRatioNumerator,
@@ -25,11 +25,7 @@ contract SLGStakingTo is Staking20Base {
         TokenERC20 tokenContract = TokenERC20(rewardToken);
         tokenContract.mintTo(_staker, _rewards);
     }
-
-    function calculateRewards(address _player) external view virtual returns (uint256 rewards) {
-        rewards = _calculateRewards(_player);
-    }
-
+    
     function sizeOfPool() external view returns (uint256 size) {
         return stakingTokenBalance; 
     }
