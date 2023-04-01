@@ -60,35 +60,27 @@ contract StakeMiracleR2 is StakeMiracleCore
         _claimAgent(_user);
     }
 
-    function calculateTotalReward() external view returns (uint256 _totalReward) {
-        _totalReward = _calculateToTalReward(msg.sender);
+    function calculateTotalReward(address _user) external view returns (uint256 _totalReward) {
+        _totalReward = _calculateToTalReward(_user);
     }
 
-    function calculateRewards() external view returns (uint256 _MyReward, uint256 _DaoReward, uint256 _PoolReward) {
-        (_MyReward, _DaoReward, _PoolReward) = _calculateRewards(msg.sender);
+    function calculateRewards(address _user) external view returns (uint256 _MyReward, uint256 _DaoReward, uint256 _PoolReward) {
+        (_MyReward, _DaoReward, _PoolReward) = _calculateRewards(_user);
     }
 
-    function calculateAgentRewards() external view returns (uint256 _PlayerReward, uint256 _DaoReward, uint256 _PoolReward, uint256 _AgentReward) {
-        (_PlayerReward, _DaoReward, _PoolReward, _AgentReward) = _calculateAgentRewards(msg.sender);
+    function calculateAgentRewards(address _user) external view returns (uint256 _PlayerReward, uint256 _DaoReward, uint256 _PoolReward, uint256 _AgentReward) {
+        (_PlayerReward, _DaoReward, _PoolReward, _AgentReward) = _calculateAgentRewards(_user);
     }
 
     // ===================================================================================
     // Admin Function 
     // ===================================================================================
-    function adminStake(address _user, uint256 _depositAmount, uint256 _poolID) external onlyRole(DEFAULT_ADMIN_ROLE) nonReentrant {
-        _stake(_user, _depositAmount, _poolID);
+    function adminStake(address _user, uint256 _depositAmount) external onlyRole(DEFAULT_ADMIN_ROLE) nonReentrant {
+        _stake(_user, _depositAmount, 0);
     }
 
     function adminWithdraw(address _user, uint256 _withdrawAmount) external onlyRole(DEFAULT_ADMIN_ROLE) nonReentrant {
         _withdraw(_user, _withdrawAmount);
-    }
-
-    function calculateRewardsUser(address _user) external view returns (uint256 _PlayerReward, uint256 _DaoReward, uint256 _PoolReward) {
-        (_PlayerReward, _DaoReward, _PoolReward) = _calculateRewards(_user);
-    }
-
-    function calculateAgentRewardsUser(address _user) external view returns (uint256 _PlayerReward, uint256 _DaoReward, uint256 _PoolReward, uint256 _AgentReward) {
-        (_PlayerReward, _DaoReward, _PoolReward, _AgentReward) = _calculateAgentRewards(_user);
     }
 
     // ===================================================================================

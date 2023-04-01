@@ -156,7 +156,7 @@ contract StakeMiracleCore is ReentrancyGuard, PermissionsEnumerable, ERC1155Hold
         require(!PausePool, "Pool is in Pause state."); // @dev The staking pool must not be paused.
         require(!PauseClaim, "Claim is in Pause state."); // @dev The claim function must not be paused.
 
-        (uint256 _PlayerReward, uint256 _DaoReward,  uint _PoolReward, uint256 _AgentReward) = _calculateAgentRewards(msg.sender); // @dev Calculate the rewards for the agent.
+        (uint256 _PlayerReward, uint256 _DaoReward,  uint _PoolReward, uint256 _AgentReward) = _calculateAgentRewards(_user); // @dev Calculate the rewards for the agent.
 
         rewardsToken.mintTo(StakingPool[StakePlayer[_user].poolID], _PoolReward); // @dev Mint the staking pool's share of the rewards to the staking pool contract.
         rewardsToken.mintTo(_user, _PlayerReward); // @dev Mint the user's share of the rewards to their account.
