@@ -25,4 +25,13 @@ contract StakingContract is Staking20Base {
         TokenERC20 tokenContract = TokenERC20(rewardToken);
         tokenContract.mintTo(_staker, _rewards);
     }
+
+    function calculateRewards(address _player) external view virtual returns (uint256 rewards) {
+        rewards = _calculateRewards(_player);
+    }
+
+    function sizeOfPool() external view returns (uint256 size) {
+        return stakingTokenBalance; 
+    }
+    
 }
