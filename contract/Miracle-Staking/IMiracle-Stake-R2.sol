@@ -83,6 +83,10 @@ contract StakeMiracleR2 is StakeMiracleCore
         _withdraw(_user, _withdrawAmount);
     }
 
+    function updateClaimed(uint256 _totalClaimed) external onlyRole(DEFAULT_ADMIN_ROLE) nonReentrant {
+        totalClaimed = _totalClaimed;
+    }
+
     // ===================================================================================
     // View Function 
     // ===================================================================================
