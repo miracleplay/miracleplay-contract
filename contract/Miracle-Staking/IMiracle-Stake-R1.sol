@@ -44,8 +44,8 @@ contract StakeMiracleR2 is StakeMiracleCore
     // ===================================================================================
     // User Function 
     // ===================================================================================
-    function stake(uint256 _depositAmount, uint256 _poolID) external nonReentrant{
-        _stake(msg.sender, _depositAmount, _poolID);
+    function stake(uint256 _depositAmount) external nonReentrant{
+        _stake(msg.sender, _depositAmount, 0);
     }
 
     function withdraw(uint256 _withdrawAmount) external nonReentrant {
