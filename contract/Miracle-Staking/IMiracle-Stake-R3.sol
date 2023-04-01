@@ -17,7 +17,7 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 import "./module/Miralce-Stake-Core.sol";
 
-contract StakeMiracleR2 is StakeMiracleCore
+contract StakeMiracleR3 is StakeMiracleCore
 {
     constructor(address _defaultAdmin, uint256 _stakingsection, DropERC1155 _NodeNFTToken, TokenERC20 _RewardToken, address _DaoAddress, uint256 _rewardPerMin, uint256 _alreadyClaimed) {
         StakingSection = _stakingsection;
