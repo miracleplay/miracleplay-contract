@@ -10,6 +10,6 @@ module.exports = {
     },
   },
   paths: {
-    sources: "./contract/Miracle-Staking-Old/",
+    sources: "./contract/SLG-Token-Staking/",
   },
 };
