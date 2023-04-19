@@ -1,6 +1,17 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: UNLICENSED
 
 pragma solidity 0.8.17;
+
+
+//    _______ _______ ___ ___ _______ ______  ___     ___ ______  _______     ___     _______ _______  _______ 
+//   |   _   |   _   |   Y   |   _   |   _  \|   |   |   |   _  \|   _   |   |   |   |   _   |   _   \|   _   |
+//   |   1___|.  1___|.  |   |.  1___|.  |   |.  |   |.  |.  |   |.  1___|   |.  |   |.  1   |.  1   /|   1___|
+//   |____   |.  __)_|.  |   |.  __)_|.  |   |.  |___|.  |.  |   |.  __)_    |.  |___|.  _   |.  _   \|____   |
+//   |:  1   |:  1   |:  1   |:  1   |:  |   |:  1   |:  |:  |   |:  1   |   |:  1   |:  |   |:  1    |:  1   |
+//   |::.. . |::.. . |\:.. ./|::.. . |::.|   |::.. . |::.|::.|   |::.. . |   |::.. . |::.|:. |::.. .  |::.. . |
+//   `-------`-------' `---' `-------`--- ---`-------`---`--- ---`-------'   `-------`--- ---`-------'`-------'
+//                                                                                                             
+
 
 import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v4.5.0/contracts/utils/math/Math.sol";
 
@@ -214,11 +225,12 @@ contract MiracleTournament {
         return 0;
     }
 
-    function shuffle(uint[] memory arr) internal pure {
-        uint n = arr.length;
-        for (uint i = 0; i < n; i++) {
-            uint j = i + uint(keccak256(abi.encodePacked(i))) % (n - i);
-            (arr[i], arr[j]) = (arr[j], arr[i]);
+    function shuffle(uint[] memory arr) internal view {
+        for (uint i = arr.length - 1; i >= 0; i--) {
+            uint j = uint(keccak256(abi.encodePacked(block.timestamp, block.difficulty, msg.sender, i))) % arr.length;
+            uint temp = arr[i];
+            arr[i] = arr[j];
+            arr[j] = temp;
         }
     }
 
