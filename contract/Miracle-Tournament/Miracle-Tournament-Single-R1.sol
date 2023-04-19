@@ -51,6 +51,8 @@ contract Tournament {
     uint public nextMatchId;
     uint public nextRoundId;
 
+    bool public tournamentStarted;
+
     modifier onlyOrganizer() {
         require(msg.sender == organizer, "Only organizer can call this function");
         _;
@@ -68,6 +70,7 @@ contract Tournament {
     }
 
     function register(string memory _name) public registrationOpen {
+        require(!tournamentStarted, "The tournament has already started")
         require(!playerNameExists[_name], "Name already registered");
         require(players.length < maxPlayersPerMatch * 2 ** (rounds.length + 1), "Max number of players reached");
 
@@ -125,29 +128,43 @@ contract Tournament {
 
     function reportWinner(uint _matchId, uint _winnerId) public onlyOrganizer {
         require(playerIdExists[_winnerId], "Invalid player id");
-        require(matches[_matchId].winnerId == 0, "Winner already reported");
-        require(matches[_matchId].isPlayed == false, "Match already played");
 
         Match storage tournamentMatch = matches[_matchId];
+        require(!tournamentMatch.isPlayed, "Match already played");
+
         tournamentMatch.winnerId = _winnerId;
         tournamentMatch.isPlayed = true;
 
-        uint currentRoundId = rounds.length - 1;
-        uint[] memory matchIdsInCurrentRound = rounds[currentRoundId].matchIds;
+        // Add winner to players array
+        bool winnerAdded = false;
+        for (uint i = 0; i < players.length; i++) {
+            if (players[i].id == _winnerId) {
+                winnerAdded = true;
+                break;
+            }
+        }
+        if (!winnerAdded) {
+            Player memory winner = Player({
+                id: _winnerId,
+                isRegistered: true;
+            });
+            players.push(winner);
+        }
 
-        bool allMatchesInCurrentRoundArePlayed = true;
-        for (uint i = 0; i < matchIdsInCurrentRound.length; i++) {
-            if (matches[matchIdsInCurrentRound[i]].isPlayed == false) {
-                allMatchesInCurrentRoundArePlayed = false;
+        // Check if all matches in the round have been played
+        bool roundCompleted = true;
+        for (uint j = 0; j < rounds[nextRoundId - 1].matchIds.length; j++) {
+            uint matchId = rounds[nextRoundId - 1].matchIds[j];
+            if (!matches[matchId].isPlayed) {
+                roundCompleted = false;
                 break;
             }
         }
 
-        if (allMatchesInCurrentRoundArePlayed) {
-            rounds[currentRoundId].isCompleted = true;
-            if (rounds.length < maxRounds()) {
-                createMatches();
-            }
+        // If all matches in the round have been played, mark the round as completed and create new matches for the next round
+        if (roundCompleted) {
+            rounds[nextRoundId - 1].isCompleted = true;
+            createMatches();
         }
     }
 
