@@ -70,7 +70,7 @@ contract Tournament {
     }
 
     function register(string memory _name) public registrationOpen {
-        require(!tournamentStarted, "The tournament has already started")
+        require(!tournamentStarted, "The tournament has already started");
         require(!playerNameExists[_name], "Name already registered");
         require(players.length < maxPlayersPerMatch * 2 ** (rounds.length + 1), "Max number of players reached");
 
@@ -146,7 +146,7 @@ contract Tournament {
         if (!winnerAdded) {
             Player memory winner = Player({
                 id: _winnerId,
-                isRegistered: true;
+                isRegistered: true
             });
             players.push(winner);
         }
