@@ -7,15 +7,23 @@ contract PointTournament {
         address payable account;
         uint score;
         bool isRegistered;
+        uint rank;
     }
 
     Player[] public players;
     mapping(address => uint) public playerIdByAccount;
+    mapping(uint => address) public rankToAccount;
+    mapping(address => uint) public accountToRank;
 
     address payable public organizer;
-    uint public registrationDeadline;
+
+    uint public registerStartTime;
+    uint public registerEndTime;
+    uint public tournamentStartTime;
     uint public tournamentEndTime;
     bool public tournamentEnded;
+
+    string public tournamentURI;
 
     event Registered(address account);
     event ScoreUpdated(address account, uint score);
@@ -27,12 +35,14 @@ contract PointTournament {
     }
 
     modifier registrationOpen() {
-        require(block.timestamp <= registrationDeadline, "Registration deadline passed");
+        require(block.timestamp >= registerStartTime, "Registration has not started yet");
+        require(block.timestamp <= registerEndTime, "Registration deadline passed");
         _;
     }
 
     modifier tournamentNotStarted() {
         require(block.timestamp < tournamentEndTime, "Tournament has already started");
+        require(block.timestamp > tournamentStartTime, "Tournament is not start");
         _;
     }
 
@@ -41,32 +51,31 @@ contract PointTournament {
         _;
     }
 
-    uint public registerStartTime;
-    uint public registerEndTime;
-
-    constructor(uint _registrationDeadline, uint _tournamentDurationDays, uint _registerStartTime, uint _registerEndTime) {
+    constructor(uint _registerStartTime, uint _registerEndTime, uint _tournamentStartTime, uint _tournamentEndTime, string memory _tournamentURI) {
         organizer = payable(msg.sender);
-        registrationDeadline = _registrationDeadline;
-        tournamentEndTime = block.timestamp + (_tournamentDurationDays * 1 days);
         registerStartTime = _registerStartTime;
         registerEndTime = _registerEndTime;
+        tournamentStartTime = _tournamentStartTime;
+        tournamentEndTime = _tournamentEndTime;
+        tournamentURI = _tournamentURI;
     }
 
-    function register() public payable registrationOpen {
+    function register(address _account) public payable registrationOpen {
         require(msg.value > 0, "Registration fee must be greater than 0");
         require(block.timestamp >= registerStartTime, "Registration has not started yet");
         require(block.timestamp <= registerEndTime, "Registration deadline passed");
 
         Player memory player = Player({
             id: players.length,
-            account: payable(msg.sender),
+            account: payable(_account),
             score: 0,
-            isRegistered: true
+            isRegistered: true,
+            rank: 0
         });
         players.push(player);
-        playerIdByAccount[msg.sender] = player.id;
+        playerIdByAccount[_account] = player.id;
 
-        emit Registered(msg.sender);
+        emit Registered(_account);
     }
 
 
@@ -76,6 +85,47 @@ contract PointTournament {
 
         player.score += _score;
         emit ScoreUpdated(_account, player.score);
+    }
+
+    function calculateRanking() public onlyOrganizer {
+        require(tournamentEnded, "Tournament has not ended yet");
+        uint len = players.length;
+
+        for (uint i = 0; i < len; i++) {
+            rankToAccount[i] = players[i].account;
+        }
+
+        uint[] memory scores = new uint[](len);
+        for (uint i = 0; i < len; i++) {
+            scores[i] = players[i].score;
+        }
+
+        // sort scores and rearrange the rank mapping
+        for (uint i = 0; i < len - 1; i++) {
+            for (uint j = i + 1; j < len; j++) {
+                if (scores[i] < scores[j]) {
+                    uint tempScore = scores[i];
+                    scores[i] = scores[j];
+                    scores[j] = tempScore;
+
+                    address tempAddr = rankToAccount[i];
+                    rankToAccount[i] = rankToAccount[j];
+                    rankToAccount[j] = tempAddr;
+                }
+            }
+        }
+
+        for (uint i = 0; i < len; i++) {
+            accountToRank[rankToAccount[i]] = i + 1;
+        }
+
+        // store the rank and score in the Player struct
+        for (uint i = 0; i < len; i++) {
+            players[i].score = scores[i];
+            players[i].isRegistered = false;
+            uint rank = accountToRank[players[i].account];
+            players[i] = Player(players[i].id, players[i].account, players[i].score, players[i].isRegistered, rank);
+        }
     }
 
     function endTournament() public onlyOrganizer tournamentNotStarted {
