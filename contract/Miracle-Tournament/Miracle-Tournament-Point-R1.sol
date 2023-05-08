@@ -12,6 +12,7 @@ contract PointTournament {
 
     Player[] public players;
     mapping(address => uint) public playerIdByAccount;
+
     mapping(uint => address) public rankToAccount;
     mapping(address => uint) public accountToRank;
 
@@ -129,20 +130,8 @@ contract PointTournament {
     }
 
     function endTournament() public onlyOrganizer tournamentNotStarted {
+        calculateRanking();
         tournamentEnded = true;
         emit TournamentEnded();
-    }
-
-    function getRanking() public view returns (address[] memory, uint[] memory) {
-        uint len = players.length;
-        address[] memory addrs = new address[](len);
-        uint[] memory scores = new uint[](len);
-
-        for (uint i = 0; i < len; i++) {
-            addrs[i] = players[i].account;
-            scores[i] = players[i].score;
-        }
-
-        return (addrs, scores);
     }
 }
