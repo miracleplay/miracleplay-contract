@@ -7,8 +7,11 @@
 //   |:  1   |:  1   |:  1   |:  1   |:  |   |:  1   |:  |:  |   |:  1   |   |:  1   |:  |   |:  1    |:  1   |
 //   |::.. . |::.. . |\:.. ./|::.. . |::.|   |::.. . |::.|::.|   |::.. . |   |::.. . |::.|:. |::.. .  |::.. . |
 //   `-------`-------' `---' `-------`--- ---`-------`---`--- ---`-------'   `-------`--- ---`-------'`-------'
-//       
-pragma solidity 0.8.17;    
+//   
+
+pragma solidity 0.8.17;
+
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract PointTournament {
     struct Player {
@@ -24,6 +27,8 @@ contract PointTournament {
     mapping(uint => address) public rankToAccount;
     mapping(address => uint) public accountToRank;
     address payable public organizer;
+    IERC20 public token;
+    uint public registrationFee;
 
     uint public registerStartTime;
     uint public registerEndTime;
@@ -59,32 +64,57 @@ contract PointTournament {
         _;
     }
 
-    constructor(uint _registerStartTime, uint _registerEndTime, uint _tournamentStartTime, uint _tournamentEndTime, string memory _tournamentURI) {
+    constructor(
+        uint _registerStartTime, 
+        uint _registerEndTime, 
+        uint _tournamentStartTime, 
+        uint _tournamentEndTime, 
+        string memory _tournamentURI,
+        address _tokenAddress,
+        uint _registrationFee
+    ) {
         organizer = payable(msg.sender);
         registerStartTime = _registerStartTime;
         registerEndTime = _registerEndTime;
         tournamentStartTime = _tournamentStartTime;
         tournamentEndTime = _tournamentEndTime;
         tournamentURI = _tournamentURI;
+        token = IERC20(_tokenAddress);
+        registrationFee = _registrationFee;
     }
 
-    function register(address _account) public payable registrationOpen {
+    function register() public registrationOpen {
         require(block.timestamp >= registerStartTime, "Registration has not started yet");
         require(block.timestamp <= registerEndTime, "Registration deadline passed");
+        uint allowance = token.allowance(msg.sender, address(this));
+        require(allowance >= registrationFee, "Contract is not authorized to transfer tokens on behalf of the sender");
+        
+        bool isRegistered = false;
+        for (uint i = 0; i < players.length; i++) {
+            if (players[i].account == msg.sender) {
+                isRegistered = true;
+                break;
+            }
+        }
+        require(!isRegistered, "Player already registered");
+
+        uint playerId = players.length;
 
         Player memory player = Player({
-            id: players.length,
-            account: payable(_account),
+            id: playerId,
+            account: payable(msg.sender),
             score: 0,
             isRegistered: true,
             rank: 0
         });
+
         players.push(player);
-        playerIdByAccount[_account] = player.id;
+        playerIdByAccount[msg.sender] = playerId;
 
-        emit Registered(_account);
+        token.transferFrom(msg.sender, address(this), registrationFee);
+
+        emit Registered(msg.sender);
     }
-
 
     function updateScore(address _account, uint _score) public onlyOrganizer tournamentNotStarted tournamentEndedOrNotStarted {
         require(playerIdByAccount[_account] > 0, "Player not registered");
@@ -141,3 +171,4 @@ contract PointTournament {
         emit TournamentEnded();
     }
 }
+
