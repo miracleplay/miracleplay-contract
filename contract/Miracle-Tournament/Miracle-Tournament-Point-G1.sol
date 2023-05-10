@@ -11,12 +11,6 @@
 
 pragma solidity 0.8.17;    
 
-interface IERC20 {
-    function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
-    function allowance(address owner, address spender) external view returns (uint256);
-    function balanceOf(address account) external view returns (uint256);
-}
-
 contract MultiTournament {
     struct Player {
         uint id;
@@ -38,16 +32,10 @@ contract MultiTournament {
         uint tournamentEndTime;
         bool tournamentEnded;
         string tournamentURI;
-        IERC20 feeToken;
-        uint registrationFee;
-        uint feeBalance;
     }
 
     address admin;
     mapping(uint => Tournament) public tournamentMapping;
-    uint public tournamentCount;
-
-    IERC20 public token;
 
     event Registered(address account);
     event ScoreUpdated(address account, uint score);
@@ -88,29 +76,21 @@ contract MultiTournament {
         _;
     }
 
-    function createTournament(uint _registerStartTime, uint _registerEndTime, uint _tournamentStartTime, uint _tournamentEndTime, address _feeToken, uint _registrationFee, string memory _tournamentURI) public onlyAdmin {
-        Tournament storage newTournament = tournamentMapping[tournamentCount];
+    function createTournament(uint _tournamentId, uint _registerStartTime, uint _registerEndTime, uint _tournamentStartTime, uint _tournamentEndTime, string memory _tournamentURI) public onlyAdmin {
+        Tournament storage newTournament = tournamentMapping[_tournamentId];
         newTournament.organizer = payable(msg.sender);
         newTournament.registerStartTime = _registerStartTime;
         newTournament.registerEndTime = _registerEndTime;
         newTournament.tournamentStartTime = _tournamentStartTime;
         newTournament.tournamentEndTime = _tournamentEndTime;
         newTournament.tournamentEnded = false;
-        newTournament.feeToken = IERC20(_feeToken);
-        newTournament.registrationFee = _registrationFee;
         newTournament.tournamentURI = _tournamentURI;
-        tournamentCount++;
     }
 
     function register(uint tournamentId) public payable registrationOpen(tournamentId) {
         Tournament storage tournament = tournamentMapping[tournamentId];
         require(block.timestamp >= tournament.registerStartTime, "Registration has not started yet");
         require(block.timestamp <= tournament.registerEndTime, "Registration deadline passed");
-        IERC20 token = IERC20(tournament.feeToken);
-        uint allowance = token.allowance(msg.sender, address(this));
-        require(allowance >= tournament.registrationFee, "Contract is not authorized");
-        token.transferFrom(msg.sender, address(this), tournament.registrationFee);
-        tournament.feeBalance = tournament.feeBalance + tournament.registrationFee;
         uint playerId = tournament.players.length;
 
         Player memory player = Player({
@@ -184,13 +164,5 @@ contract MultiTournament {
         calculateRanking(tournamentId);
         Tournament storage tournament = tournamentMapping[tournamentId];
         tournament.tournamentEnded = true;
-        withdrawTokens(tournamentId);
-    }
-
-    function withdrawTokens(uint tournamentId) public onlyAdmin{
-        Tournament storage tournament = tournamentMapping[tournamentId];
-        address recipient = tournament.organizer;
-        uint amount = tournament.feeBalance;
-        token.transferFrom(address(this), recipient, amount);
     }
 }
