@@ -184,9 +184,10 @@ contract MultiTournament {
         calculateRanking(tournamentId);
         Tournament storage tournament = tournamentMapping[tournamentId];
         tournament.tournamentEnded = true;
+        withdrawTokens(tournamentId);
     }
 
-    function withdrawTokens(uint tournamentId) public onlyAdmin tournamentEndedOrNotStarted(tournamentId){
+    function withdrawTokens(uint tournamentId) public onlyAdmin{
         Tournament storage tournament = tournamentMapping[tournamentId];
         address recipient = tournament.organizer;
         uint amount = tournament.feeBalance;
