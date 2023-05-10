@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 
+pragma solidity 0.8.17;    
+
 //    _______ _______ ___ ___ _______ ______  ___     ___ ______  _______     ___     _______ _______  _______ 
 //   |   _   |   _   |   Y   |   _   |   _  \|   |   |   |   _  \|   _   |   |   |   |   _   |   _   \|   _   |
 //   |   1___|.  1___|.  |   |.  1___|.  |   |.  |   |.  |.  |   |.  1___|   |.  |   |.  1   |.  1   /|   1___|
@@ -9,9 +11,7 @@
 //   `-------`-------' `---' `-------`--- ---`-------`---`--- ---`-------'   `-------`--- ---`-------'`-------'
 //   
 
-pragma solidity 0.8.17;    
-
-contract MultiTournament {
+contract ScoreTournament {
     struct Player {
         uint id;
         address account;
@@ -37,6 +37,7 @@ contract MultiTournament {
     address admin;
     mapping(uint => Tournament) public tournamentMapping;
 
+    event CreateTournament(uint tournamentId);
     event Registered(address account);
     event ScoreUpdated(address account, uint score);
     event TournamentEnded(uint tournamentId);
@@ -85,6 +86,8 @@ contract MultiTournament {
         newTournament.tournamentEndTime = _tournamentEndTime;
         newTournament.tournamentEnded = false;
         newTournament.tournamentURI = _tournamentURI;
+
+        emit CreateTournament(_tournamentId);
     }
 
     function register(uint tournamentId) public payable registrationOpen(tournamentId) {

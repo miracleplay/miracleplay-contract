@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.17;
 
+import "./Miracle-Tournament-Point-G1.sol";
+
 //    _______ _______ ___ ___ _______ ______  ___     ___ ______  _______     ___     _______ _______  _______ 
 //   |   _   |   _   |   Y   |   _   |   _  \|   |   |   |   _  \|   _   |   |   |   |   _   |   _   \|   _   |
 //   |   1___|.  1___|.  |   |.  1___|.  |   |.  |   |.  |.  |   |.  1___|   |.  |   |.  1   |.  1   /|   1___|
@@ -19,6 +21,7 @@ interface IERC20 {
 
 contract TokenEscrow {
     address public admin;
+    ScoreTournament public tournamentContract;
 
     struct Tournament {
         address organizer;
@@ -42,7 +45,11 @@ contract TokenEscrow {
         _;
     }
 
-    function createTournamentEscrow(uint _tournamentId, address _prizeToken, address _feeToken, uint _prizeAmount, uint _registrationFee) public {
+    function connectTournament(ScoreTournament _tournamentContract) public onlyAdmin{
+        tournamentContract = _tournamentContract;
+    }
+
+    function createTournamentEscrow(uint _tournamentId, address _prizeToken, address _feeToken, uint _prizeAmount, uint _registrationFee, uint _registerStartTime, uint _registerEndTime, uint _tournamentStartTime, uint _tournamentEndTime, string memory _tournamentURI) public {
         require(IERC20(_prizeToken).allowance(msg.sender, address(this)) >= _prizeAmount, "Allowance is not sufficient.");
         require(_prizeAmount <= IERC20(_prizeToken).balanceOf(msg.sender), "Insufficient balance.");
         require(IERC20(_prizeToken).transferFrom(msg.sender, address(this), _prizeAmount), "Transfer failed.");
@@ -52,6 +59,7 @@ contract TokenEscrow {
         newTournament.feeToken = IERC20(_feeToken);
         newTournament.prizeAmount = _prizeAmount;
         newTournament.registrationFee = _registrationFee;
+        tournamentContract.createTournament(_tournamentId, _registerStartTime, _registerEndTime, _tournamentStartTime, _tournamentEndTime, _tournamentURI);
     }
 
     function register(uint _tournamentId) public {
@@ -60,6 +68,7 @@ contract TokenEscrow {
         require(_tournament.registrationFee <= _tournament.feeToken.balanceOf(msg.sender), "Insufficient balance.");
         require(_tournament.feeToken.transferFrom(msg.sender, address(this), _tournament.registrationFee), "Transfer failed.");
         _tournament.feeBalance = _tournament.feeBalance + _tournament.registrationFee;
+        tournamentContract.register(_tournamentId);
     }
 
     function updateWithdrawals(uint _tournamentId, address[] memory _withdrawAddresses, uint256[] memory _percentages, uint256[] memory _amount) public onlyAdmin {
@@ -73,8 +82,12 @@ contract TokenEscrow {
         }
     }
 
-    function feeWithdraw(uint _tournamentId) public {
+    function feeWithdraw(uint _tournamentId) public onlyAdmin{
+        Tournament storage _tournament = tournamentMapping[_tournamentId];
 
+        IERC20 token = _tournament.feeToken;
+        uint256 withdrawAmount = _tournament.feeBalance;
+        require(token.transferFrom(address(this), _tournament.organizer, withdrawAmount), "Transfer failed.");
     }
 
     function prizeWithdraw(uint _tournamentId) public {
