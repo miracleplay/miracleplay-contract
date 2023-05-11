@@ -77,7 +77,7 @@ contract ScoreTournament {
 
     modifier tournamentNotStarted(uint tournamentId) {
         Tournament storage tournament = tournamentMapping[tournamentId];
-        require(block.timestamp < tournament.tournamentEndTime, "Tournament has already started");
+        require(block.timestamp < tournament.tournamentEndTime, "Tournament has already ended");
         require(block.timestamp > tournament.tournamentStartTime, "Tournament is not start");
         _;
     }
@@ -106,7 +106,7 @@ contract ScoreTournament {
         emit CreateTournament(_tournamentId);
     }
 
-    function register(uint tournamentId) public payable registrationOpen(tournamentId) {
+    function register(uint tournamentId, address _player) public payable registrationOpen(tournamentId) {
         Tournament storage tournament = tournamentMapping[tournamentId];
         require(block.timestamp >= tournament.registerStartTime, "Registration has not started yet");
         require(block.timestamp <= tournament.registerEndTime, "Registration deadline passed");
@@ -114,16 +114,16 @@ contract ScoreTournament {
 
         Player memory player = Player({
             id: playerId,
-            account: payable(msg.sender),
+            account: payable(_player),
             score: 0,
             isRegistered: true,
             rank: 0
         });
 
         tournament.players.push(player);
-        tournament.playerIdByAccount[msg.sender] = playerId;
+        tournament.playerIdByAccount[_player] = playerId;
 
-        emit Registered(msg.sender);
+        emit Registered(_player);
     }
 
     function updateScore(uint tournamentId, address _account, uint _score) public onlyAdmin tournamentNotStarted(tournamentId) tournamentEndedOrNotStarted(tournamentId) {
@@ -179,7 +179,7 @@ contract ScoreTournament {
         emit TournamentEnded(tournamentId);
     }
 
-    function endTournament(uint tournamentId) public onlyAdmin tournamentNotStarted(tournamentId){
+    function endTournament(uint tournamentId) public onlyAdmin {
         calculateRanking(tournamentId);
         Tournament storage tournament = tournamentMapping[tournamentId];
         uint _prizeCount = tournament.prizeCount;
@@ -189,5 +189,20 @@ contract ScoreTournament {
         }
         TournamentEscrow(EscrowAddr).updateWithdrawals(tournamentId, prizeAddr);
         tournament.tournamentEnded = true;
+    }
+
+    function getPlayerCount(uint _tournamentId) external view returns(uint _playerCnt){
+        Tournament storage _tournament = tournamentMapping[_tournamentId];
+        return _tournament.players.length;
+    }
+
+    function getPlayerInfo(uint _tournamentId, uint playerId) external view returns(Player memory _player){
+        Tournament storage _tournament = tournamentMapping[_tournamentId];
+        return _tournament.players[playerId];
+    }
+
+    function getPlayerRank(uint _tournamentId, address player) external view returns(uint _rank){
+        Tournament storage _tournament = tournamentMapping[_tournamentId];
+        return _tournament.accountToRank[player];
     }
 }
