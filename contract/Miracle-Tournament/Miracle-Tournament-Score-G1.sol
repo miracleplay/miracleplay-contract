@@ -2,6 +2,8 @@
 
 pragma solidity 0.8.17;    
 
+import "./Miracle-Escrow-G1.sol";
+
 //    _______ _______ ___ ___ _______ ______  ___     ___ ______  _______     ___     _______ _______  _______ 
 //   |   _   |   _   |   Y   |   _   |   _  \|   |   |   |   _  \|   _   |   |   |   |   _   |   _   \|   _   |
 //   |   1___|.  1___|.  |   |.  1___|.  |   |.  |   |.  |.  |   |.  1___|   |.  |   |.  1   |.  1   /|   1___|
@@ -12,6 +14,9 @@ pragma solidity 0.8.17;
 //   
 
 contract ScoreTournament {
+
+    address public EscrowAddr;
+
     struct Player {
         uint id;
         address account;
@@ -30,6 +35,7 @@ contract ScoreTournament {
         uint registerEndTime;
         uint tournamentStartTime;
         uint tournamentEndTime;
+        uint prizeCount;
         bool tournamentEnded;
         string tournamentURI;
     }
@@ -48,6 +54,11 @@ contract ScoreTournament {
 
     modifier onlyAdmin(){
         require(msg.sender == admin, "Only admin can call this function");
+        _;
+    }
+
+    modifier onlyEscrow(){
+        require(msg.sender == EscrowAddr,  "Only escorw contract can call this function");
         _;
     }
 
@@ -77,7 +88,11 @@ contract ScoreTournament {
         _;
     }
 
-    function createTournament(uint _tournamentId, uint _registerStartTime, uint _registerEndTime, uint _tournamentStartTime, uint _tournamentEndTime, string memory _tournamentURI) public onlyAdmin {
+    function connectEscrow(address _escrowAddr) public onlyAdmin {
+        EscrowAddr = _escrowAddr;
+    }
+
+    function createTournament(uint _tournamentId, uint _registerStartTime, uint _registerEndTime, uint _tournamentStartTime, uint _tournamentEndTime, uint _prizeCount, string memory _tournamentURI) public onlyEscrow {
         Tournament storage newTournament = tournamentMapping[_tournamentId];
         newTournament.organizer = payable(msg.sender);
         newTournament.registerStartTime = _registerStartTime;
@@ -85,6 +100,7 @@ contract ScoreTournament {
         newTournament.tournamentStartTime = _tournamentStartTime;
         newTournament.tournamentEndTime = _tournamentEndTime;
         newTournament.tournamentEnded = false;
+        newTournament.prizeCount = _prizeCount;
         newTournament.tournamentURI = _tournamentURI;
 
         emit CreateTournament(_tournamentId);
@@ -166,6 +182,12 @@ contract ScoreTournament {
     function endTournament(uint tournamentId) public onlyAdmin tournamentNotStarted(tournamentId){
         calculateRanking(tournamentId);
         Tournament storage tournament = tournamentMapping[tournamentId];
+        uint _prizeCount = tournament.prizeCount;
+        address[] memory prizeAddr = new address[](_prizeCount);
+        for(uint i = 0; i < _prizeCount; i++){
+            prizeAddr[i] = tournament.rankToAccount[i];
+        }
+        TournamentEscrow(EscrowAddr).updateWithdrawals(tournamentId, prizeAddr);
         tournament.tournamentEnded = true;
     }
 }
