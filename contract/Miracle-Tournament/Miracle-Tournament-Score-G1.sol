@@ -126,6 +126,7 @@ contract ScoreTournament {
         emit Registered(tournamentId, _player);
     }
 
+
     function updateScore(uint tournamentId, address _account, uint _score) public onlyAdmin tournamentNotStarted(tournamentId) tournamentEndedOrNotStarted(tournamentId) {
         Tournament storage tournament = tournamentMapping[tournamentId];
         require(tournament.playerIdByAccount[_account] > 0, "Player not registered");
@@ -174,8 +175,6 @@ contract ScoreTournament {
             uint rank = tournament.accountToRank[tournament.players[i].account];
             tournament.players[i] = Player(tournament.players[i].id, tournament.players[i].account, tournament.players[i].score, tournament.players[i].isRegistered, rank);
         }
-
-        emit TournamentEnded(tournamentId);
     }
 
     function endTournament(uint tournamentId) public onlyAdmin {
@@ -187,7 +186,9 @@ contract ScoreTournament {
             prizeAddr[i] = tournament.rankToAccount[i];
         }
         TournamentEscrow(EscrowAddr).updateWithdrawals(tournamentId, prizeAddr);
+        TournamentEscrow(EscrowAddr).feeWithdraw(tournamentId);
         tournament.tournamentEnded = true;
+        emit TournamentEnded(tournamentId);
     }
 
     function getPlayerCount(uint _tournamentId) external view returns(uint _playerCnt){
