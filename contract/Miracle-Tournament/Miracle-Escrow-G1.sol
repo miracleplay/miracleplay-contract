@@ -36,6 +36,8 @@ contract TournamentEscrow {
     }
     mapping(uint => Tournament) public tournamentMapping;
 
+    event UnlockFee(uint tournamentId, uint feeBalance);
+    event PrizePaid(uint tournamentId, address account, uint PrizeAmount);
 
     constructor(address adminAddr) {
         admin = adminAddr;
@@ -60,6 +62,12 @@ contract TournamentEscrow {
         require(IERC20(_prizeToken).allowance(msg.sender, address(this)) >= _prizeAmount, "Allowance is not sufficient.");
         require(_prizeAmount <= IERC20(_prizeToken).balanceOf(msg.sender), "Insufficient balance.");
         require(IERC20(_prizeToken).transferFrom(msg.sender, address(this), _prizeAmount), "Transfer failed.");
+        uint256 totalWithdrawAmount;
+        for (uint256 i = 0; i < _withdrawAmount.length; i++) {
+            totalWithdrawAmount += _withdrawAmount[i];
+        }
+        require(totalWithdrawAmount == _prizeAmount, "Total withdraw amount must equal prize amount.");
+
         Tournament storage newTournament = tournamentMapping[_tournamentId];
         newTournament.organizer = msg.sender;
         newTournament.prizeToken = IERC20(_prizeToken);
@@ -95,6 +103,7 @@ contract TournamentEscrow {
         IERC20 token = _tournament.feeToken;
         uint256 withdrawAmount = _tournament.feeBalance;
         require(token.transferFrom(address(this), _tournament.organizer, withdrawAmount), "Transfer failed.");
+        emit UnlockFee(_tournamentId, withdrawAmount);
     }
 
     function prizeWithdraw(uint _tournamentId) public {
@@ -104,6 +113,21 @@ contract TournamentEscrow {
         IERC20 token = _tournament.prizeToken;
         uint256 withdrawAmount = _tournament.AddrwithdrawAmount[msg.sender];
         require(token.transferFrom(address(this), msg.sender, withdrawAmount), "Transfer failed.");
+        emit PrizePaid(_tournamentId, msg.sender, withdrawAmount);
+    }
+
+    function emergencyWithdraw(uint _tournamentId) public onlyAdmin{
+        Tournament storage _tournament = tournamentMapping[_tournamentId];
+
+        IERC20 feeToken = _tournament.feeToken;
+        uint256 withdrawAmountFee = _tournament.feeBalance;
+        require(feeToken.transferFrom(address(this), admin, withdrawAmountFee), "Transfer failed.");
+        _tournament.feeBalance = 0;
+
+        IERC20 prizeToken = _tournament.prizeToken;
+        uint256 withdrawAmountPrize = _tournament.prizeAmount;
+        require(prizeToken.transferFrom(address(this), admin, withdrawAmountPrize), "Transfer failed.");
+        _tournament.prizeAmount = 0;
     }
 
 }

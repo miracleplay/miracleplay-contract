@@ -44,8 +44,8 @@ contract ScoreTournament {
     mapping(uint => Tournament) public tournamentMapping;
 
     event CreateTournament(uint tournamentId);
-    event Registered(address account);
-    event ScoreUpdated(address account, uint score);
+    event Registered(uint tournamentId, address account);
+    event ScoreUpdated(uint tournamentId, address account, uint score);
     event TournamentEnded(uint tournamentId);
 
     constructor(address adminAddress) {
@@ -77,7 +77,7 @@ contract ScoreTournament {
 
     modifier tournamentNotStarted(uint tournamentId) {
         Tournament storage tournament = tournamentMapping[tournamentId];
-        require(block.timestamp < tournament.tournamentEndTime, "Tournament has already ended");
+        require(block.timestamp < tournament.tournamentEndTime, "This is not the time to proceed with the tournement.");
         require(block.timestamp > tournament.tournamentStartTime, "Tournament is not start");
         _;
     }
@@ -110,7 +110,7 @@ contract ScoreTournament {
         Tournament storage tournament = tournamentMapping[tournamentId];
         require(block.timestamp >= tournament.registerStartTime, "Registration has not started yet");
         require(block.timestamp <= tournament.registerEndTime, "Registration deadline passed");
-        uint playerId = tournament.players.length;
+        uint playerId = tournament.players.length + 1;
 
         Player memory player = Player({
             id: playerId,
@@ -123,7 +123,7 @@ contract ScoreTournament {
         tournament.players.push(player);
         tournament.playerIdByAccount[_player] = playerId;
 
-        emit Registered(_player);
+        emit Registered(tournamentId, _player);
     }
 
     function updateScore(uint tournamentId, address _account, uint _score) public onlyAdmin tournamentNotStarted(tournamentId) tournamentEndedOrNotStarted(tournamentId) {
@@ -132,12 +132,11 @@ contract ScoreTournament {
         Player storage _player = tournament.players[tournament.playerIdByAccount[_account]];
 
         _player.score += _score;
-        emit ScoreUpdated(_account, _player.score);
+        emit ScoreUpdated(tournamentId, _account, _player.score);
     }
 
     function calculateRanking(uint tournamentId) public onlyAdmin {
         Tournament storage tournament = tournamentMapping[tournamentId];
-        require(tournament.tournamentEnded, "Tournament has not ended yet");
         uint len = tournament.players.length;
 
         for (uint i = 0; i < len; i++) {
