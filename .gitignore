@@ -71,3 +71,5 @@ cache
 artifacts
 deployArgs.json
 deployArgs.json
+deployArgs.json
+hardhat.config.js
