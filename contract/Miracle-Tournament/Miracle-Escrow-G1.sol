@@ -102,7 +102,7 @@ contract TournamentEscrow {
 
         IERC20 token = _tournament.feeToken;
         uint256 withdrawAmount = _tournament.feeBalance;
-        require(token.transferFrom(address(this), _tournament.organizer, withdrawAmount), "Transfer failed.");
+        require(token.transfer(_tournament.organizer, withdrawAmount), "Transfer failed.");
         emit UnlockFee(_tournamentId, withdrawAmount);
     }
 
@@ -112,7 +112,7 @@ contract TournamentEscrow {
 
         IERC20 token = _tournament.prizeToken;
         uint256 withdrawAmount = _tournament.AddrwithdrawAmount[msg.sender];
-        require(token.transferFrom(address(this), msg.sender, withdrawAmount), "Transfer failed.");
+        require(token.transfer(msg.sender, withdrawAmount), "Transfer failed.");
         emit PrizePaid(_tournamentId, msg.sender, withdrawAmount);
     }
 
@@ -121,13 +121,18 @@ contract TournamentEscrow {
 
         IERC20 feeToken = _tournament.feeToken;
         uint256 withdrawAmountFee = _tournament.feeBalance;
-        require(feeToken.transferFrom(address(this), admin, withdrawAmountFee), "Transfer failed.");
+        require(feeToken.transfer(admin, withdrawAmountFee), "Transfer failed.");
         _tournament.feeBalance = 0;
 
         IERC20 prizeToken = _tournament.prizeToken;
         uint256 withdrawAmountPrize = _tournament.prizeAmount;
-        require(prizeToken.transferFrom(address(this), admin, withdrawAmountPrize), "Transfer failed.");
+        require(prizeToken.transfer(admin, withdrawAmountPrize), "Transfer failed.");
         _tournament.prizeAmount = 0;
+    }
+
+    function prizeAvailable(uint _tournamentId, address player) external view returns(uint _amount) {
+        Tournament storage _tournament = tournamentMapping[_tournamentId];
+        return _tournament.AddrwithdrawAmount[player];
     }
 
 }
