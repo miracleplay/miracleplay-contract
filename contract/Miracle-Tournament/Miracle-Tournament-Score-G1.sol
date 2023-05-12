@@ -205,4 +205,9 @@ contract ScoreTournament {
         Tournament storage _tournament = tournamentMapping[_tournamentId];
         return _tournament.accountToRank[player];
     }
+
+    function playerIdByAccount(uint _tournamentId, address player) external view returns(uint _id){
+        Tournament storage _tournament = tournamentMapping[_tournamentId];
+        return _tournament.playerIdByAccount[player];
+    }
 }
