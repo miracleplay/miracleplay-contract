@@ -192,6 +192,19 @@ contract ScoreTournament {
         emit TournamentEnded(tournamentId);
     }
 
+    function cancelTournament(uint tournamentId) public onlyAdmin {
+        Tournament storage tournament = tournamentMapping[tournamentId];
+        
+        // Get the list of player addresses
+        uint playerCount = tournament.players.length;
+        address[] memory playerAddresses = new address[](playerCount);
+        for (uint i = 0; i < playerCount; i++) {
+            playerAddresses[i] = tournament.players[i].account;
+        }
+        
+        TournamentEscrow(EscrowAddr).updateCanceled(tournamentId, playerAddresses);
+    }
+
     function getPlayerCount(uint _tournamentId) external view returns(uint _playerCnt){
         Tournament storage _tournament = tournamentMapping[_tournamentId];
         return _tournament.players.length;

@@ -33,11 +33,16 @@ contract TournamentEscrow {
         uint feeBalance;
         uint256[] withdrawAmount;
         mapping (address => uint256) AddrwithdrawAmount;
+        bool tournamentEnded;
+        bool tournamentCanceled;
     }
     mapping(uint => Tournament) public tournamentMapping;
 
     event UnlockFee(uint tournamentId, uint feeBalance);
     event PrizePaid(uint tournamentId, address account, uint PrizeAmount);
+    event PrizeWinner(uint tournamentId, address [] accounts);
+    event ReturnFee(uint tournamentId, address account, uint feeAmount);
+    event CanceledTournament(uint tournamentId);
 
     constructor(address adminAddr) {
         admin = adminAddr;
@@ -50,6 +55,12 @@ contract TournamentEscrow {
 
     modifier onlyTournament(){
         require(msg.sender == tournamentAddr, "Only tournament contract can call this function");
+        _;
+    }
+
+    modifier onlyOrganizer(uint _tournamentId){
+        Tournament storage _tournament = tournamentMapping[_tournamentId];
+        require(msg.sender == _tournament.organizer, "Only admin can call this function");
         _;
     }
 
@@ -75,6 +86,8 @@ contract TournamentEscrow {
         newTournament.prizeAmount = _prizeAmount;
         newTournament.registrationFee = _registrationFee;
         newTournament.withdrawAmount = _withdrawAmount;
+        newTournament.tournamentEnded = false;
+        newTournament.tournamentCanceled = false;
         scoretournament.createTournament(_tournamentId, _registerStartTime, _registerEndTime, _tournamentStartTime, _tournamentEndTime, _withdrawAmount.length, _tournamentURI);
     }
 
@@ -89,31 +102,72 @@ contract TournamentEscrow {
 
     function updateWithdrawals(uint _tournamentId, address[] memory _withdrawAddresses) public onlyTournament {
         Tournament storage _tournament = tournamentMapping[_tournamentId];
+        _tournament.tournamentEnded = true;
+
         uint256[] memory _withdrawAmount = _tournament.withdrawAmount;
         require(_withdrawAddresses.length == _withdrawAmount.length, "Arrays must be the same length.");
 
         for (uint256 i = 0; i < _withdrawAddresses.length; i++) {
             _tournament.AddrwithdrawAmount[_withdrawAddresses[i]] = _withdrawAmount[i];
         }
+
+        emit PrizeWinner(_tournamentId, _withdrawAddresses);
     }
 
-    function feeWithdraw(uint _tournamentId) public onlyTournament{
+    function updateCanceled(uint _tournamentId, address[] memory _withdrawAddresses) public onlyTournament{
         Tournament storage _tournament = tournamentMapping[_tournamentId];
+        _tournament.tournamentCanceled = true;
+        for (uint256 i = 0; i < _withdrawAddresses.length; i++) {
+            _tournament.AddrwithdrawAmount[_withdrawAddresses[i]] = _tournament.registrationFee;
+        }
+
+        emit CanceledTournament(_tournamentId);
+    }
+
+    function feeWithdraw(uint _tournamentId) public onlyTournament(){
+        Tournament storage _tournament = tournamentMapping[_tournamentId];
+        require(_tournament.tournamentEnded, "Tournament has not ended yet");
 
         IERC20 token = _tournament.feeToken;
         uint256 withdrawAmount = _tournament.feeBalance;
         require(token.transfer(_tournament.organizer, withdrawAmount), "Transfer failed.");
+        
         emit UnlockFee(_tournamentId, withdrawAmount);
     }
 
     function prizeWithdraw(uint _tournamentId) public {
         Tournament storage _tournament = tournamentMapping[_tournamentId];
+        require(_tournament.tournamentEnded, "Tournament has not ended yet");
         require(_tournament.AddrwithdrawAmount[msg.sender] > 0, "There is no prize token to be paid to you.");
-
+        
         IERC20 token = _tournament.prizeToken;
         uint256 withdrawAmount = _tournament.AddrwithdrawAmount[msg.sender];
         require(token.transfer(msg.sender, withdrawAmount), "Transfer failed.");
+        _tournament.AddrwithdrawAmount[msg.sender] = 0;
+
         emit PrizePaid(_tournamentId, msg.sender, withdrawAmount);
+    }
+
+    function CancelPrizeWithdraw(uint _tournamentId) public onlyOrganizer(_tournamentId){
+        Tournament storage _tournament = tournamentMapping[_tournamentId];
+        require(_tournament.tournamentCanceled, "Tournament has not canceled");
+
+        IERC20 token = _tournament.prizeToken;
+        uint256 withdrawAmount = _tournament.prizeAmount;
+        require(token.transfer(msg.sender, withdrawAmount), "Transfer failed.");
+    }
+
+    function CancelFeeWithdraw(uint _tournamentId) public {
+        Tournament storage _tournament = tournamentMapping[_tournamentId];
+        require(_tournament.tournamentCanceled, "Tournament has not canceled");
+        require(_tournament.AddrwithdrawAmount[msg.sender] > 0, "There is no prize token to be paid to you.");
+
+        IERC20 token = _tournament.feeToken;
+        uint256 withdrawAmount = _tournament.AddrwithdrawAmount[msg.sender];
+        require(token.transfer(msg.sender, withdrawAmount), "Transfer failed.");
+        _tournament.AddrwithdrawAmount[msg.sender] = 0;
+
+        emit ReturnFee(_tournamentId, msg.sender, withdrawAmount);
     }
 
     function emergencyWithdraw(uint _tournamentId) public onlyAdmin{
