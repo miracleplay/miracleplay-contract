@@ -60,7 +60,7 @@ contract TournamentEscrow {
 
     modifier onlyOrganizer(uint _tournamentId){
         Tournament storage _tournament = tournamentMapping[_tournamentId];
-        require(msg.sender == _tournament.organizer, "Only admin can call this function");
+        require(msg.sender == _tournament.organizer, "Only organizer can call this function");
         _;
     }
 
