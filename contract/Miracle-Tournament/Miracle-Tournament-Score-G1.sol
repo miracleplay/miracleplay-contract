@@ -190,7 +190,7 @@ contract ScoreTournament {
             prizeAddr[i] = tournament.rankToAccount[i];
         }
         TournamentEscrow(EscrowAddr).unlockPrize(tournamentId, prizeAddr);
-        TournamentEscrow(EscrowAddr).feeWithdraw(tournamentId);
+        TournamentEscrow(EscrowAddr).unlockRegFee(tournamentId);
         tournament.tournamentEnded = true;
         emit TournamentEnded(tournamentId);
     }
