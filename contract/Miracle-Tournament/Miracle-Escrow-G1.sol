@@ -39,8 +39,8 @@ contract TournamentEscrow {
     mapping(uint => Tournament) public tournamentMapping;
 
     event UnlockFee(uint tournamentId, uint feeBalance);
+    event UnlockPrize(uint tournamentId, address [] _withdrawAddresses);
     event PrizePaid(uint tournamentId, address account, uint PrizeAmount);
-    event PrizeWinner(uint tournamentId, address [] accounts);
     event ReturnFee(uint tournamentId, address account, uint feeAmount);
     event CanceledTournament(uint tournamentId);
 
@@ -100,7 +100,7 @@ contract TournamentEscrow {
         scoretournament.register(_tournamentId, msg.sender);
     }
 
-    function updateWithdrawals(uint _tournamentId, address[] memory _withdrawAddresses) public onlyTournament {
+    function unlockPrize(uint _tournamentId, address[] memory _withdrawAddresses) public onlyTournament {
         Tournament storage _tournament = tournamentMapping[_tournamentId];
         _tournament.tournamentEnded = true;
 
@@ -111,10 +111,17 @@ contract TournamentEscrow {
             _tournament.AddrwithdrawAmount[_withdrawAddresses[i]] = _withdrawAmount[i];
         }
 
-        emit PrizeWinner(_tournamentId, _withdrawAddresses);
+        emit UnlockPrize(_tournamentId, _withdrawAddresses);
     }
 
-    function updateCanceled(uint _tournamentId, address[] memory _withdrawAddresses) public onlyTournament{
+    function unlockRegFee(uint _tournamentId) public onlyTournament {
+        Tournament storage _tournament = tournamentMapping[_tournamentId];
+        _tournament.tournamentEnded = true;
+
+        emit UnlockFee(_tournamentId, _tournament.feeBalance);
+    }
+
+    function canceledTournament(uint _tournamentId, address[] memory _withdrawAddresses) public onlyTournament{
         Tournament storage _tournament = tournamentMapping[_tournamentId];
         _tournament.tournamentCanceled = true;
         for (uint256 i = 0; i < _withdrawAddresses.length; i++) {
@@ -124,7 +131,7 @@ contract TournamentEscrow {
         emit CanceledTournament(_tournamentId);
     }
 
-    function feeWithdraw(uint _tournamentId) public onlyTournament(){
+    function feeWithdraw(uint _tournamentId) public onlyOrganizer(_tournamentId){
         Tournament storage _tournament = tournamentMapping[_tournamentId];
         require(_tournament.tournamentEnded, "Tournament has not ended yet");
 
@@ -157,7 +164,7 @@ contract TournamentEscrow {
         require(token.transfer(msg.sender, withdrawAmount), "Transfer failed.");
     }
 
-    function CancelFeeWithdraw(uint _tournamentId) public {
+    function CancelRegFeeWithdraw(uint _tournamentId) public {
         Tournament storage _tournament = tournamentMapping[_tournamentId];
         require(_tournament.tournamentCanceled, "Tournament has not canceled");
         require(_tournament.AddrwithdrawAmount[msg.sender] > 0, "There is no prize token to be paid to you.");
@@ -184,7 +191,7 @@ contract TournamentEscrow {
         _tournament.prizeAmount = 0;
     }
 
-    function prizeAvailable(uint _tournamentId, address player) external view returns(uint _amount) {
+    function availablePrize(uint _tournamentId, address player) external view returns(uint _amount) {
         Tournament storage _tournament = tournamentMapping[_tournamentId];
         return _tournament.AddrwithdrawAmount[player];
     }
