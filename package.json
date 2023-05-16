@@ -6,7 +6,8 @@
     "release": "npx thirdweb@latest release"
   },
   "devDependencies": {
-    "hardhat": "^2.13.0"
+    "hardhat": "^2.14.0",
+    "thirdweb": "^0.10.15"
   },
   "dependencies": {
     "@openzeppelin/contracts": "^4.8.2",
