@@ -90,6 +90,7 @@ contract ScoreTournament is PermissionsEnumerable, Multicall{
 
     function connectEscrow(address _escrowAddr) public onlyRole(DEFAULT_ADMIN_ROLE) {
         _setupRole(ESCROW_ROLE, _escrowAddr);
+        EscrowAddr = _escrowAddr;
     }
 
     function createTournament(uint _tournamentId, uint _registerStartTime, uint _registerEndTime, uint _tournamentStartTime, uint _tournamentEndTime, uint _prizeCount, string memory _tournamentURI) public onlyRole(ESCROW_ROLE) {
