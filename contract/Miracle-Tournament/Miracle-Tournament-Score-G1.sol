@@ -3,6 +3,8 @@
 pragma solidity 0.8.17;    
 
 import "./Miracle-Escrow-G1.sol";
+import "@thirdweb-dev/contracts/extension/PermissionsEnumerable.sol";
+import "@thirdweb-dev/contracts/extension/Multicall.sol";
 
 //    _______ _______ ___ ___ _______ ______  ___     ___ ______  _______     ___     _______ _______  _______ 
 //   |   _   |   _   |   Y   |   _   |   _  \|   |   |   |   _  \|   _   |   |   |   |   _   |   _   \|   _   |
@@ -13,7 +15,7 @@ import "./Miracle-Escrow-G1.sol";
 //   `-------`-------' `---' `-------`--- ---`-------`---`--- ---`-------'   `-------`--- ---`-------'`-------'
 //   
 
-contract ScoreTournament {
+contract ScoreTournament is PermissionsEnumerable, Multicall{
 
     address public EscrowAddr;
     uint MAX_TOURNAMENTS = 30000;
@@ -42,7 +44,6 @@ contract ScoreTournament {
         string tournamentURI;
     }
 
-    address admin;
     mapping(uint => Tournament) public tournamentMapping;
 
     event CreateTournament(uint tournamentId);
@@ -50,18 +51,11 @@ contract ScoreTournament {
     event ScoreUpdated(uint tournamentId, address account, uint score);
     event TournamentEnded(uint tournamentId);
 
+    bytes32 public constant UPDATE_ROLE = keccak256("UPDATE_ROLE");
+    bytes32 public constant ESCROW_ROLE = keccak256("ESCROW_ROLE");
+
     constructor(address adminAddress) {
-        admin = adminAddress;
-    }
-
-    modifier onlyAdmin(){
-        require(msg.sender == admin, "Only admin can call this function");
-        _;
-    }
-
-    modifier onlyEscrow(){
-        require(msg.sender == EscrowAddr,  "Only escorw contract can call this function");
-        _;
+         _setupRole(DEFAULT_ADMIN_ROLE, adminAddress);
     }
 
     modifier registrationOpen(uint tournamentId) {
@@ -90,11 +84,15 @@ contract ScoreTournament {
         _;
     }
 
-    function connectEscrow(address _escrowAddr) public onlyAdmin {
-        EscrowAddr = _escrowAddr;
+    function setUpdateRole(address _updateAddr) external onlyRole(DEFAULT_ADMIN_ROLE){
+        _setupRole(UPDATE_ROLE, _updateAddr);
     }
 
-    function createTournament(uint _tournamentId, uint _registerStartTime, uint _registerEndTime, uint _tournamentStartTime, uint _tournamentEndTime, uint _prizeCount, string memory _tournamentURI) public onlyEscrow {
+    function connectEscrow(address _escrowAddr) public onlyRole(DEFAULT_ADMIN_ROLE) {
+        _setupRole(ESCROW_ROLE, _escrowAddr);
+    }
+
+    function createTournament(uint _tournamentId, uint _registerStartTime, uint _registerEndTime, uint _tournamentStartTime, uint _tournamentEndTime, uint _prizeCount, string memory _tournamentURI) public onlyRole(ESCROW_ROLE) {
         Tournament storage newTournament = tournamentMapping[_tournamentId];
         newTournament.registered = true;
         newTournament.organizer = payable(msg.sender);
@@ -109,7 +107,7 @@ contract ScoreTournament {
         emit CreateTournament(_tournamentId);
     }
 
-    function register(uint tournamentId, address _player) public payable registrationOpen(tournamentId) {
+    function register(uint tournamentId, address _player) public payable registrationOpen(tournamentId) onlyRole(ESCROW_ROLE) {
         Tournament storage tournament = tournamentMapping[tournamentId];
         require(block.timestamp >= tournament.registerStartTime, "Registration has not started yet");
         require(block.timestamp <= tournament.registerEndTime, "Registration deadline passed");
@@ -129,7 +127,7 @@ contract ScoreTournament {
     }
 
 
-    function updateScore(uint tournamentId, address _account, uint _score) public onlyAdmin tournamentNotStarted(tournamentId) tournamentEndedOrNotStarted(tournamentId) {
+    function _updateScore(uint tournamentId, address _account, uint _score) internal {
         Tournament storage tournament = tournamentMapping[tournamentId];
         require(tournament.players[tournament.playerIdByAccount[_account]].isRegistered, "Player is not registered");
 
@@ -139,8 +137,13 @@ contract ScoreTournament {
         emit ScoreUpdated(tournamentId, _account, _player.score);
     }
 
+    function updateScore(uint tournamentId, address _account, uint[] calldata _score) internal onlyRole(UPDATE_ROLE) {
+        for(uint i = 0; i < _score.length; i++) {
+            _updateScore(tournamentId, _account, _score[i]);
+        }
+    }
 
-    function calculateRanking(uint tournamentId) public onlyAdmin {
+    function calculateRanking(uint tournamentId) internal {
         Tournament storage tournament = tournamentMapping[tournamentId];
         uint len = tournament.players.length;
 
@@ -181,7 +184,7 @@ contract ScoreTournament {
         }
     }
 
-    function endTournament(uint tournamentId) public onlyAdmin {
+    function endTournament(uint tournamentId) public onlyRole(UPDATE_ROLE) {
         calculateRanking(tournamentId);
         Tournament storage tournament = tournamentMapping[tournamentId];
         uint _prizeCount = tournament.prizeCount;
@@ -195,7 +198,7 @@ contract ScoreTournament {
         emit TournamentEnded(tournamentId);
     }
 
-    function cancelTournament(uint tournamentId) public onlyAdmin {
+    function cancelTournament(uint tournamentId) public onlyRole(UPDATE_ROLE) {
         Tournament storage tournament = tournamentMapping[tournamentId];
         
         // Get the list of player addresses
