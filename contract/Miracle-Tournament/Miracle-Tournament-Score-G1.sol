@@ -137,7 +137,7 @@ contract ScoreTournament is PermissionsEnumerable, Multicall{
         emit ScoreUpdated(tournamentId, _account, _player.score);
     }
 
-    function updateScore(uint tournamentId, address _account, uint[] calldata _score) internal onlyRole(UPDATE_ROLE) {
+    function updateScore(uint tournamentId, address _account, uint[] calldata _score) external onlyRole(UPDATE_ROLE) {
         for(uint i = 0; i < _score.length; i++) {
             _updateScore(tournamentId, _account, _score[i]);
         }
