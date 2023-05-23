@@ -96,6 +96,7 @@ contract TournamentEscrow {
         require(_tournament.feeToken.allowance(msg.sender, address(this)) >= _tournament.registrationFee, "Allowance is not sufficient.");
         require(_tournament.registrationFee <= _tournament.feeToken.balanceOf(msg.sender), "Insufficient balance.");
         require(_tournament.feeToken.transferFrom(msg.sender, address(this), _tournament.registrationFee), "Transfer failed.");
+        require(_tournament.organizer != msg.sender, "Organizers cannot apply.");
         _tournament.feeBalance = _tournament.feeBalance + _tournament.registrationFee;
         scoretournament.register(_tournamentId, msg.sender);
     }
