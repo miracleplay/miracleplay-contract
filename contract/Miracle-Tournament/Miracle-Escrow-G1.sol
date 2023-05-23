@@ -38,6 +38,8 @@ contract TournamentEscrow {
     }
     mapping(uint => Tournament) public tournamentMapping;
 
+    event LockPrizeToken(uint tournamentId, uint prizeAmount);
+    event LockFeeToken(uint tournamentId, uint feeAmount);
     event UnlockFee(uint tournamentId, uint feeBalance);
     event UnlockPrize(uint tournamentId, address [] _withdrawAddresses);
     event PrizePaid(uint tournamentId, address account, uint PrizeAmount);
@@ -89,6 +91,7 @@ contract TournamentEscrow {
         newTournament.tournamentEnded = false;
         newTournament.tournamentCanceled = false;
         scoretournament.createTournament(_tournamentId, _registerStartTime, _registerEndTime, _tournamentStartTime, _tournamentEndTime, _withdrawAmount.length, _tournamentURI);
+        emit LockPrizeToken(_tournamentId, _prizeAmount);
     }
 
     function register(uint _tournamentId) public {
@@ -99,6 +102,7 @@ contract TournamentEscrow {
         require(_tournament.organizer != msg.sender, "Organizers cannot apply.");
         _tournament.feeBalance = _tournament.feeBalance + _tournament.registrationFee;
         scoretournament.register(_tournamentId, msg.sender);
+        emit LockFeeToken(_tournamentId, _tournament.registrationFee);
     }
 
     function unlockPrize(uint _tournamentId, address[] memory _withdrawAddresses) public onlyTournament {
