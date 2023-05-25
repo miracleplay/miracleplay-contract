@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 
-pragma solidity 0.8.17;    
+pragma solidity ^0.8.17;    
 
 import "./Miracle-Escrow-G1.sol";
-import "@thirdweb-dev/contracts/extension/PermissionsEnumerable.sol";
-import "@thirdweb-dev/contracts/extension/Multicall.sol";
 
 //    _______ _______ ___ ___ _______ ______  ___     ___ ______  _______     ___     _______ _______  _______ 
 //   |   _   |   _   |   Y   |   _   |   _  \|   |   |   |   _  \|   _   |   |   |   |   _   |   _   \|   _   |
@@ -15,7 +13,7 @@ import "@thirdweb-dev/contracts/extension/Multicall.sol";
 //   `-------`-------' `---' `-------`--- ---`-------`---`--- ---`-------'   `-------`--- ---`-------'`-------'
 //   
 
-contract ScoreTournament is PermissionsEnumerable, Multicall{
+contract ScoreTournament {
 
     address public EscrowAddr;
     uint MAX_TOURNAMENTS = 30000;
@@ -44,6 +42,7 @@ contract ScoreTournament is PermissionsEnumerable, Multicall{
         string tournamentURI;
     }
 
+    address admin;
     mapping(uint => Tournament) public tournamentMapping;
 
     event CreateTournament(uint tournamentId);
@@ -51,11 +50,18 @@ contract ScoreTournament is PermissionsEnumerable, Multicall{
     event ScoreUpdated(uint tournamentId, address account, uint score);
     event TournamentEnded(uint tournamentId);
 
-    bytes32 public constant UPDATE_ROLE = keccak256("UPDATE_ROLE");
-    bytes32 public constant ESCROW_ROLE = keccak256("ESCROW_ROLE");
-
     constructor(address adminAddress) {
-         _setupRole(DEFAULT_ADMIN_ROLE, adminAddress);
+        admin = adminAddress;
+    }
+
+    modifier onlyAdmin(){
+        require(msg.sender == admin, "Only admin can call this function");
+        _;
+    }
+
+    modifier onlyEscrow(){
+        require(msg.sender == EscrowAddr,  "Only escorw contract can call this function");
+        _;
     }
 
     modifier registrationOpen(uint tournamentId) {
@@ -84,16 +90,11 @@ contract ScoreTournament is PermissionsEnumerable, Multicall{
         _;
     }
 
-    function setUpdateRole(address _updateAddr) external onlyRole(DEFAULT_ADMIN_ROLE){
-        _setupRole(UPDATE_ROLE, _updateAddr);
-    }
-
-    function connectEscrow(address _escrowAddr) public onlyRole(DEFAULT_ADMIN_ROLE) {
-        _setupRole(ESCROW_ROLE, _escrowAddr);
+    function connectEscrow(address _escrowAddr) public onlyAdmin {
         EscrowAddr = _escrowAddr;
     }
 
-    function createTournament(uint _tournamentId, uint _registerStartTime, uint _registerEndTime, uint _tournamentStartTime, uint _tournamentEndTime, uint _prizeCount, string memory _tournamentURI) public onlyRole(ESCROW_ROLE) {
+    function createTournament(uint _tournamentId, uint _registerStartTime, uint _registerEndTime, uint _tournamentStartTime, uint _tournamentEndTime, uint _prizeCount, string memory _tournamentURI) public onlyEscrow {
         Tournament storage newTournament = tournamentMapping[_tournamentId];
         newTournament.registered = true;
         newTournament.organizer = payable(msg.sender);
@@ -108,7 +109,7 @@ contract ScoreTournament is PermissionsEnumerable, Multicall{
         emit CreateTournament(_tournamentId);
     }
 
-    function register(uint tournamentId, address _player) public payable registrationOpen(tournamentId) onlyRole(ESCROW_ROLE) {
+    function register(uint tournamentId, address _player) public payable registrationOpen(tournamentId) {
         Tournament storage tournament = tournamentMapping[tournamentId];
         require(block.timestamp >= tournament.registerStartTime, "Registration has not started yet");
         require(block.timestamp <= tournament.registerEndTime, "Registration deadline passed");
@@ -128,7 +129,7 @@ contract ScoreTournament is PermissionsEnumerable, Multicall{
     }
 
 
-    function _updateScore(uint tournamentId, address _account, uint _score) internal {
+    function updateScore(uint tournamentId, address _account, uint _score) public onlyAdmin tournamentNotStarted(tournamentId) tournamentEndedOrNotStarted(tournamentId) {
         Tournament storage tournament = tournamentMapping[tournamentId];
         require(tournament.players[tournament.playerIdByAccount[_account]].isRegistered, "Player is not registered");
 
@@ -138,13 +139,8 @@ contract ScoreTournament is PermissionsEnumerable, Multicall{
         emit ScoreUpdated(tournamentId, _account, _player.score);
     }
 
-    function updateScore(uint tournamentId, address _account, uint[] calldata _score) external onlyRole(UPDATE_ROLE) {
-        for(uint i = 0; i < _score.length; i++) {
-            _updateScore(tournamentId, _account, _score[i]);
-        }
-    }
 
-    function calculateRanking(uint tournamentId) internal {
+    function calculateRanking(uint tournamentId) public onlyAdmin {
         Tournament storage tournament = tournamentMapping[tournamentId];
         uint len = tournament.players.length;
 
@@ -185,7 +181,7 @@ contract ScoreTournament is PermissionsEnumerable, Multicall{
         }
     }
 
-    function endTournament(uint tournamentId) public onlyRole(UPDATE_ROLE) {
+    function endTournament(uint tournamentId) public onlyAdmin {
         calculateRanking(tournamentId);
         Tournament storage tournament = tournamentMapping[tournamentId];
         uint _prizeCount = tournament.prizeCount;
@@ -199,7 +195,7 @@ contract ScoreTournament is PermissionsEnumerable, Multicall{
         emit TournamentEnded(tournamentId);
     }
 
-    function cancelTournament(uint tournamentId) public onlyRole(UPDATE_ROLE) {
+    function cancelTournament(uint tournamentId) public onlyAdmin {
         Tournament storage tournament = tournamentMapping[tournamentId];
         
         // Get the list of player addresses
