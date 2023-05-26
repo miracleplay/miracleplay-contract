@@ -205,6 +205,10 @@ contract TournamentEscrow {
         _tournament.prizeAmount = 0;
     }
 
+    function setRoyaltyAddress(address _royaltyAddr) public onlyAdmin{
+        royaltyAddr = _royaltyAddr;
+    }
+
     function availablePrize(uint _tournamentId, address player) external view returns(uint _amount) {
         Tournament storage _tournament = tournamentMapping[_tournamentId];
         return _tournament.AddrwithdrawAmount[player];
