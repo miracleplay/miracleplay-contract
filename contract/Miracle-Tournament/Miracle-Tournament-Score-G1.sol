@@ -3,6 +3,7 @@
 pragma solidity ^0.8.17;    
 
 import "./Miracle-Escrow-G1.sol";
+import "./Miracle-ProxyV2.sol";
 
 //    _______ _______ ___ ___ _______ ______  ___     ___ ______  _______     ___     _______ _______  _______ 
 //   |   _   |   _   |   Y   |   _   |   _  \|   |   |   |   _  \|   _   |   |   |   |   _   |   _   \|   _   |
@@ -11,12 +12,13 @@ import "./Miracle-Escrow-G1.sol";
 //   |:  1   |:  1   |:  1   |:  1   |:  |   |:  1   |:  |:  |   |:  1   |   |:  1   |:  |   |:  1    |:  1   |
 //   |::.. . |::.. . |\:.. ./|::.. . |::.|   |::.. . |::.|::.|   |::.. . |   |::.. . |::.|:. |::.. .  |::.. . |
 //   `-------`-------' `---' `-------`--- ---`-------`---`--- ---`-------'   `-------`--- ---`-------'`-------'
-//   
+//   ScoreTournament V0.1.2
 
 contract ScoreTournament {
 
     address public EscrowAddr;
-    uint MAX_TOURNAMENTS = 30000;
+    uint[] private OnGoingTournaments;
+    uint[] private EndedTournaments;
 
     struct Player {
         uint id;
@@ -49,6 +51,7 @@ contract ScoreTournament {
     event Registered(uint tournamentId, address account);
     event ScoreUpdated(uint tournamentId, address account, uint score);
     event TournamentEnded(uint tournamentId);
+    event TournamentCanceled(uint tournamentId);
 
     constructor(address adminAddress) {
         admin = adminAddress;
@@ -105,6 +108,7 @@ contract ScoreTournament {
         newTournament.tournamentEnded = false;
         newTournament.prizeCount = _prizeCount;
         newTournament.tournamentURI = _tournamentURI;
+        addOnGoingTournament(_tournamentId);
 
         emit CreateTournament(_tournamentId);
     }
@@ -181,22 +185,24 @@ contract ScoreTournament {
         }
     }
 
-    function endTournament(uint tournamentId) public onlyAdmin {
-        calculateRanking(tournamentId);
-        Tournament storage tournament = tournamentMapping[tournamentId];
+    function endTournament(uint _tournamentId) public onlyAdmin {
+        calculateRanking(_tournamentId);
+        Tournament storage tournament = tournamentMapping[_tournamentId];
         uint _prizeCount = tournament.prizeCount;
         address[] memory prizeAddr = new address[](_prizeCount);
         for(uint i = 0; i < _prizeCount; i++){
             prizeAddr[i] = tournament.rankToAccount[i];
         }
-        TournamentEscrow(EscrowAddr).unlockPrize(tournamentId, prizeAddr);
-        TournamentEscrow(EscrowAddr).unlockRegFee(tournamentId);
+        TournamentEscrow(EscrowAddr).unlockPrize(_tournamentId, prizeAddr);
+        TournamentEscrow(EscrowAddr).unlockRegFee(_tournamentId);
         tournament.tournamentEnded = true;
-        emit TournamentEnded(tournamentId);
+
+        removeOnGoingTournament(_tournamentId);
+        emit TournamentEnded(_tournamentId);
     }
 
-    function cancelTournament(uint tournamentId) public onlyAdmin {
-        Tournament storage tournament = tournamentMapping[tournamentId];
+    function cancelTournament(uint _tournamentId) public onlyAdmin {
+        Tournament storage tournament = tournamentMapping[_tournamentId];
         
         // Get the list of player addresses
         uint playerCount = tournament.players.length;
@@ -204,60 +210,52 @@ contract ScoreTournament {
         for (uint i = 0; i < playerCount; i++) {
             playerAddresses[i] = tournament.players[i].account;
         }
-        
-        TournamentEscrow(EscrowAddr).canceledTournament(tournamentId, playerAddresses);
+
+        TournamentEscrow(EscrowAddr).canceledTournament(_tournamentId, playerAddresses);
+        removeOnGoingTournament(_tournamentId);
+        emit TournamentCanceled(_tournamentId);
+    }
+
+    function addOnGoingTournament(uint _tournamentId) internal {
+        OnGoingTournaments.push(_tournamentId);
+    }
+
+    function addEndedTournament(uint _tournamentId) internal {
+        EndedTournaments.push(_tournamentId);
+    }
+
+    function removeOnGoingTournament(uint _tournamentId) internal {
+        for (uint256 i = 0; i < OnGoingTournaments.length; i++) {
+            if (OnGoingTournaments[i] == _tournamentId) {
+                if (i != OnGoingTournaments.length - 1) {
+                    OnGoingTournaments[i] = OnGoingTournaments[OnGoingTournaments.length - 1];
+                }
+                OnGoingTournaments.pop();
+                addEndedTournament(_tournamentId);
+                break;
+            }
+        }
     }
 
     function getAllTournamentCount() public view returns (uint) {
-        uint count = 0;
-        for (uint i = 0; i < MAX_TOURNAMENTS; i++) {
-            if (tournamentMapping[i].registered) {
-                count++;
-            }
-        }
+        uint count = OnGoingTournaments.length + EndedTournaments.length;
         return count;
     }
 
-    function getOngoingTournamentCount() public view returns (uint) {
-        uint count = 0;
-        for (uint i = 0; i < MAX_TOURNAMENTS; i++) {
-            if (tournamentMapping[i].registered && tournamentMapping[i].tournamentEnded == false) {
-                count++;
-            }
-        }
-        return count;
+    function getOnGoingTournamentsCount() public view returns (uint) {
+        return OnGoingTournaments.length;
     }
 
-    function getOnGoingTournament() external view returns(uint[] memory){
-        uint tSize = getOngoingTournamentCount();
-        uint[] memory _tournamentId = new uint[](tSize);
-        for (uint i = 0; i < MAX_TOURNAMENTS; i++) {
-            if (tournamentMapping[i].registered && tournamentMapping[i].tournamentEnded == false) {
-                _tournamentId[i] = i;
-            }
-        }
-        return _tournamentId;
+    function getEndedTournamentsCount() public view returns (uint) {
+        return EndedTournaments.length;
     }
 
-    function getEndedTournamentCount() public view returns (uint) {
-        uint count = 0;
-        for (uint i = 0; i < MAX_TOURNAMENTS; i++) {
-            if (tournamentMapping[i].registered && tournamentMapping[i].tournamentEnded) {
-                count++;
-            }
-        }
-        return count;
+    function getOnGoingTournaments() public view returns (uint[] memory) {
+        return OnGoingTournaments;
     }
 
-    function getEndedTournament() external view returns(uint[] memory){
-        uint tSize = getOngoingTournamentCount();
-        uint[] memory _tournamentId = new uint[](tSize);
-        for (uint i = 0; i < MAX_TOURNAMENTS; i++) {
-            if (tournamentMapping[i].registered && tournamentMapping[i].tournamentEnded) {
-                _tournamentId[i] = i;
-            }
-        }
-        return _tournamentId;
+    function getEndedTournaments() public view returns (uint[] memory) {
+        return EndedTournaments;
     }
 
     function getPlayerCount(uint _tournamentId) external view returns(uint _playerCnt){

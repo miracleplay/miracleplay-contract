@@ -3,6 +3,7 @@
 pragma solidity ^0.8.17;
 
 import "./Miracle-Tournament-Score-G1.sol";
+import "./Miracle-ProxyV2.sol";
 
 //    _______ _______ ___ ___ _______ ______  ___     ___ ______  _______     ___     _______ _______  _______ 
 //   |   _   |   _   |   Y   |   _   |   _  \|   |   |   |   _  \|   _   |   |   |   |   _   |   _   \|   _   |
@@ -11,7 +12,7 @@ import "./Miracle-Tournament-Score-G1.sol";
 //   |:  1   |:  1   |:  1   |:  1   |:  |   |:  1   |:  |:  |   |:  1   |   |:  1   |:  |   |:  1    |:  1   |
 //   |::.. . |::.. . |\:.. ./|::.. . |::.|   |::.. . |::.|::.|   |::.. . |   |::.. . |::.|:. |::.. .  |::.. . |
 //   `-------`-------' `---' `-------`--- ---`-------`---`--- ---`-------'   `-------`--- ---`-------'`-------'
-//       
+//   TournamentEscrow V0.1.1
 
 interface IERC20 {
     function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
@@ -23,6 +24,8 @@ interface IERC20 {
 contract TournamentEscrow {
     address public admin;
     address public tournamentAddr;
+    uint public royaltyRate;
+    address public royaltyAddr;
     ScoreTournament internal scoretournament;
 
     struct Tournament {
@@ -47,8 +50,10 @@ contract TournamentEscrow {
     event ReturnFee(uint tournamentId, address account, uint feeAmount);
     event CanceledTournament(uint tournamentId);
 
-    constructor(address adminAddr) {
+    constructor(address adminAddr, address _royaltyAddr) {
         admin = adminAddr;
+        royaltyAddr = _royaltyAddr;
+        royaltyRate = 5;
     }
 
     modifier onlyAdmin(){
@@ -154,11 +159,14 @@ contract TournamentEscrow {
         require(_tournament.AddrwithdrawAmount[msg.sender] > 0, "There is no prize token to be paid to you.");
         
         IERC20 token = _tournament.prizeToken;
-        uint256 withdrawAmount = _tournament.AddrwithdrawAmount[msg.sender];
-        require(token.transfer(msg.sender, withdrawAmount), "Transfer failed.");
+        uint256 totalAmount = _tournament.AddrwithdrawAmount[msg.sender];
+        uint256 royaltyAmount = ((totalAmount * royaltyRate) / 100);
+        uint256 userPrizeAmount = totalAmount - royaltyAmount;
+        require(token.transfer(royaltyAddr, royaltyAmount), "Transfer failed.");
+        require(token.transfer(msg.sender, userPrizeAmount), "Transfer failed.");
         _tournament.AddrwithdrawAmount[msg.sender] = 0;
 
-        emit PrizePaid(_tournamentId, msg.sender, withdrawAmount);
+        emit PrizePaid(_tournamentId, msg.sender, totalAmount);
     }
 
     function CancelPrizeWithdraw(uint _tournamentId) public onlyOrganizer(_tournamentId){
