@@ -23,7 +23,7 @@ interface IERC20 {
 
 contract TournamentEscrow {
     address public admin;
-    address public tournamentAddr;
+    address payable public tournamentAddr;
     uint public royaltyRate;
     address public royaltyAddr;
     ScoreTournament internal scoretournament;
@@ -72,7 +72,7 @@ contract TournamentEscrow {
         _;
     }
 
-    function connectTournament(address _scoretournament) public onlyAdmin{
+    function connectTournament(address payable _scoretournament) public onlyAdmin{
         tournamentAddr = _scoretournament;
         scoretournament = ScoreTournament(_scoretournament);
     }

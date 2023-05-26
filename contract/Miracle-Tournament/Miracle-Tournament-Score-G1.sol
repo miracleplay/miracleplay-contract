@@ -16,7 +16,7 @@ import "./Miracle-ProxyV2.sol";
 
 contract ScoreTournament {
 
-    address public EscrowAddr;
+    address payable public EscrowAddr;
     uint[] private OnGoingTournaments;
     uint[] private EndedTournaments;
 
@@ -93,7 +93,7 @@ contract ScoreTournament {
         _;
     }
 
-    function connectEscrow(address _escrowAddr) public onlyAdmin {
+    function connectEscrow(address payable _escrowAddr) public onlyAdmin {
         EscrowAddr = _escrowAddr;
     }
 
