@@ -209,6 +209,10 @@ contract TournamentEscrow is ProxyStorage {
         royaltyAddr = _royaltyAddr;
     }
 
+    function setRoyaltyRate(uint _royaltyRate) public onlyAdmin{
+        royaltyRate = _royaltyRate;
+    }
+
     function availablePrize(uint _tournamentId, address player) external view returns(uint _amount) {
         Tournament storage _tournament = tournamentMapping[_tournamentId];
         return _tournament.AddrwithdrawAmount[player];
