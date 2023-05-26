@@ -14,7 +14,7 @@ import "./Miracle-ProxyV2.sol";
 //   `-------`-------' `---' `-------`--- ---`-------`---`--- ---`-------'   `-------`--- ---`-------'`-------'
 //   ScoreTournament V0.1.2
 
-contract ScoreTournament {
+contract ScoreTournament is ProxyStorage {
 
     address payable public EscrowAddr;
     uint[] private OnGoingTournaments;

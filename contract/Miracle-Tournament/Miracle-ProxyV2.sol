@@ -11,18 +11,25 @@
 
 pragma solidity ^0.8.17;
 
-contract Proxy {
-    address private implementation;
-    address private owner;
+contract ProxyStorage {
+    address public implementation;
+    address public owner;
+    
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Only contract owner can call this function");
+        _;
+    }
+
+    function upgrade(address _newImplementation) external onlyOwner {
+        implementation = _newImplementation;
+    }
+}
+
+contract Proxy is ProxyStorage {
 
     constructor(address _implementation, address _owner) {
         implementation = _implementation;
         owner = _owner;
-    }
-
-    modifier onlyOwner() {
-        require(msg.sender == owner, "Only contract owner can call this function");
-        _;
     }
 
     receive() external payable {}
@@ -50,7 +57,5 @@ contract Proxy {
         }
     }
 
-    function upgrade(address _newImplementation) external onlyOwner {
-        implementation = _newImplementation;
-    }
+
 }
