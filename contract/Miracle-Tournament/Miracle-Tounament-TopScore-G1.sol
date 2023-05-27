@@ -3,9 +3,9 @@
 pragma solidity ^0.8.17;    
 
 import "./Miracle-Escrow-G1.sol";
-import "./ContractMeta.sol";
 import "@thirdweb-dev/contracts/extension/PermissionsEnumerable.sol";
 import "@thirdweb-dev/contracts/extension/Multicall.sol";
+import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
 
 //    _______ _______ ___ ___ _______ ______  ___     ___ ______  _______     ___     _______ _______  _______ 
 //   |   _   |   _   |   Y   |   _   |   _  \|   |   |   |   _  \|   _   |   |   |   |   _   |   _   \|   _   |
@@ -14,9 +14,10 @@ import "@thirdweb-dev/contracts/extension/Multicall.sol";
 //   |:  1   |:  1   |:  1   |:  1   |:  |   |:  1   |:  |:  |   |:  1   |   |:  1   |:  |   |:  1    |:  1   |
 //   |::.. . |::.. . |\:.. ./|::.. . |::.|   |::.. . |::.|::.|   |::.. . |   |::.. . |::.|:. |::.. .  |::.. . |
 //   `-------`-------' `---' `-------`--- ---`-------`---`--- ---`-------'   `-------`--- ---`-------'`-------'
-//   ScoreTournament V0.1.3
+//   HighScoreTournament V0.1.3
 
-contract ScoreTournament is PermissionsEnumerable, Multicall, ContractMeta {
+contract TopScoreTournament is PermissionsEnumerable, Multicall {
+
     address payable public EscrowAddr;
     uint[] private OnGoingTournaments;
     uint[] private EndedTournaments;
@@ -24,7 +25,7 @@ contract ScoreTournament is PermissionsEnumerable, Multicall, ContractMeta {
     struct Player {
         uint id;
         address account;
-        uint score;
+        uint highscore;
         bool isRegistered;
         uint rank;
     }
@@ -50,7 +51,7 @@ contract ScoreTournament is PermissionsEnumerable, Multicall, ContractMeta {
 
     event CreateTournament(uint tournamentId);
     event Registered(uint tournamentId, address account);
-    event ScoreUpdated(uint tournamentId, address account, uint score);
+    event NewPersonalRecord(uint tournamentId, address account, uint score);
     event TournamentEnded(uint tournamentId);
     event TournamentCanceled(uint tournamentId);
 
@@ -60,7 +61,6 @@ contract ScoreTournament is PermissionsEnumerable, Multicall, ContractMeta {
     constructor(address adminAddress) {
         _setupRole(DEFAULT_ADMIN_ROLE, adminAddress);
         _setupRole(FACTORY_ROLE, adminAddress);
-        setContractURI("");
     }
 
     modifier registrationOpen(uint tournamentId) {
@@ -117,7 +117,7 @@ contract ScoreTournament is PermissionsEnumerable, Multicall, ContractMeta {
         Player memory player = Player({
             id: playerId,
             account: payable(_player),
-            score: 0,
+            highscore: 0,
             isRegistered: true,
             rank: 0
         });
@@ -134,15 +134,20 @@ contract ScoreTournament is PermissionsEnumerable, Multicall, ContractMeta {
         require(tournament.players[tournament.playerIdByAccount[_account]].isRegistered, "Player is not registered");
 
         Player storage _player = tournament.players[tournament.playerIdByAccount[_account]];
-
-        _player.score += _score;
-        emit ScoreUpdated(tournamentId, _account, _player.score);
+        if(_player.highscore > _score){
+            _player.highscore = _score;
+            emit NewPersonalRecord(tournamentId, _account, _player.highscore);
+        }    
     }
 
     function updateScore(uint tournamentId, address _account, uint[] calldata _score) external onlyRole(FACTORY_ROLE) {
+        uint highscore = 0;
         for(uint i = 0; i < _score.length; i++) {
-            _updateScore(tournamentId, _account, _score[i]);
+            if(highscore < _score[i]){
+                highscore = _score[i];
+            }
         }
+        _updateScore(tournamentId, _account, highscore);
     }
 
 
@@ -156,7 +161,7 @@ contract ScoreTournament is PermissionsEnumerable, Multicall, ContractMeta {
 
         uint[] memory scores = new uint[](len);
         for (uint i = 0; i < len; i++) {
-            scores[i] = tournament.players[i].score;
+            scores[i] = tournament.players[i].highscore;
         }
 
         // sort scores and rearrange the rank mapping
@@ -180,10 +185,10 @@ contract ScoreTournament is PermissionsEnumerable, Multicall, ContractMeta {
 
         // store the rank and score in the Player struct
         for (uint i = 0; i < len; i++) {
-            tournament.players[i].score = scores[i];
+            tournament.players[i].highscore = scores[i];
             tournament.players[i].isRegistered = false;
             uint rank = tournament.accountToRank[tournament.players[i].account];
-            tournament.players[i] = Player(tournament.players[i].id, tournament.players[i].account, tournament.players[i].score, tournament.players[i].isRegistered, rank);
+            tournament.players[i] = Player(tournament.players[i].id, tournament.players[i].account, tournament.players[i].highscore, tournament.players[i].isRegistered, rank);
         }
     }
 
