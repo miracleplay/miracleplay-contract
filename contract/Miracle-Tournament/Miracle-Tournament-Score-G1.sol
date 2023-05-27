@@ -2,10 +2,10 @@
 
 pragma solidity ^0.8.17;    
 
-import "./ContractMeta.sol";
 import "./Miracle-Escrow-G1.sol";
 import "@thirdweb-dev/contracts/extension/PermissionsEnumerable.sol";
 import "@thirdweb-dev/contracts/extension/Multicall.sol";
+import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
 
 //    _______ _______ ___ ___ _______ ______  ___     ___ ______  _______     ___     _______ _______  _______ 
 //   |   _   |   _   |   Y   |   _   |   _  \|   |   |   |   _  \|   _   |   |   |   |   _   |   _   \|   _   |
@@ -16,7 +16,8 @@ import "@thirdweb-dev/contracts/extension/Multicall.sol";
 //   `-------`-------' `---' `-------`--- ---`-------`---`--- ---`-------'   `-------`--- ---`-------'`-------'
 //   ScoreTournament V0.1.3
 
-contract ScoreTournament is PermissionsEnumerable, Multicall, ContractMeta {
+contract ScoreTournament is PermissionsEnumerable, Multicall, ContractMetadata {
+    address public deployer;
     address payable public EscrowAddr;
     uint[] private OnGoingTournaments;
     uint[] private EndedTournaments;
@@ -57,10 +58,15 @@ contract ScoreTournament is PermissionsEnumerable, Multicall, ContractMeta {
     bytes32 public constant FACTORY_ROLE = keccak256("FACTORY_ROLE");
     bytes32 public constant ESCROW_ROLE = keccak256("ESCROW_ROLE");
 
-    constructor(address adminAddress) {
-        _setupRole(DEFAULT_ADMIN_ROLE, adminAddress);
-        _setupRole(FACTORY_ROLE, adminAddress);
-        setContractURI("ipfs://QmauSBrmFxRppBArjnxm41oWvq4qN8ao72RowCzRZN7aE5/Tournament-Score.json");
+    constructor(address adminAddr) {
+        _setupRole(DEFAULT_ADMIN_ROLE, adminAddr);
+        _setupRole(FACTORY_ROLE, adminAddr);
+        deployer = adminAddr;
+        _setupContractURI("ipfs://QmauSBrmFxRppBArjnxm41oWvq4qN8ao72RowCzRZN7aE5/Tournament-Score.json");
+    }
+
+    function _canSetContractURI() internal view virtual override returns (bool){
+        return msg.sender == deployer;
     }
 
     modifier registrationOpen(uint tournamentId) {
