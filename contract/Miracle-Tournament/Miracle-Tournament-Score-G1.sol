@@ -14,7 +14,7 @@ import "@thirdweb-dev/contracts/extension/Multicall.sol";
 //   |:  1   |:  1   |:  1   |:  1   |:  |   |:  1   |:  |:  |   |:  1   |   |:  1   |:  |   |:  1    |:  1   |
 //   |::.. . |::.. . |\:.. ./|::.. . |::.|   |::.. . |::.|::.|   |::.. . |   |::.. . |::.|:. |::.. .  |::.. . |
 //   `-------`-------' `---' `-------`--- ---`-------`---`--- ---`-------'   `-------`--- ---`-------'`-------'
-//   ScoreTournament V0.1.2
+//   ScoreTournament V0.1.3
 
 contract ScoreTournament is ProxyStorage, PermissionsEnumerable, Multicall {
 
@@ -55,7 +55,7 @@ contract ScoreTournament is ProxyStorage, PermissionsEnumerable, Multicall {
     event TournamentEnded(uint tournamentId);
     event TournamentCanceled(uint tournamentId);
 
-    bytes32 public constant UPDATE_ROLE = keccak256("UPDATE_ROLE");
+    bytes32 public constant FACTORY_ROLE = keccak256("FACTORY_ROLE");
     bytes32 public constant ESCROW_ROLE = keccak256("ESCROW_ROLE");
 
     constructor(address adminAddress) {
@@ -83,7 +83,7 @@ contract ScoreTournament is ProxyStorage, PermissionsEnumerable, Multicall {
     }
 
     function setUpdateRole(address _updateAddr) external onlyRole(DEFAULT_ADMIN_ROLE){
-        _setupRole(UPDATE_ROLE, _updateAddr);
+        _setupRole(FACTORY_ROLE, _updateAddr);
     }
 
     function connectEscrow(address payable _escrowAddr) public onlyRole(DEFAULT_ADMIN_ROLE) {
@@ -138,7 +138,7 @@ contract ScoreTournament is ProxyStorage, PermissionsEnumerable, Multicall {
         emit ScoreUpdated(tournamentId, _account, _player.score);
     }
 
-    function updateScore(uint tournamentId, address _account, uint[] calldata _score) external onlyRole(UPDATE_ROLE) {
+    function updateScore(uint tournamentId, address _account, uint[] calldata _score) external onlyRole(FACTORY_ROLE) {
         for(uint i = 0; i < _score.length; i++) {
             _updateScore(tournamentId, _account, _score[i]);
         }
@@ -186,7 +186,7 @@ contract ScoreTournament is ProxyStorage, PermissionsEnumerable, Multicall {
         }
     }
 
-    function endTournament(uint _tournamentId) public onlyRole(UPDATE_ROLE) {
+    function endTournament(uint _tournamentId) public onlyRole(FACTORY_ROLE) {
         calculateRanking(_tournamentId);
         Tournament storage tournament = tournamentMapping[_tournamentId];
         uint _prizeCount = tournament.prizeCount;
@@ -202,7 +202,7 @@ contract ScoreTournament is ProxyStorage, PermissionsEnumerable, Multicall {
         emit TournamentEnded(_tournamentId);
     }
 
-    function cancelTournament(uint _tournamentId) public onlyRole(UPDATE_ROLE) {
+    function cancelTournament(uint _tournamentId) public onlyRole(FACTORY_ROLE) {
         Tournament storage tournament = tournamentMapping[_tournamentId];
         
         // Get the list of player addresses
