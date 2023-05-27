@@ -60,6 +60,7 @@ contract ScoreTournament is ProxyStorage, PermissionsEnumerable, Multicall {
 
     constructor(address adminAddress) {
         _setupRole(DEFAULT_ADMIN_ROLE, adminAddress);
+        _setupRole(FACTORY_ROLE, adminAddress);
     }
 
     modifier registrationOpen(uint tournamentId) {
