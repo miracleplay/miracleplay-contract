@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.17;
 
+import "./ContractMeta.sol";
 import "./Miracle-Tournament-Score-G1.sol";
 import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
 
@@ -21,7 +22,7 @@ interface IERC20 {
     function transfer(address recipient, uint256 amount) external returns (bool);
 }
 
-contract TournamentEscrow {
+contract TournamentEscrow is ContractMeta {
     address public admin;
     address payable public tournamentAddr;
     uint public royaltyRate;
@@ -54,6 +55,8 @@ contract TournamentEscrow {
         admin = adminAddr;
         royaltyAddr = _royaltyAddr;
         royaltyRate = 5;
+        setContractURI("ipfs://QmauSBrmFxRppBArjnxm41oWvq4qN8ao72RowCzRZN7aE5/Escrow-Score.json");
+        //setContractURI("ipfs://QmauSBrmFxRppBArjnxm41oWvq4qN8ao72RowCzRZN7aE5/Escrow-TopScore.json");
     }
 
     modifier onlyAdmin(){

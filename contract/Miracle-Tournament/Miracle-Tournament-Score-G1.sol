@@ -2,8 +2,8 @@
 
 pragma solidity ^0.8.17;    
 
-import "./Miracle-Escrow-G1.sol";
 import "./ContractMeta.sol";
+import "./Miracle-Escrow-G1.sol";
 import "@thirdweb-dev/contracts/extension/PermissionsEnumerable.sol";
 import "@thirdweb-dev/contracts/extension/Multicall.sol";
 
@@ -60,7 +60,7 @@ contract ScoreTournament is PermissionsEnumerable, Multicall, ContractMeta {
     constructor(address adminAddress) {
         _setupRole(DEFAULT_ADMIN_ROLE, adminAddress);
         _setupRole(FACTORY_ROLE, adminAddress);
-        setContractURI("");
+        setContractURI("ipfs://QmauSBrmFxRppBArjnxm41oWvq4qN8ao72RowCzRZN7aE5/Tournament-Score.json");
     }
 
     modifier registrationOpen(uint tournamentId) {
