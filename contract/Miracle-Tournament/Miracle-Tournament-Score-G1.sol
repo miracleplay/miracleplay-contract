@@ -3,7 +3,6 @@
 pragma solidity ^0.8.17;    
 
 import "./Miracle-Escrow-G1.sol";
-import "./Miracle-ProxyV2.sol";
 import "@thirdweb-dev/contracts/extension/PermissionsEnumerable.sol";
 import "@thirdweb-dev/contracts/extension/Multicall.sol";
 
@@ -16,7 +15,7 @@ import "@thirdweb-dev/contracts/extension/Multicall.sol";
 //   `-------`-------' `---' `-------`--- ---`-------`---`--- ---`-------'   `-------`--- ---`-------'`-------'
 //   ScoreTournament V0.1.3
 
-contract ScoreTournament is ProxyStorage, PermissionsEnumerable, Multicall {
+contract ScoreTournament is PermissionsEnumerable, Multicall {
 
     address payable public EscrowAddr;
     uint[] private OnGoingTournaments;

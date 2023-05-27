@@ -3,8 +3,6 @@
 pragma solidity ^0.8.17;
 
 import "./Miracle-Tournament-Score-G1.sol";
-import "./Miracle-ProxyV2.sol";
-
 //    _______ _______ ___ ___ _______ ______  ___     ___ ______  _______     ___     _______ _______  _______ 
 //   |   _   |   _   |   Y   |   _   |   _  \|   |   |   |   _  \|   _   |   |   |   |   _   |   _   \|   _   |
 //   |   1___|.  1___|.  |   |.  1___|.  |   |.  |   |.  |.  |   |.  1___|   |.  |   |.  1   |.  1   /|   1___|
@@ -21,7 +19,7 @@ interface IERC20 {
     function transfer(address recipient, uint256 amount) external returns (bool);
 }
 
-contract TournamentEscrow is ProxyStorage {
+contract TournamentEscrow  {
     address public admin;
     address payable public tournamentAddr;
     uint public royaltyRate;
