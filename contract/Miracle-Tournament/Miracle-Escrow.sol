@@ -56,6 +56,7 @@ contract MiracleTournamentEscrow is ContractMetadata {
         admin = adminAddr;
         royaltyAddr = _royaltyAddr;
         PrizeRoyaltyRate = 5;
+        regfeeRoyaltyRate = 5;
         deployer = adminAddr;
         _setupContractURI("ipfs://QmceM9vcPnP11JgCWbPkGoMZPrbEMij98hJytjvRR1L9qN/BubbleShooterEscrow.json");
     }
