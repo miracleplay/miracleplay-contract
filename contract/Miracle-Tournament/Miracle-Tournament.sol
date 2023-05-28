@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.17;    
 
-import "./Miracle-Escrow-G1.sol";
+import "./Miracle-Escrow.sol";
 import "@thirdweb-dev/contracts/extension/PermissionsEnumerable.sol";
 import "@thirdweb-dev/contracts/extension/Multicall.sol";
 import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
@@ -14,9 +14,9 @@ import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
 //   |:  1   |:  1   |:  1   |:  1   |:  |   |:  1   |:  |:  |   |:  1   |   |:  1   |:  |   |:  1    |:  1   |
 //   |::.. . |::.. . |\:.. ./|::.. . |::.|   |::.. . |::.|::.|   |::.. . |   |::.. . |::.|:. |::.. .  |::.. . |
 //   `-------`-------' `---' `-------`--- ---`-------`---`--- ---`-------'   `-------`--- ---`-------'`-------'
-//   HighScoreTournament V0.1.3
+//   HighScoreTournament V0.2.0
 
-contract TopScoreTournament is PermissionsEnumerable, Multicall, ContractMetadata {
+contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata {
     address public deployer;
     address payable public EscrowAddr;
     uint[] private OnGoingTournaments;
@@ -25,13 +25,17 @@ contract TopScoreTournament is PermissionsEnumerable, Multicall, ContractMetadat
     struct Player {
         uint id;
         address account;
-        uint highscore;
+        uint score;
         bool isRegistered;
         uint rank;
     }
 
     struct Tournament {
         bool registered;
+        //The tType defines the tournament type.
+        // 1 - Total Score Tournament
+        // 2 - Top Score Tournament
+        uint8 tType;
         Player[] players;
         mapping(address => uint) playerIdByAccount;
         mapping(uint => address) rankToAccount;
@@ -52,6 +56,7 @@ contract TopScoreTournament is PermissionsEnumerable, Multicall, ContractMetadat
     event CreateTournament(uint tournamentId);
     event Registered(uint tournamentId, address account);
     event NewPersonalRecord(uint tournamentId, address account, uint score);
+    event ScoreUpdated(uint tournamentId, address account, uint score);
     event TournamentEnded(uint tournamentId);
     event TournamentCanceled(uint tournamentId);
 
@@ -89,19 +94,15 @@ contract TopScoreTournament is PermissionsEnumerable, Multicall, ContractMetadat
         _;
     }
 
-    function setUpdateRole(address _updateAddr) external onlyRole(DEFAULT_ADMIN_ROLE){
-        _setupRole(FACTORY_ROLE, _updateAddr);
-    }
-
     function connectEscrow(address payable _escrowAddr) public onlyRole(DEFAULT_ADMIN_ROLE) {
         _setupRole(ESCROW_ROLE, _escrowAddr);
         EscrowAddr = _escrowAddr;
     }
 
-
-    function createTournament(uint _tournamentId, uint _registerStartTime, uint _registerEndTime, uint _tournamentStartTime, uint _tournamentEndTime, uint _prizeCount, string memory _tournamentURI) public onlyRole(ESCROW_ROLE) {
+    function createTournament(uint _tournamentId, uint8 _tType, uint _registerStartTime, uint _registerEndTime, uint _tournamentStartTime, uint _tournamentEndTime, uint _prizeCount, string memory _tournamentURI) public onlyRole(ESCROW_ROLE) {
         Tournament storage newTournament = tournamentMapping[_tournamentId];
         newTournament.registered = true;
+        newTournament.tType = _tType;
         newTournament.organizer = payable(msg.sender);
         newTournament.registerStartTime = _registerStartTime;
         newTournament.registerEndTime = _registerEndTime;
@@ -123,7 +124,7 @@ contract TopScoreTournament is PermissionsEnumerable, Multicall, ContractMetadat
         Player memory player = Player({
             id: playerId,
             account: payable(_player),
-            highscore: 0,
+            score: 0,
             isRegistered: true,
             rank: 0
         });
@@ -134,28 +135,47 @@ contract TopScoreTournament is PermissionsEnumerable, Multicall, ContractMetadat
         emit Registered(tournamentId, _player);
     }
 
-
-    function _updateScore(uint tournamentId, address _account, uint _score) internal {
+    function _updateTopScore(uint tournamentId, address _account, uint _score) internal {
         Tournament storage tournament = tournamentMapping[tournamentId];
         require(tournament.players[tournament.playerIdByAccount[_account]].isRegistered, "Player is not registered");
 
         Player storage _player = tournament.players[tournament.playerIdByAccount[_account]];
-        if(_player.highscore < _score){
-            _player.highscore = _score;
-            emit NewPersonalRecord(tournamentId, _account, _player.highscore);
-        }    
+        if(_player.score < _score){
+            _player.score = _score;
+            emit NewPersonalRecord(tournamentId, _account, _score);
+        }
+    }
+
+    function _updateTotalScore(uint tournamentId, address _account, uint _score) internal {
+        Tournament storage tournament = tournamentMapping[tournamentId];
+        require(tournament.players[tournament.playerIdByAccount[_account]].isRegistered, "Player is not registered");
+
+        Player storage _player = tournament.players[tournament.playerIdByAccount[_account]];
+
+        _player.score += _score;
+        emit ScoreUpdated(tournamentId, _account, _score);
     }
 
     function updateScore(uint tournamentId, address _account, uint[] calldata _score) external onlyRole(FACTORY_ROLE) {
         uint highscore = 0;
-        for(uint i = 0; i < _score.length; i++) {
-            if(highscore < _score[i]){
-                highscore = _score[i];
-            }
-        }
-        _updateScore(tournamentId, _account, highscore);
-    }
+        uint8 _tType = tournamentMapping[tournamentId].tType;
 
+        if(_tType == 1){
+            // Total Score Tournament
+            for(uint i = 0; i < _score.length; i++) {
+                _updateTotalScore(tournamentId, _account, _score[i]);
+            }
+
+        }else if(_tType == 2){
+            // Top Score Tournament
+            for(uint i = 0; i < _score.length; i++) {
+                if(highscore < _score[i]){
+                    highscore = _score[i];
+                }
+            }
+            _updateTopScore(tournamentId, _account, highscore);
+        }
+    }
 
     function calculateRanking(uint tournamentId) internal {
         Tournament storage tournament = tournamentMapping[tournamentId];
@@ -167,7 +187,7 @@ contract TopScoreTournament is PermissionsEnumerable, Multicall, ContractMetadat
 
         uint[] memory scores = new uint[](len);
         for (uint i = 0; i < len; i++) {
-            scores[i] = tournament.players[i].highscore;
+            scores[i] = tournament.players[i].score;
         }
 
         // sort scores and rearrange the rank mapping
@@ -191,10 +211,10 @@ contract TopScoreTournament is PermissionsEnumerable, Multicall, ContractMetadat
 
         // store the rank and score in the Player struct
         for (uint i = 0; i < len; i++) {
-            tournament.players[i].highscore = scores[i];
+            tournament.players[i].score = scores[i];
             tournament.players[i].isRegistered = false;
             uint rank = tournament.accountToRank[tournament.players[i].account];
-            tournament.players[i] = Player(tournament.players[i].id, tournament.players[i].account, tournament.players[i].highscore, tournament.players[i].isRegistered, rank);
+            tournament.players[i] = Player(tournament.players[i].id, tournament.players[i].account, tournament.players[i].score, tournament.players[i].isRegistered, rank);
         }
     }
 
@@ -206,8 +226,8 @@ contract TopScoreTournament is PermissionsEnumerable, Multicall, ContractMetadat
         for(uint i = 0; i < _prizeCount; i++){
             prizeAddr[i] = tournament.rankToAccount[i];
         }
-        TournamentEscrow(EscrowAddr).unlockPrize(_tournamentId, prizeAddr);
-        TournamentEscrow(EscrowAddr).unlockRegFee(_tournamentId);
+        MiracleTournamentEscrow(EscrowAddr).unlockPrize(_tournamentId, prizeAddr);
+        MiracleTournamentEscrow(EscrowAddr).unlockRegFee(_tournamentId);
         tournament.tournamentEnded = true;
 
         removeOnGoingTournament(_tournamentId);
@@ -224,7 +244,7 @@ contract TopScoreTournament is PermissionsEnumerable, Multicall, ContractMetadat
             playerAddresses[i] = tournament.players[i].account;
         }
 
-        TournamentEscrow(EscrowAddr).canceledTournament(_tournamentId, playerAddresses);
+        MiracleTournamentEscrow(EscrowAddr).canceledTournament(_tournamentId, playerAddresses);
         removeOnGoingTournament(_tournamentId);
         emit TournamentCanceled(_tournamentId);
     }
@@ -281,9 +301,14 @@ contract TopScoreTournament is PermissionsEnumerable, Multicall, ContractMetadat
         return _tournament.players[playerId];
     }
 
-    function getPlayerRank(uint _tournamentId, address player) external view returns(uint _rank){
+    function getPlayerToRank(uint _tournamentId, address player) external view returns(uint _rank){
         Tournament storage _tournament = tournamentMapping[_tournamentId];
         return _tournament.accountToRank[player];
+    }
+
+    function getRankToPlayer(uint _tournamentId, uint _rank) external view returns(address player){
+        Tournament storage _tournament = tournamentMapping[_tournamentId];
+        return _tournament.rankToAccount[_rank];
     }
 
     function playerIdByAccount(uint _tournamentId, address player) external view returns(uint _id){

@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.17;
 
-import "./Miracle-Tournament-Score-G1.sol";
+import "./Miracle-Tournament.sol";
 import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
 
 //    _______ _______ ___ ___ _______ ______  ___     ___ ______  _______     ___     _______ _______  _______ 
@@ -12,7 +12,7 @@ import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
 //   |:  1   |:  1   |:  1   |:  1   |:  |   |:  1   |:  |:  |   |:  1   |   |:  1   |:  |   |:  1    |:  1   |
 //   |::.. . |::.. . |\:.. ./|::.. . |::.|   |::.. . |::.|::.|   |::.. . |   |::.. . |::.|:. |::.. .  |::.. . |
 //   `-------`-------' `---' `-------`--- ---`-------`---`--- ---`-------'   `-------`--- ---`-------'`-------'
-//   TournamentEscrow V0.1.1
+//   TournamentEscrow V0.2.1
 
 interface IERC20 {
     function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
@@ -21,13 +21,14 @@ interface IERC20 {
     function transfer(address recipient, uint256 amount) external returns (bool);
 }
 
-contract TournamentEscrow is ContractMetadata {
+contract MiracleTournamentEscrow is ContractMetadata {
     address public deployer;
     address public admin;
     address payable public tournamentAddr;
-    uint public royaltyRate;
+    uint public PrizeRoyaltyRate;
+    uint public regfeeRoyaltyRate;
     address public royaltyAddr;
-    ScoreTournament internal scoretournament;
+    MiracleTournament internal miracletournament;
 
     struct Tournament {
         address organizer;
@@ -54,7 +55,7 @@ contract TournamentEscrow is ContractMetadata {
     constructor(address adminAddr, address _royaltyAddr) {
         admin = adminAddr;
         royaltyAddr = _royaltyAddr;
-        royaltyRate = 5;
+        PrizeRoyaltyRate = 5;
         deployer = adminAddr;
         //_setupContractURI("ipfs://QmauSBrmFxRppBArjnxm41oWvq4qN8ao72RowCzRZN7aE5/Escrow-Score.json");
         _setupContractURI("ipfs://QmauSBrmFxRppBArjnxm41oWvq4qN8ao72RowCzRZN7aE5/Escrow-TopScore.json");
@@ -80,12 +81,12 @@ contract TournamentEscrow is ContractMetadata {
         _;
     }
 
-    function connectTournament(address payable _scoretournament) public onlyAdmin{
-        tournamentAddr = _scoretournament;
-        scoretournament = ScoreTournament(_scoretournament);
+    function connectTournament(address payable _miracletournament) public onlyAdmin{
+        tournamentAddr = _miracletournament;
+        miracletournament = MiracleTournament(_miracletournament);
     }
 
-    function createTournamentEscrow(uint _tournamentId, address _prizeToken, address _feeToken, uint _prizeAmount, uint _registrationFee, uint _registerStartTime, uint _registerEndTime, uint _tournamentStartTime, uint _tournamentEndTime, uint256[] memory _withdrawAmount, string memory _tournamentURI) public {
+    function createTournamentEscrow(uint _tournamentId, uint8 _tType, address _prizeToken, address _feeToken, uint _prizeAmount, uint _registrationFee, uint _registerStartTime, uint _registerEndTime, uint _tournamentStartTime, uint _tournamentEndTime, uint256[] memory _withdrawAmount, string memory _tournamentURI) public {
         require(IERC20(_prizeToken).allowance(msg.sender, address(this)) >= _prizeAmount, "Allowance is not sufficient.");
         require(_prizeAmount <= IERC20(_prizeToken).balanceOf(msg.sender), "Insufficient balance.");
         require(IERC20(_prizeToken).transferFrom(msg.sender, address(this), _prizeAmount), "Transfer failed.");
@@ -104,7 +105,7 @@ contract TournamentEscrow is ContractMetadata {
         newTournament.withdrawAmount = _withdrawAmount;
         newTournament.tournamentEnded = false;
         newTournament.tournamentCanceled = false;
-        scoretournament.createTournament(_tournamentId, _registerStartTime, _registerEndTime, _tournamentStartTime, _tournamentEndTime, _withdrawAmount.length, _tournamentURI);
+        miracletournament.createTournament(_tournamentId, _tType, _registerStartTime, _registerEndTime, _tournamentStartTime, _tournamentEndTime, _withdrawAmount.length, _tournamentURI);
         emit LockPrizeToken(_tournamentId, _prizeAmount);
     }
 
@@ -115,7 +116,7 @@ contract TournamentEscrow is ContractMetadata {
         require(_tournament.feeToken.transferFrom(msg.sender, address(this), _tournament.registrationFee), "Transfer failed.");
         require(_tournament.organizer != msg.sender, "Organizers cannot apply.");
         _tournament.feeBalance = _tournament.feeBalance + _tournament.registrationFee;
-        scoretournament.register(_tournamentId, msg.sender);
+        miracletournament.register(_tournamentId, msg.sender);
         emit LockFeeToken(_tournamentId, _tournament.registrationFee);
     }
 
@@ -155,10 +156,14 @@ contract TournamentEscrow is ContractMetadata {
         require(_tournament.tournamentEnded, "Tournament has not ended yet");
 
         IERC20 token = _tournament.feeToken;
-        uint256 withdrawAmount = _tournament.feeBalance;
-        require(token.transfer(_tournament.organizer, withdrawAmount), "Transfer failed.");
+        uint256 totalAmount = _tournament.feeBalance;
+        uint256 royaltyAmount = ((totalAmount * regfeeRoyaltyRate) / 100);
+        uint256 regfeeAmount = totalAmount - royaltyAmount;
+        require(token.transfer(royaltyAddr, royaltyAmount), "Transfer failed.");
+        require(token.transfer(_tournament.organizer, regfeeAmount), "Transfer failed.");
+        _tournament.feeBalance = 0;
         
-        emit UnlockFee(_tournamentId, withdrawAmount);
+        emit UnlockFee(_tournamentId, totalAmount);
     }
 
     function prizeWithdraw(uint _tournamentId) public {
@@ -168,7 +173,7 @@ contract TournamentEscrow is ContractMetadata {
         
         IERC20 token = _tournament.prizeToken;
         uint256 totalAmount = _tournament.AddrwithdrawAmount[msg.sender];
-        uint256 royaltyAmount = ((totalAmount * royaltyRate) / 100);
+        uint256 royaltyAmount = ((totalAmount * PrizeRoyaltyRate) / 100);
         uint256 userPrizeAmount = totalAmount - royaltyAmount;
         require(token.transfer(royaltyAddr, royaltyAmount), "Transfer failed.");
         require(token.transfer(msg.sender, userPrizeAmount), "Transfer failed.");
@@ -217,8 +222,12 @@ contract TournamentEscrow is ContractMetadata {
         royaltyAddr = _royaltyAddr;
     }
 
-    function setRoyaltyRate(uint _royaltyRate) public onlyAdmin{
-        royaltyRate = _royaltyRate;
+    function setPrizeRoyaltyRate(uint _royaltyRate) public onlyAdmin{
+        PrizeRoyaltyRate = _royaltyRate;
+    }
+
+    function setRegfeeRoyaltyRate(uint _royaltyRate) public onlyAdmin{
+        regfeeRoyaltyRate = _royaltyRate;
     }
 
     function availablePrize(uint _tournamentId, address player) external view returns(uint _amount) {
