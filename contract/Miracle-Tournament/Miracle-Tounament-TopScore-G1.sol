@@ -140,7 +140,7 @@ contract TopScoreTournament is PermissionsEnumerable, Multicall, ContractMetadat
         require(tournament.players[tournament.playerIdByAccount[_account]].isRegistered, "Player is not registered");
 
         Player storage _player = tournament.players[tournament.playerIdByAccount[_account]];
-        if(_player.highscore > _score){
+        if(_player.highscore < _score){
             _player.highscore = _score;
             emit NewPersonalRecord(tournamentId, _account, _player.highscore);
         }    
