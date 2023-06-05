@@ -24,9 +24,10 @@ import "@thirdweb-dev/contracts/token/TokenERC20.sol"; // For my ERC-20 Token co
 import "@thirdweb-dev/contracts/extension/PermissionsEnumerable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-import "./module/Miralce-Stake-Core.sol";
+import "./module/Canbeat-Stake-Core.sol";
 
-contract StakeMiracleV2S2 is StakeMiracleCore
+// CanbeatStakeDeca, CanbeatStakePeta, CanbeatStakeQuetta
+contract CanbeatStakeDeca is StakeMiracleCore
 {
     constructor(address _defaultAdmin, uint256 _stakingsection, DropERC1155 _NodeNFTToken, TokenERC20 _RewardToken, address _DaoAddress, uint256 _rewardPerMin, uint256 _alreadyClaimed) {
         StakingSection = _stakingsection;
@@ -38,8 +39,7 @@ contract StakeMiracleV2S2 is StakeMiracleCore
         rewardPerMin = _rewardPerMin;
         
         //Fee Definition
-        DaoRoyalty = [10, 15, 20, 25, 30, 35, 40, 45, 50];
-        PoolRoyalty = 5;
+        DaoRoyalty = [5, 10, 15, 20];
         AgentRoyalty = 2;
 
         // Initialize this contract's state.
@@ -73,12 +73,12 @@ contract StakeMiracleV2S2 is StakeMiracleCore
         _totalReward = _calculateToTalReward(_user);
     }
 
-    function calculateRewards(address _user) external view returns (uint256 _MyReward, uint256 _DaoReward, uint256 _PoolReward) {
-        (_MyReward, _DaoReward, _PoolReward) = _calculateRewards(_user);
+    function calculateRewards(address _user) external view returns (uint256 _MyReward, uint256 _DaoReward) {
+        (_MyReward, _DaoReward) = _calculateRewards(_user);
     }
 
-    function calculateAgentRewards(address _user) external view returns (uint256 _PlayerReward, uint256 _DaoReward, uint256 _PoolReward, uint256 _AgentReward) {
-        (_PlayerReward, _DaoReward, _PoolReward, _AgentReward) = _calculateAgentRewards(_user);
+    function calculateAgentRewards(address _user) external view returns (uint256 _PlayerReward, uint256 _DaoReward, uint256 _AgentReward) {
+        (_PlayerReward, _DaoReward, _AgentReward) = _calculateAgentRewards(_user);
     }
 
     // ===================================================================================
@@ -105,10 +105,6 @@ contract StakeMiracleV2S2 is StakeMiracleCore
 
     function getStakePlayers() external view returns (address[] memory _stakeplayers){
         return _getStakePlayers();
-    }
-
-    function getStakingPool(uint256 _PoolSeq) external view returns (address _poolAddress) {
-        return _getStakingPool(_PoolSeq);
     }
 
     function getTotalUnClaim() external view returns (uint256 _totalUnClaim) {

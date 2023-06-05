@@ -19,13 +19,12 @@ pragma solidity ^0.8.17;
 // Token
 import "@thirdweb-dev/contracts/drop/DropERC1155.sol";
 import "@thirdweb-dev/contracts/token/TokenERC20.sol";
-import "@thirdweb-dev/contracts/openzeppelin-presets/utils/ERC1155/ERC1155Holder.sol";
 
 // Access Control + security
 import "@thirdweb-dev/contracts/extension/PermissionsEnumerable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-contract StakeMiracleCore is ReentrancyGuard, PermissionsEnumerable, ERC1155Holder
+contract StakeMiracleCore is ReentrancyGuard, PermissionsEnumerable
 {
     DropERC1155 public NodeNftCollection;    // The DropERC1155 contract instance for the Node NFT collection.
     TokenERC20 public rewardsToken;          // The TokenERC20 contract instance for the reward token.
@@ -42,10 +41,8 @@ contract StakeMiracleCore is ReentrancyGuard, PermissionsEnumerable, ERC1155Hold
         uint256 amount;                     // The amount of tokens staked by the user.
         uint256 poolID;                     // The ID of the staking pool where the user has staked.
     }
-    address[] StakingPool;                  // An array of staking pool contract addresses.
     address[] StakePlayers;                 // An array of addresses of all users who have staked.
     uint256 AgentRoyalty;                   // The royalty percentage for the agent.
-    uint256 PoolRoyalty;                    // The royalty percentage for the pool.
     uint256 public StakingSection;          // The section ID of the staking pool.
     uint256 internal IStakingSection;       // An internal variable to store the staking section ID.
     uint256 totalClaimed;                   // The total amount of rewards claimed by users.
@@ -146,15 +143,14 @@ contract StakeMiracleCore is ReentrancyGuard, PermissionsEnumerable, ERC1155Hold
         require(!PausePool, "Pool is in Pause state."); // @dev The staking pool must not be paused.
         require(!PauseClaim, "Claim is in Pause state."); // @dev The claim function must not be paused.
 
-        (uint256 _MyReward, uint256 _DaoReward, uint _PoolReward) = _calculateRewards(_user); // @dev Calculate the rewards for the user.
+        (uint256 _MyReward, uint256 _DaoReward) = _calculateRewards(_user); // @dev Calculate the rewards for the user.
 
-        rewardsToken.mintTo(StakingPool[StakePlayer[_user].poolID], _PoolReward); // @dev Mint the staking pool's share of the rewards to the staking pool contract.
         rewardsToken.mintTo(_user, _MyReward); // @dev Mint the user's share of the rewards to their account.
         rewardsToken.mintTo(DaoAddress, _DaoReward); // @dev Mint the DAO's share of the rewards to the DAO contract.
 
         StakePlayer[_user].updateTime = block.timestamp; // @dev Update the last claimed time for the user.
-        totalClaimed = totalClaimed + _MyReward + _DaoReward + _PoolReward;
-        emit RewardPaid(_user, _MyReward, _DaoReward, _PoolReward, 0); // @dev Emit an event for the reward payment.
+        totalClaimed = totalClaimed + _MyReward + _DaoReward;
+        emit RewardPaid(_user, _MyReward, _DaoReward, 0, 0); // @dev Emit an event for the reward payment.
     }
 
     /**
@@ -165,16 +161,15 @@ contract StakeMiracleCore is ReentrancyGuard, PermissionsEnumerable, ERC1155Hold
         require(!PausePool, "Pool is in Pause state."); // @dev The staking pool must not be paused.
         require(!PauseClaim, "Claim is in Pause state."); // @dev The claim function must not be paused.
 
-        (uint256 _PlayerReward, uint256 _DaoReward,  uint _PoolReward, uint256 _AgentReward) = _calculateAgentRewards(_user); // @dev Calculate the rewards for the agent.
+        (uint256 _PlayerReward, uint256 _DaoReward, uint256 _AgentReward) = _calculateAgentRewards(_user); // @dev Calculate the rewards for the agent.
 
-        rewardsToken.mintTo(StakingPool[StakePlayer[_user].poolID], _PoolReward); // @dev Mint the staking pool's share of the rewards to the staking pool contract.
         rewardsToken.mintTo(_user, _PlayerReward); // @dev Mint the user's share of the rewards to their account.
         rewardsToken.mintTo(DaoAddress, _DaoReward); // @dev Mint the DAO's share of the rewards to the DAO contract.
         rewardsToken.mintTo(msg.sender, _AgentReward); // @dev Mint the agent's share of the rewards to the agent's account.
 
         StakePlayer[_user].updateTime = block.timestamp; // @dev Update the last claimed time for the user.
-        totalClaimed = totalClaimed + _PoolReward + _PlayerReward + _DaoReward + _AgentReward;
-        emit RewardPaid(_user, _PlayerReward, _DaoReward, _PoolReward, _AgentReward); // @dev Emit an event for the reward payment.
+        totalClaimed = totalClaimed + _PlayerReward + _DaoReward + _AgentReward;
+        emit RewardPaid(_user, _PlayerReward, _DaoReward, 0, _AgentReward); // @dev Emit an event for the reward payment.
     }
 
     /*///////////////////////////////////////////////////////////////
@@ -195,18 +190,16 @@ contract StakeMiracleCore is ReentrancyGuard, PermissionsEnumerable, ERC1155Hold
     * @param _player The address of the staker.
     * @return _PlayerReward The rewards for the staker.
     * @return _DaoReward The rewards for the DAO.
-    * @return _PoolReward The rewards for the staking pool.
     */
-    function _calculateRewards(address _player) internal view  returns (uint256 _PlayerReward, uint256 _DaoReward, uint256 _PoolReward) {
+    function _calculateRewards(address _player) internal view  returns (uint256 _PlayerReward, uint256 _DaoReward) {
         if (StakePlayer[_player].isStake == false) { // @dev If the staker has not staked any tokens, return 0 rewards.
-            return (0,0,0);
+            return (0,0);
         }
         uint256 TotalRewards = _calculateToTalReward(_player); // @dev Calculate the total rewards for the staker.
         _DaoReward = ((TotalRewards * DaoRoyalty[IStakingSection]) / INVERSE_BASIS_POINT) / 100; // @dev Calculate the DAO's share of the rewards.
-        _PoolReward = ((TotalRewards * PoolRoyalty) / INVERSE_BASIS_POINT) / 100; // @dev Calculate the staking pool's share of the rewards.
-        _PlayerReward = (TotalRewards / INVERSE_BASIS_POINT) - (_DaoReward + _PoolReward); // @dev Calculate the staker's share of the rewards.
+        _PlayerReward = (TotalRewards / INVERSE_BASIS_POINT) - _DaoReward; // @dev Calculate the staker's share of the rewards.
 
-        return (_PlayerReward, _DaoReward, _PoolReward);
+        return (_PlayerReward, _DaoReward);
     }
 
     /**
@@ -214,20 +207,18 @@ contract StakeMiracleCore is ReentrancyGuard, PermissionsEnumerable, ERC1155Hold
     * @param _player The address of the staker.
     * @return _PlayerReward The rewards for the staker.
     * @return _DaoReward The rewards for the DAO.
-    * @return _PoolReward The rewards for the staking pool.
     * @return _AgentReward The rewards for the agent.
     */
-    function _calculateAgentRewards(address _player) internal view returns (uint256 _PlayerReward, uint256 _DaoReward, uint256 _PoolReward, uint256 _AgentReward) {
+    function _calculateAgentRewards(address _player) internal view returns (uint256 _PlayerReward, uint256 _DaoReward, uint256 _AgentReward) {
         if (StakePlayer[_player].isStake == false) { // @dev If the staker has not staked any tokens, return 0 rewards.
-            return (0,0,0,0);
+            return (0,0,0);
         }
         uint256 TotalRewards = _calculateToTalReward(_player); // @dev Calculate the total rewards for the staker.
         _DaoReward = ((TotalRewards * DaoRoyalty[IStakingSection]) / INVERSE_BASIS_POINT) / 100; // @dev Calculate the DAO's share of the rewards.
-        _PoolReward = ((TotalRewards * PoolRoyalty) / INVERSE_BASIS_POINT) / 100; // @dev Calculate the staking pool's share of the rewards.
         _AgentReward = ((TotalRewards * AgentRoyalty) / INVERSE_BASIS_POINT) / 100; // @dev Calculate the agent's share of the rewards.
-        _PlayerReward = (TotalRewards / INVERSE_BASIS_POINT) - (_DaoReward + _AgentReward + _PoolReward) ; // @dev Calculate the staker's share of the rewards.
+        _PlayerReward = (TotalRewards / INVERSE_BASIS_POINT) - (_DaoReward + _AgentReward); // @dev Calculate the staker's share of the rewards.
 
-        return (_PlayerReward, _DaoReward, _PoolReward, _AgentReward);
+        return (_PlayerReward, _DaoReward, _AgentReward);
     }
 
     /**
@@ -272,29 +263,6 @@ contract StakeMiracleCore is ReentrancyGuard, PermissionsEnumerable, ERC1155Hold
         rewardPerMin = _rewardPerMin;
     }
 
-    /**
-    * @dev A function to add a new staking pool.
-    * @param _poolAddress The address of the staking pool to add.
-    */
-    function addStakingPool(address _poolAddress) external onlyRole(DEFAULT_ADMIN_ROLE){
-        StakingPool.push(_poolAddress);
-    }
-
-    /**
-    * @dev A function to edit the address of a staking pool.
-    * @param _originAddress The original address of the staking pool to be edited.
-    * @param _newAddress The new address to set for the staking pool.
-    */
-    function editStakingPool(address _originAddress, address _newAddress) external onlyRole(DEFAULT_ADMIN_ROLE){
-        for (uint256 i=0; i <StakingPool.length; i++)
-        {
-            if(StakingPool[i] == _originAddress)
-            {
-                StakingPool[i] = _newAddress;
-                break;
-            }
-        }
-    }
 
 
     /*///////////////////////////////////////////////////////////////
@@ -306,15 +274,6 @@ contract StakeMiracleCore is ReentrancyGuard, PermissionsEnumerable, ERC1155Hold
     */
     function _getStakePlayers() internal view returns (address[] memory) {
         return StakePlayers;
-    }
-
-    /**
-    * @dev A function to get the address of a staking pool by its sequence number.
-    * @param _PoolSeq The sequence number of the staking pool to retrieve the address for.
-    * @return _poolAddress The address of the staking pool.
-    */
-    function _getStakingPool(uint256 _PoolSeq) internal view returns (address _poolAddress) {
-        _poolAddress = StakingPool[_PoolSeq];
     }
 
     /**
