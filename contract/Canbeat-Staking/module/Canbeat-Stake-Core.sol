@@ -19,12 +19,13 @@ pragma solidity ^0.8.17;
 // Token
 import "@thirdweb-dev/contracts/drop/DropERC1155.sol";
 import "@thirdweb-dev/contracts/token/TokenERC20.sol";
+import "@thirdweb-dev/contracts/openzeppelin-presets/utils/ERC1155/ERC1155Holder.sol";
 
 // Access Control + security
 import "@thirdweb-dev/contracts/extension/PermissionsEnumerable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-contract StakeMiracleCore is ReentrancyGuard, PermissionsEnumerable
+contract StakeMiracleCore is ReentrancyGuard, PermissionsEnumerable, ERC1155Holder
 {
     DropERC1155 public NodeNftCollection;    // The DropERC1155 contract instance for the Node NFT collection.
     TokenERC20 public rewardsToken;          // The TokenERC20 contract instance for the reward token.
