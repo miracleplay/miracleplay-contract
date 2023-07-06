@@ -42,13 +42,16 @@ contract MiracleTournamentEscrow is ContractMetadata {
         bool tournamentCreated;
         bool tournamentEnded;
         bool tournamentCanceled;
+        string tournamentURI;
     }
     mapping(uint => Tournament) public tournamentMapping;
 
+    event CreateTournament(uint tournamentId, address organizer, string tournamentURI);
     event LockPrizeToken(uint tournamentId, uint prizeAmount);
     event LockFeeToken(uint tournamentId, uint feeAmount);
-    event UnlockPrize(uint tournamentId, address [] _withdrawAddresses);
-    event UnlockFee(uint tournamentId, uint feeBalance);
+    event UnlockPrizeToken(uint tournamentId, address [] _withdrawAddresses);
+    event UnlockFeeToken(uint tournamentId, uint feeBalance);
+    event WithdrawFee(uint tournamentId, uint feeBalance);
     event PrizePaid(uint tournamentId, address account, uint PrizeAmount);
     event ReturnFee(uint tournamentId, address account, uint feeAmount);
     event CanceledTournament(uint tournamentId);
@@ -87,7 +90,7 @@ contract MiracleTournamentEscrow is ContractMetadata {
         miracletournament = MiracleTournament(_miracletournament);
     }
 
-    function createTournamentEscrow(uint _tournamentId, uint8 _tournamentType, address _prizeToken, address _feeToken, uint _prizeAmount, uint _joinFee, uint _registerStartTime, uint _registerEndTime, uint _tournamentStartTime, uint _tournamentEndTime, uint256[] memory _prizeAmountArray, string memory _tournamentURI) public {
+    function createTournamentEscrow(uint _tournamentId, uint8 _tournamentType, address _prizeToken, address _feeToken, uint _prizeAmount, uint _joinFee, uint _registerStartTime, uint _registerEndTime, uint256[] memory _prizeAmountArray, string memory _tournamentURI) public {
         require(IERC20(_prizeToken).allowance(msg.sender, address(this)) >= _prizeAmount, "Allowance is not sufficient.");
         require(_prizeAmount <= IERC20(_prizeToken).balanceOf(msg.sender), "Insufficient balance.");
         uint256 totalWithdrawAmount;
@@ -110,8 +113,10 @@ contract MiracleTournamentEscrow is ContractMetadata {
         newTournament.tournamentCreated = true;
         newTournament.tournamentEnded = false;
         newTournament.tournamentCanceled = false;
+        newTournament.tournamentURI = _tournamentURI;
         
-        miracletournament.createTournament(_tournamentId, _tournamentType, newTournament.organizer, _registerStartTime, _registerEndTime, _tournamentStartTime, _tournamentEndTime, _prizeAmountArray.length, _tournamentURI);
+        miracletournament.createTournament(_tournamentId, _tournamentType, msg.sender, _registerStartTime, _registerEndTime, _prizeAmountArray.length);
+        emit CreateTournament(_tournamentId, msg.sender, _tournamentURI);
         emit LockPrizeToken(_tournamentId, _prizeAmount);
     }
 
@@ -137,14 +142,14 @@ contract MiracleTournamentEscrow is ContractMetadata {
             _tournament.playersWithdrawableAmount[_withdrawAddresses[i]] = _prizeAmountArray[i];
         }
 
-        emit UnlockPrize(_tournamentId, _withdrawAddresses);
+        emit UnlockPrizeToken(_tournamentId, _withdrawAddresses);
     }
 
     function unlockRegFee(uint _tournamentId) public onlyTournament {
         Tournament storage _tournament = tournamentMapping[_tournamentId];
         _tournament.tournamentEnded = true;
 
-        emit UnlockFee(_tournamentId, _tournament.feeBalance);
+        emit UnlockFeeToken(_tournamentId, _tournament.feeBalance);
     }
 
     function canceledTournament(uint _tournamentId, address[] memory _withdrawAddresses) public onlyTournament{
@@ -169,7 +174,7 @@ contract MiracleTournamentEscrow is ContractMetadata {
         require(token.transfer(_tournament.organizer, regfeeAmount), "Transfer failed.");
         _tournament.feeBalance = 0;
         
-        emit UnlockFee(_tournamentId, totalAmount);
+        emit WithdrawFee(_tournamentId, totalAmount);
     }
 
     function prizeWithdraw(uint _tournamentId) public {

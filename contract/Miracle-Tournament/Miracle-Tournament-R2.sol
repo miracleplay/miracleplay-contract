@@ -33,12 +33,9 @@ contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata
         address organizer;
         uint registerStartTime;
         uint registerEndTime;
-        uint tournamentStartTime;
-        uint tournamentEndTime;
         uint prizeCount;
         bool tournamentEnded;
         string scoreURI;
-        string tournamentURI;
     }
 
     address admin;
@@ -72,36 +69,20 @@ contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata
         _;
     }
 
-    modifier tournamentNotStarted(uint tournamentId) {
-        Tournament storage tournament = tournamentMapping[tournamentId];
-        require(block.timestamp < tournament.tournamentEndTime, "This is not the time to proceed with the tournement.");
-        require(block.timestamp > tournament.tournamentStartTime, "Tournament is not start");
-        _;
-    }
-
-    modifier tournamentEndedOrNotStarted(uint tournamentId) {
-        Tournament storage tournament = tournamentMapping[tournamentId];
-        require(tournament.tournamentEnded || block.timestamp < tournament.tournamentEndTime, "Tournament has ended");
-        _;
-    }
-
     function connectEscrow(address payable _escrowAddr) public onlyRole(DEFAULT_ADMIN_ROLE) {
         _setupRole(ESCROW_ROLE, _escrowAddr);
         EscrowAddr = _escrowAddr;
     }
 
-    function createTournament(uint _tournamentId, uint8 _tournamentType, address _organizer, uint _registerStartTime, uint _registerEndTime, uint _tournamentStartTime, uint _tournamentEndTime, uint _prizeCount, string memory _tournamentURI) public onlyRole(ESCROW_ROLE) {
+    function createTournament(uint _tournamentId, uint8 _tournamentType, address _organizer, uint _registerStartTime, uint _registerEndTime, uint _prizeCount) public onlyRole(ESCROW_ROLE) {
         Tournament storage newTournament = tournamentMapping[_tournamentId];
         newTournament.created = true;
         newTournament.tournamentType = _tournamentType;
         newTournament.organizer = _organizer;
         newTournament.registerStartTime = _registerStartTime;
         newTournament.registerEndTime = _registerEndTime;
-        newTournament.tournamentStartTime = _tournamentStartTime;
-        newTournament.tournamentEndTime = _tournamentEndTime;
         newTournament.prizeCount = _prizeCount;
         newTournament.tournamentEnded = false;
-        newTournament.tournamentURI = _tournamentURI;
         
         addOnGoingTournament(_tournamentId);
 
