@@ -39,7 +39,7 @@ contract FoundersStaking is StakeMiracleCore
         rewardPerMin = _rewardPerMin;
         
         //Fee Definition
-        DaoRoyalty = [5, 10, 15, 20];
+        DaoRoyalty = [25, 15];
         AgentRoyalty = 2;
 
         // Initialize this contract's state.
