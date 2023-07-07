@@ -24,7 +24,7 @@ import "@thirdweb-dev/contracts/token/TokenERC20.sol"; // For my ERC-20 Token co
 import "@thirdweb-dev/contracts/extension/PermissionsEnumerable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-import "./module/Canbeat-Stake-Core.sol";
+import "./module/Miracle-Stake-Core.sol";
 
 // CanbeatStakeDeca, CanbeatStakePeta, CanbeatStakeQuetta
 contract FoundersStaking is StakeMiracleCore
