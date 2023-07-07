@@ -26,8 +26,8 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 import "./module/Miracle-Stake-Core.sol";
 
-// CanbeatStakeDeca, CanbeatStakePeta, CanbeatStakeQuetta
-contract FoundersStaking is StakeMiracleCore
+// FoundersStaking, CompactStaking
+contract CompactStaking is StakeMiracleCore
 {
     constructor(address _defaultAdmin, uint256 _stakingsection, DropERC1155 _NodeNFTToken, TokenERC20 _RewardToken, address _DaoAddress, uint256 _rewardPerMin, uint256 _alreadyClaimed) {
         StakingSection = _stakingsection;
