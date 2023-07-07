@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.17;    
 
-import "./Miracle-Escrow.sol";
+import "./Miracle-Escrow-R2.sol";
 import "@thirdweb-dev/contracts/extension/PermissionsEnumerable.sol";
 import "@thirdweb-dev/contracts/extension/Multicall.sol";
 import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
@@ -22,27 +22,20 @@ contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata
     uint[] private OnGoingTournaments;
     uint[] private EndedTournaments;
 
-    struct Player {
-        address account;
-        uint score;
-        bool isRegistered;
-    }
-
     struct Tournament {
-        bool registered;
+        bool created;
         //The tType defines the tournament type.
         // 1 - Total Score Tournament
         // 2 - Top Score Tournament
-        Player[] players;
+        uint8 tournamentType;
+        address [] players;
         address [] ranker;
         address organizer;
         uint registerStartTime;
         uint registerEndTime;
-        uint tournamentStartTime;
-        uint tournamentEndTime;
         uint prizeCount;
         bool tournamentEnded;
-        string tournamentURI;
+        string scoreURI;
     }
 
     address admin;
@@ -51,8 +44,8 @@ contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata
     event CreateTournament(uint tournamentId);
     event Registered(uint tournamentId, address account);
     event NewPersonalRecord(uint tournamentId, address account, uint score);
-    event ScoreUpdated(uint tournamentId, address account, uint score);
-    event TournamentEnded(uint tournamentId);
+    event ScoreUpdated(uint tournamentId, string uri);
+    event TournamentEnded(uint tournamentId); 
     event TournamentCanceled(uint tournamentId);
 
     bytes32 public constant FACTORY_ROLE = keccak256("FACTORY_ROLE");
@@ -76,36 +69,21 @@ contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata
         _;
     }
 
-    modifier tournamentNotStarted(uint tournamentId) {
-        Tournament storage tournament = tournamentMapping[tournamentId];
-        require(block.timestamp < tournament.tournamentEndTime, "This is not the time to proceed with the tournement.");
-        require(block.timestamp > tournament.tournamentStartTime, "Tournament is not start");
-        _;
-    }
-
-    modifier tournamentEndedOrNotStarted(uint tournamentId) {
-        Tournament storage tournament = tournamentMapping[tournamentId];
-        require(tournament.tournamentEnded || block.timestamp < tournament.tournamentEndTime, "Tournament has ended");
-        _;
-    }
-
     function connectEscrow(address payable _escrowAddr) public onlyRole(DEFAULT_ADMIN_ROLE) {
         _setupRole(ESCROW_ROLE, _escrowAddr);
         EscrowAddr = _escrowAddr;
     }
 
-    function createTournament(uint _tournamentId, uint8 _tType, uint _registerStartTime, uint _registerEndTime, uint _tournamentStartTime, uint _tournamentEndTime, uint _prizeCount, string memory _tournamentURI) public onlyRole(ESCROW_ROLE) {
+    function createTournament(uint _tournamentId, uint8 _tournamentType, address _organizer, uint _registerStartTime, uint _registerEndTime, uint _prizeCount) public onlyRole(ESCROW_ROLE) {
         Tournament storage newTournament = tournamentMapping[_tournamentId];
-        newTournament.registered = true;
-        newTournament.tType = _tType;
-        newTournament.organizer = payable(msg.sender);
+        newTournament.created = true;
+        newTournament.tournamentType = _tournamentType;
+        newTournament.organizer = _organizer;
         newTournament.registerStartTime = _registerStartTime;
         newTournament.registerEndTime = _registerEndTime;
-        newTournament.tournamentStartTime = _tournamentStartTime;
-        newTournament.tournamentEndTime = _tournamentEndTime;
-        newTournament.tournamentEnded = false;
         newTournament.prizeCount = _prizeCount;
-        newTournament.tournamentURI = _tournamentURI;
+        newTournament.tournamentEnded = false;
+        
         addOnGoingTournament(_tournamentId);
 
         emit CreateTournament(_tournamentId);
@@ -113,119 +91,33 @@ contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata
 
     function register(uint tournamentId, address _player) public payable registrationOpen(tournamentId) onlyRole(ESCROW_ROLE){
         Tournament storage tournament = tournamentMapping[tournamentId];
-        require(block.timestamp >= tournament.registerStartTime, "Registration has not started yet");
-        require(block.timestamp <= tournament.registerEndTime, "Registration deadline passed");
-        uint playerId = tournament.players.length;
-        Player memory player = Player({
-            id: playerId,
-            account: payable(_player),
-            score: 0,
-            isRegistered: true,
-            rank: 0
-        });
+        require(block.timestamp > tournament.registerStartTime, "Registration has not started yet");
+        require(block.timestamp < tournament.registerEndTime, "Registration deadline passed");
 
-        tournament.players.push(player);
-        tournament.playerIdByAccount[_player] = playerId;
-
+        tournament.players.push(_player);
         emit Registered(tournamentId, _player);
     }
 
-    function _updateTopScore(uint tournamentId, address _account, uint _score) internal {
+    function updateScore(uint tournamentId, string calldata _uri) external onlyRole(FACTORY_ROLE) {
         Tournament storage tournament = tournamentMapping[tournamentId];
-        require(tournament.players[tournament.playerIdByAccount[_account]].isRegistered, "Player is not registered");
-
-        Player storage _player = tournament.players[tournament.playerIdByAccount[_account]];
-        if(_player.score < _score){
-            _player.score = _score;
-            emit NewPersonalRecord(tournamentId, _account, _score);
-        }
+        tournament.scoreURI = _uri;
     }
 
-    function _updateTotalScore(uint tournamentId, address _account, uint _score) internal {
-        Tournament storage tournament = tournamentMapping[tournamentId];
-        require(tournament.players[tournament.playerIdByAccount[_account]].isRegistered, "Player is not registered");
-
-        Player storage _player = tournament.players[tournament.playerIdByAccount[_account]];
-
-        _player.score += _score;
-        emit ScoreUpdated(tournamentId, _account, _score);
-    }
-
-    function updateScore(uint tournamentId, address _account, uint[] calldata _score) external onlyRole(FACTORY_ROLE) {
-        uint highscore = 0;
-        uint8 _tType = tournamentMapping[tournamentId].tType;
-
-        if(_tType == 1){
-            // Total Score Tournament
-            for(uint i = 0; i < _score.length; i++) {
-                _updateTotalScore(tournamentId, _account, _score[i]);
-            }
-
-        }else if(_tType == 2){
-            // Top Score Tournament
-            for(uint i = 0; i < _score.length; i++) {
-                if(highscore < _score[i]){
-                    highscore = _score[i];
-                }
-            }
-            _updateTopScore(tournamentId, _account, highscore);
-        }
-    }
-
-    function calculateRanking(uint tournamentId) internal {
-        Tournament storage tournament = tournamentMapping[tournamentId];
-        uint len = tournament.players.length;
-
-        for (uint i = 0; i < len; i++) {
-            tournament.rankToAccount[i] = tournament.players[i].account;
-        }
-
-        uint[] memory scores = new uint[](len);
-        for (uint i = 0; i < len; i++) {
-            scores[i] = tournament.players[i].score;
-        }
-
-        // sort scores and rearrange the rank mapping
-        for (uint i = 0; i < len - 1; i++) {
-            for (uint j = i + 1; j < len; j++) {
-                if (scores[i] < scores[j]) {
-                    uint tempScore = scores[i];
-                    scores[i] = scores[j];
-                    scores[j] = tempScore;
-
-                    address tempAddr = tournament.rankToAccount[i];
-                    tournament.rankToAccount[i] = tournament.rankToAccount[j];
-                    tournament.rankToAccount[j] = tempAddr;
-                }
-            }
-        }
-
-        for (uint i = 0; i < len; i++) {
-            tournament.accountToRank[tournament.rankToAccount[i]] = i + 1;
-        }
-
-        // store the rank and score in the Player struct
-        for (uint i = 0; i < len; i++) {
-            tournament.players[i].score = scores[i];
-            tournament.players[i].isRegistered = false;
-            uint rank = tournament.accountToRank[tournament.players[i].account];
-            tournament.players[i] = Player(tournament.players[i].id, tournament.players[i].account, tournament.players[i].score, tournament.players[i].isRegistered, rank);
-        }
-    }
-
-    function endTournament(uint _tournamentId) public onlyRole(FACTORY_ROLE) {
-        calculateRanking(_tournamentId);
+    function endTournament(uint _tournamentId, address[] calldata _rankers) public onlyRole(FACTORY_ROLE) {
         Tournament storage tournament = tournamentMapping[_tournamentId];
         uint _prizeCount = tournament.prizeCount;
         address[] memory prizeAddr = new address[](_prizeCount);
         for(uint i = 0; i < _prizeCount; i++){
-            prizeAddr[i] = tournament.rankToAccount[i];
+            prizeAddr[i] = _rankers[i];
         }
+        // Unlock Escrow Prize Token / Fee Token to Escrow contract
         MiracleTournamentEscrow(EscrowAddr).unlockPrize(_tournamentId, prizeAddr);
         MiracleTournamentEscrow(EscrowAddr).unlockRegFee(_tournamentId);
         tournament.tournamentEnded = true;
 
         removeOnGoingTournament(_tournamentId);
+        addEndedTournament(_tournamentId);
+
         emit TournamentEnded(_tournamentId);
     }
 
@@ -233,14 +125,13 @@ contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata
         Tournament storage tournament = tournamentMapping[_tournamentId];
         
         // Get the list of player addresses
-        uint playerCount = tournament.players.length;
-        address[] memory playerAddresses = new address[](playerCount);
-        for (uint i = 0; i < playerCount; i++) {
-            playerAddresses[i] = tournament.players[i].account;
-        }
+        address [] memory players = tournament.players;
+        // Unlock Escrow Prize Token / Fee Token to Escrow contract
+        MiracleTournamentEscrow(EscrowAddr).canceledTournament(_tournamentId, players);
 
-        MiracleTournamentEscrow(EscrowAddr).canceledTournament(_tournamentId, playerAddresses);
         removeOnGoingTournament(_tournamentId);
+        addEndedTournament(_tournamentId);
+
         emit TournamentCanceled(_tournamentId);
     }
 
@@ -259,7 +150,6 @@ contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata
                     OnGoingTournaments[i] = OnGoingTournaments[OnGoingTournaments.length - 1];
                 }
                 OnGoingTournaments.pop();
-                addEndedTournament(_tournamentId);
                 break;
             }
         }
@@ -291,8 +181,8 @@ contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata
         return _tournament.players.length;
     }
 
-    function getPlayerInfo(uint _tournamentId, uint playerId) external view returns(Player memory _player){
+    function getPlayers(uint _tournamentId) external view returns(address[] memory){
         Tournament storage _tournament = tournamentMapping[_tournamentId];
-        return _tournament.players[playerId];
+        return _tournament.players;
     }
 }
