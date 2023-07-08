@@ -1,0 +1,83 @@
+MIRACLE ESCROW 토너먼트에 대한 사용자 접근 컨트렉트
+
+함수명: ★ createTournamentEscrow
+설명: 토너먼트를 생성하고 상금 토큰을 잠금 처리합니다.
+필요한 파라미터:
+uint _tournamentId: 토너먼트의 고유 식별자
+uint8 _tournamentType: 토너먼트 유형
+address _prizeToken: 상금 토큰의 주소
+address _feeToken: 수수료 토큰의 주소
+uint _prizeAmount: 상금 금액
+uint _joinFee: 가입 수수료
+uint _registerStartTime: 등록 시작 시간
+uint _registerEndTime: 등록 종료 시간
+uint256[] memory _prizeAmountArray: 상금 금액 배열
+string memory _tournamentURI: 토너먼트 URI
+
+함수명: ★ register
+설명: 토너먼트에 참가하고 수수료 토큰을 잠금 처리합니다.
+필요한 파라미터:
+uint _tournamentId: 토너먼트의 고유 식별자
+
+함수명: unlockPrize
+설명: 토너먼트가 종료되면 상금 토큰을 참가자에게 해제합니다.
+필요한 파라미터:
+uint _tournamentId: 토너먼트의 고유 식별자
+address[] memory _withdrawAddresses: 상금을 받을 주소 배열
+
+함수명: unlockRegFee
+설명: 토너먼트가 종료되면 수수료 토큰을 참가자에게 해제합니다.
+필요한 파라미터:
+uint _tournamentId: 토너먼트의 고유 식별자
+
+함수명: canceledTournament
+설명: 토너먼트를 취소하고 참가자에게 수수료를 반환합니다.
+필요한 파라미터:
+uint _tournamentId: 토너먼트의 고유 식별자
+address[] memory _withdrawAddresses: 수수료를 반환할 주소 배열
+
+함수명: ★ feeWithdraw
+설명: 주최자가 수수료를 인출합니다.
+필요한 파라미터:
+uint _tournamentId: 토너먼트의 고유 식별자
+
+함수명: ★ prizeWithdraw
+설명: 참가자가 상금을 인출합니다.
+필요한 파라미터:
+uint _tournamentId: 토너먼트의 고유 식별자
+
+함수명: cancelPrizeWithdraw
+설명: 상금 인출을 취소하고 주최자가 상금을 반환합니다.
+필요한 파라미터:
+uint _tournamentId: 토너먼트의 고유 식별자
+
+함수명: cancelRegFeeWithdraw
+설명: 수수료 인출을 취소하고 참가자가 수수료를 반환합니다.
+필요한 파라미터:
+uint _tournamentId: 토너먼트의 고유 식별자
+
+함수명: emergencyWithdraw
+설명: 긴급 인출로, 주최자가 남은 수수료와 상금을 인출합니다.
+필요한 파라미터:
+uint _tournamentId: 토너먼트의 고유 식별자
+
+함수명: setRoyaltyAddress
+설명: 로열티 주소를 설정합니다.
+필요한 파라미터:
+address _royaltyAddr: 로열티 주소
+
+함수명: setPrizeRoyaltyRate
+설명: 상금 로열티 비율을 설정합니다.
+필요한 파라미터:
+uint _royaltyRate: 상금 로열티 비율
+
+함수명: setRegfeeRoyaltyRate
+설명: 수수료 로열티 비율을 설정합니다.
+필요한 파라미터:
+uint _royaltyRate: 수수료 로열티 비율
+
+함수명: ★ availablePrize
+설명: 참가자가 인출 가능한 상금 금액을 조회합니다.
+필요한 파라미터:
+uint _tournamentId: 토너먼트의 고유 식별자
+address player: 상금을 인출할 참가자의 주소

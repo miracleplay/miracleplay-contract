@@ -98,14 +98,26 @@ contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata
         emit Registered(tournamentId, _player);
     }
 
+    function adminRegister(uint tournamentId, address _player) public payable onlyRole(DEFAULT_ADMIN_ROLE){
+        Tournament storage tournament = tournamentMapping[tournamentId];
+        require(block.timestamp > tournament.registerStartTime, "Registration has not started yet");
+        require(block.timestamp < tournament.registerEndTime, "Registration deadline passed");
+
+        tournament.players.push(_player);
+        emit Registered(tournamentId, _player);
+    }
+
     function updateScore(uint tournamentId, string calldata _uri) external onlyRole(FACTORY_ROLE) {
         Tournament storage tournament = tournamentMapping[tournamentId];
         tournament.scoreURI = _uri;
     }
 
-    function createMatch(uint[] memory array) public pure returns (uint[] memory) {
+    function playersShuffle(uint tournamentId) public onlyRole(DEFAULT_ADMIN_ROLE) onlyRole(FACTORY_ROLE){
+        Tournament storage tournament = tournamentMapping[tournamentId];
+        address[] memory array = tournament.players;
+
         uint n = array.length;
-        uint[] memory shuffledArray = new uint[](n);
+        address[] memory shuffledArray = new address[](n);
         for (uint i = 0; i < n; i++) {
             shuffledArray[i] = array[i];
         }
@@ -113,7 +125,7 @@ contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata
             uint j = i + uint(keccak256(abi.encodePacked(block.timestamp))) % (n - i);
             (shuffledArray[i], shuffledArray[j]) = (shuffledArray[j], shuffledArray[i]);
         }
-        return shuffledArray;
+        tournament.players = shuffledArray;
     }
 
     function endTournament(uint _tournamentId, address[] calldata _rankers) public onlyRole(FACTORY_ROLE) {
@@ -167,7 +179,7 @@ contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata
             }
         }
     }
-
+    
     function getAllTournamentCount() public view returns (uint) {
         uint count = OnGoingTournaments.length + EndedTournaments.length;
         return count;

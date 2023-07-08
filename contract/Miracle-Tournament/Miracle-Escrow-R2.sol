@@ -193,7 +193,7 @@ contract MiracleTournamentEscrow is ContractMetadata {
         emit PrizePaid(_tournamentId, msg.sender, totalAmount);
     }
 
-    function CancelPrizeWithdraw(uint _tournamentId) public onlyOrganizer(_tournamentId){
+    function cancelPrizeWithdraw(uint _tournamentId) public onlyOrganizer(_tournamentId){
         Tournament storage _tournament = tournamentMapping[_tournamentId];
         require(_tournament.tournamentCanceled, "Tournament has not canceled");
 
@@ -202,7 +202,7 @@ contract MiracleTournamentEscrow is ContractMetadata {
         require(token.transfer(msg.sender, withdrawAmount), "Transfer failed.");
     }
 
-    function CancelRegFeeWithdraw(uint _tournamentId) public {
+    function cancelRegFeeWithdraw(uint _tournamentId) public {
         Tournament storage _tournament = tournamentMapping[_tournamentId];
         require(_tournament.tournamentCanceled, "Tournament has not canceled");
         require(_tournament.playersWithdrawableAmount[msg.sender] > 0, "There is no prize token to be paid to you.");

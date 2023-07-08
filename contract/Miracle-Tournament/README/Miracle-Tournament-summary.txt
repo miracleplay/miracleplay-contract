@@ -1,0 +1,65 @@
+MIRACLE ESCROW 토너먼트에 대한 백앤드 접근 컨트렉트
+
+함수명: createTournament
+설명: 토너먼트를 생성합니다.
+필요한 파라미터:
+uint _tournamentId: 토너먼트의 고유 식별자
+uint8 _tournamentType: 토너먼트 유형
+address _organizer: 주최자의 주소
+uint _registerStartTime: 등록 시작 시간
+uint _registerEndTime: 등록 종료 시간
+uint _prizeCount: 상금 수
+
+함수명: register
+설명: 토너먼트에 참가자를 등록합니다.
+필요한 파라미터:
+uint tournamentId: 토너먼트의 고유 식별자
+address _player: 참가자의 주소
+
+함수명: playersShuffle
+설명: 사용자 배열을 무작위로 섞습니다.
+필요한 파라미터
+uint tournamentId: 토너먼트의 고유 식별자
+
+함수명: ★ updateScore
+설명: 토너먼트의 점수 정보를 업데이트합니다.
+필요한 파라미터:
+uint tournamentId: 토너먼트의 고유 식별자
+string calldata _uri: 업데이트할 점수 정보의 URI
+
+함수명: ★ endTournament
+설명: 토너먼트를 종료하고 순위에 따라 상금을 분배합니다.
+필요한 파라미터:
+uint _tournamentId: 토너먼트의 고유 식별자
+address[] calldata _rankers: 상금을 받을 주소 배열
+!!입력된 상금을 받을 주소 배열은 상금 대상자 인원수고 일치하여야 합니다.
+
+함수명: cancelTournament
+설명: 토너먼트를 취소하고 참가자에게 등록 수수료를 반환합니다.
+필요한 파라미터:
+uint _tournamentId: 토너먼트의 고유 식별자
+
+함수명: getAllTournamentCount
+설명: 총 토너먼트 개수를 조회합니다.
+
+함수명: getOnGoingTournamentsCount
+설명: 진행 중인 토너먼트 개수를 조회합니다.
+
+함수명: getEndedTournamentsCount
+설명: 종료된 토너먼트 개수를 조회합니다.
+
+함수명: getOnGoingTournaments
+설명: 진행 중인 토너먼트의 식별자 배열을 조회합니다.
+
+함수명: getEndedTournaments
+설명: 종료된 토너먼트의 식별자 배열을 조회합니다.
+
+함수명: getPlayerCount
+설명: 특정 토너먼트의 참가자 수를 조회합니다.
+필요한 파라미터:
+uint _tournamentId: 토너먼트의 고유 식별자
+
+함수명: ★ getPlayers
+설명: 특정 토너먼트의 참가자 배열을 조회합니다.
+필요한 파라미터:
+uint _tournamentId: 토너먼트의 고유 식별자
