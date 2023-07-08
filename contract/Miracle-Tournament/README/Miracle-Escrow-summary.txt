@@ -8,7 +8,7 @@ uint8 _tournamentType: 토너먼트 유형
 address _prizeToken: 상금 토큰의 주소
 address _feeToken: 수수료 토큰의 주소
 uint _prizeAmount: 상금 금액
-uint _joinFee: 가입 수수료
+uint _joinFee: 참가 수수료
 uint _registerStartTime: 등록 시작 시간
 uint _registerEndTime: 등록 종료 시간
 uint256[] memory _prizeAmountArray: 상금 금액 배열
