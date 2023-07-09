@@ -89,6 +89,21 @@ contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata
         emit CreateTournament(_tournamentId);
     }
 
+    function ADMINcreateTournament(uint _tournamentId, uint8 _tournamentType, address _organizer, uint _registerStartTime, uint _registerEndTime, uint _prizeCount) public onlyRole(DEFAULT_ADMIN_ROLE) {
+        Tournament storage newTournament = tournamentMapping[_tournamentId];
+        newTournament.created = true;
+        newTournament.tournamentType = _tournamentType;
+        newTournament.organizer = _organizer;
+        newTournament.registerStartTime = _registerStartTime;
+        newTournament.registerEndTime = _registerEndTime;
+        newTournament.prizeCount = _prizeCount;
+        newTournament.tournamentEnded = false;
+        
+        addOnGoingTournament(_tournamentId);
+
+        emit CreateTournament(_tournamentId);
+    }
+
     function register(uint tournamentId, address _player) public payable registrationOpen(tournamentId) onlyRole(ESCROW_ROLE){
         Tournament storage tournament = tournamentMapping[tournamentId];
         require(block.timestamp > tournament.registerStartTime, "Registration has not started yet");
@@ -98,10 +113,8 @@ contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata
         emit Registered(tournamentId, _player);
     }
 
-    function adminRegister(uint tournamentId, address _player) public payable onlyRole(DEFAULT_ADMIN_ROLE){
+    function ADMINRegister(uint tournamentId, address _player) public payable onlyRole(DEFAULT_ADMIN_ROLE){
         Tournament storage tournament = tournamentMapping[tournamentId];
-        require(block.timestamp > tournament.registerStartTime, "Registration has not started yet");
-        require(block.timestamp < tournament.registerEndTime, "Registration deadline passed");
 
         tournament.players.push(_player);
         emit Registered(tournamentId, _player);
@@ -114,13 +127,9 @@ contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata
 
     function playersShuffle(uint tournamentId) public onlyRole(DEFAULT_ADMIN_ROLE) onlyRole(FACTORY_ROLE){
         Tournament storage tournament = tournamentMapping[tournamentId];
-        address[] memory array = tournament.players;
+        address[] memory shuffledArray = tournament.players;
+        uint n = shuffledArray.length;
 
-        uint n = array.length;
-        address[] memory shuffledArray = new address[](n);
-        for (uint i = 0; i < n; i++) {
-            shuffledArray[i] = array[i];
-        }
         for (uint i = 0; i < n; i++) {
             uint j = i + uint(keccak256(abi.encodePacked(block.timestamp))) % (n - i);
             (shuffledArray[i], shuffledArray[j]) = (shuffledArray[j], shuffledArray[i]);
