@@ -19,6 +19,22 @@ string memory _tournamentURI: 토너먼트 URI
 필요한 파라미터:
 uint _tournamentId: 토너먼트의 고유 식별자
 
+함수명: ★ feeWithdraw
+설명: 주최자가 수수료를 인출합니다.
+필요한 파라미터:
+uint _tournamentId: 토너먼트의 고유 식별자
+
+함수명: ★ prizeWithdraw
+설명: 참가자가 상금을 인출합니다.
+필요한 파라미터:
+uint _tournamentId: 토너먼트의 고유 식별자
+
+함수명: ★ availablePrize
+설명: 참가자가 인출 가능한 상금 금액을 조회합니다.
+필요한 파라미터:
+uint _tournamentId: 토너먼트의 고유 식별자
+address player: 상금을 인출할 참가자의 주소
+
 함수명: unlockPrize
 설명: 토너먼트가 종료되면 상금 토큰을 참가자에게 해제합니다.
 필요한 파라미터:
@@ -35,16 +51,6 @@ uint _tournamentId: 토너먼트의 고유 식별자
 필요한 파라미터:
 uint _tournamentId: 토너먼트의 고유 식별자
 address[] memory _withdrawAddresses: 수수료를 반환할 주소 배열
-
-함수명: ★ feeWithdraw
-설명: 주최자가 수수료를 인출합니다.
-필요한 파라미터:
-uint _tournamentId: 토너먼트의 고유 식별자
-
-함수명: ★ prizeWithdraw
-설명: 참가자가 상금을 인출합니다.
-필요한 파라미터:
-uint _tournamentId: 토너먼트의 고유 식별자
 
 함수명: cancelPrizeWithdraw
 설명: 상금 인출을 취소하고 주최자가 상금을 반환합니다.
@@ -75,9 +81,3 @@ uint _royaltyRate: 상금 로열티 비율
 설명: 수수료 로열티 비율을 설정합니다.
 필요한 파라미터:
 uint _royaltyRate: 수수료 로열티 비율
-
-함수명: ★ availablePrize
-설명: 참가자가 인출 가능한 상금 금액을 조회합니다.
-필요한 파라미터:
-uint _tournamentId: 토너먼트의 고유 식별자
-address player: 상금을 인출할 참가자의 주소
