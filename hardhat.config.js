@@ -10,6 +10,6 @@ module.exports = {
     },
   },
   paths: {
-    sources: "./contract/KOZMO-Staking/",
+    sources: "./contract/Miracle-Tournament/",
   },
 };
