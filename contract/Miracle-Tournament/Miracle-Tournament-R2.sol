@@ -125,26 +125,15 @@ contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata
         tournament.scoreURI = _uri;
     }
 
-    function playersShuffle(uint tournamentId, uint batchSize) public onlyRole(DEFAULT_ADMIN_ROLE) onlyRole(FACTORY_ROLE) {
+    function playersShuffle(uint tournamentId) public onlyRole(DEFAULT_ADMIN_ROLE) onlyRole(FACTORY_ROLE){
         Tournament storage tournament = tournamentMapping[tournamentId];
         address[] memory shuffledArray = tournament.players;
         uint n = shuffledArray.length;
-        uint start = 0;
 
-        while (start < n) {
-            uint end = start + batchSize;
-            if (end > n) {
-                end = n;
-            }
-
-            for (uint i = start; i < end; i++) {
-                uint j = i + uint(keccak256(abi.encodePacked(block.timestamp))) % (end - i);
-                (shuffledArray[i], shuffledArray[j]) = (shuffledArray[j], shuffledArray[i]);
-            }
-
-            start = end;
+        for (uint i = 0; i < n; i++) {
+            uint j = i + uint(keccak256(abi.encodePacked(block.timestamp))) % (n - i);
+            (shuffledArray[i], shuffledArray[j]) = (shuffledArray[j], shuffledArray[i]);
         }
-
         tournament.players = shuffledArray;
     }
 
