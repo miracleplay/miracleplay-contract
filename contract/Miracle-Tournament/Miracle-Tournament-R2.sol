@@ -22,6 +22,8 @@ contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata
     uint[] private OnGoingTournaments;
     uint[] private EndedTournaments;
 
+    
+
     struct Tournament {
         bool created;
         //The tType defines the tournament type.
@@ -29,6 +31,7 @@ contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata
         // 2 - Top Score Tournament
         uint8 tournamentType;
         address [] players;
+        mapping(address => bool) playerRegistered;
         address [] ranker;
         address organizer;
         uint registerStartTime;
@@ -104,25 +107,22 @@ contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata
         emit CreateTournament(_tournamentId);
     }
 
-    function register(uint tournamentId, address _player) public payable registrationOpen(tournamentId) onlyRole(ESCROW_ROLE){
-        Tournament storage tournament = tournamentMapping[tournamentId];
-        require(block.timestamp > tournament.registerStartTime, "Registration has not started yet");
-        require(block.timestamp < tournament.registerEndTime, "Registration deadline passed");
+    function register(uint _tournamentId, address _player) public payable registrationOpen(_tournamentId) onlyRole(ESCROW_ROLE){
+        require(block.timestamp > tournamentMapping[_tournamentId].registerStartTime, "Registration has not started yet");
+        require(block.timestamp < tournamentMapping[_tournamentId].registerEndTime, "Registration deadline passed");
+        require(!tournamentMapping[_tournamentId].playerRegistered[msg.sender], "Address already registered");
 
-        tournament.players.push(_player);
-        emit Registered(tournamentId, _player);
+        tournamentMapping[_tournamentId].players.push(_player);
+        emit Registered(_tournamentId, _player);
     }
 
     function ADMINRegister(uint tournamentId, address _player) public payable onlyRole(DEFAULT_ADMIN_ROLE){
-        Tournament storage tournament = tournamentMapping[tournamentId];
-
-        tournament.players.push(_player);
+        tournamentMapping[tournamentId].players.push(_player);
         emit Registered(tournamentId, _player);
     }
 
     function updateScore(uint tournamentId, string calldata _uri) external onlyRole(FACTORY_ROLE) {
-        Tournament storage tournament = tournamentMapping[tournamentId];
-        tournament.scoreURI = _uri;
+        tournamentMapping[tournamentId].scoreURI = _uri;
     }
 
     function playersShuffle(uint tournamentId) public onlyRole(DEFAULT_ADMIN_ROLE) onlyRole(FACTORY_ROLE){
