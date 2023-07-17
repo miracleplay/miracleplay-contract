@@ -10,6 +10,6 @@ module.exports = {
     },
   },
   paths: {
-    sources: "./contract/Miracle-Tournament/",
+    sources: "./contract/Miracle-Staking/",
   },
 };
