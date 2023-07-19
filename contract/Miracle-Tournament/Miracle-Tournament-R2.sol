@@ -50,6 +50,7 @@ contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata
     event ScoreUpdated(uint tournamentId, string uri);
     event TournamentEnded(uint tournamentId); 
     event TournamentCanceled(uint tournamentId);
+    event ShuffledPlayers(uint tournamentId, uint playersCount);
 
     bytes32 public constant FACTORY_ROLE = keccak256("FACTORY_ROLE");
     bytes32 public constant ESCROW_ROLE = keccak256("ESCROW_ROLE");
@@ -91,7 +92,7 @@ contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata
 
         emit CreateTournament(_tournamentId);
     }
-
+    /*
     function ADMINcreateTournament(uint _tournamentId, uint8 _tournamentType, address _organizer, uint _registerStartTime, uint _registerEndTime, uint _prizeCount) public onlyRole(DEFAULT_ADMIN_ROLE) {
         Tournament storage newTournament = tournamentMapping[_tournamentId];
         newTournament.created = true;
@@ -107,6 +108,11 @@ contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata
         emit CreateTournament(_tournamentId);
     }
 
+    function ADMINRegister(uint tournamentId, address _player) public payable onlyRole(DEFAULT_ADMIN_ROLE){
+        tournamentMapping[tournamentId].players.push(_player);
+        emit Registered(tournamentId, _player);
+    }
+    */
     function register(uint _tournamentId, address _player) public payable registrationOpen(_tournamentId) onlyRole(ESCROW_ROLE){
         require(block.timestamp > tournamentMapping[_tournamentId].registerStartTime, "Registration has not started yet");
         require(block.timestamp < tournamentMapping[_tournamentId].registerEndTime, "Registration deadline passed");
@@ -114,11 +120,6 @@ contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata
 
         tournamentMapping[_tournamentId].players.push(_player);
         emit Registered(_tournamentId, _player);
-    }
-
-    function ADMINRegister(uint tournamentId, address _player) public payable onlyRole(DEFAULT_ADMIN_ROLE){
-        tournamentMapping[tournamentId].players.push(_player);
-        emit Registered(tournamentId, _player);
     }
 
     function updateScore(uint tournamentId, string calldata _uri) external onlyRole(FACTORY_ROLE) {
@@ -135,6 +136,8 @@ contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata
             (shuffledArray[i], shuffledArray[j]) = (shuffledArray[j], shuffledArray[i]);
         }
         tournament.players = shuffledArray;
+
+        emit ShuffledPlayers(tournamentId, shuffledArray.length);
     }
 
     function endTournament(uint _tournamentId, address[] calldata _rankers) public onlyRole(FACTORY_ROLE) {
