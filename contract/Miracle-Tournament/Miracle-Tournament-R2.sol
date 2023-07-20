@@ -116,8 +116,8 @@ contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata
     function register(uint _tournamentId, address _player) public payable registrationOpen(_tournamentId) onlyRole(ESCROW_ROLE){
         require(block.timestamp > tournamentMapping[_tournamentId].registerStartTime, "Registration has not started yet");
         require(block.timestamp < tournamentMapping[_tournamentId].registerEndTime, "Registration deadline passed");
-        require(!tournamentMapping[_tournamentId].playerRegistered[msg.sender], "Address already registered");
-
+        require(!tournamentMapping[_tournamentId].playerRegistered[_player], "Address already registered");
+        tournamentMapping[_tournamentId].playerRegistered[_player] = true;
         tournamentMapping[_tournamentId].players.push(_player);
         emit Registered(_tournamentId, _player);
     }
