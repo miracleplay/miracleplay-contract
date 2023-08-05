@@ -34,6 +34,7 @@ contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata
         mapping(address => bool) playerRegistered;
         address [] ranker;
         address organizer;
+        uint PlayersLimit;
         uint registerStartTime;
         uint registerEndTime;
         uint prizeCount;
@@ -59,7 +60,7 @@ contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata
         _setupRole(DEFAULT_ADMIN_ROLE, adminAddr);
         _setupRole(FACTORY_ROLE, adminAddr);
         deployer = adminAddr;
-        _setupContractURI("ipfs://QmdFLCkqSK8ZANLP9NnAmVpbHFD5YuiaSvEZwGdYZ4yfZc/BubbleShooterTournamentR2.json");
+        _setupContractURI("ipfs://QmTx1v2sdMVePkw3zZHdjGeDpwy7DE8rRMvw7p2eG6GqgE/BubbleShooterTournamentR3.json");
     }
 
     function _canSetContractURI() internal view virtual override returns (bool){
@@ -78,7 +79,7 @@ contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata
         EscrowAddr = _escrowAddr;
     }
 
-    function createTournament(uint _tournamentId, uint8 _tournamentType, address _organizer, uint _registerStartTime, uint _registerEndTime, uint _prizeCount) public onlyRole(ESCROW_ROLE) {
+    function createTournament(uint _tournamentId, uint8 _tournamentType, address _organizer, uint _registerStartTime, uint _registerEndTime, uint _prizeCount, uint _playerLimit) public onlyRole(ESCROW_ROLE) {
         Tournament storage newTournament = tournamentMapping[_tournamentId];
         newTournament.created = true;
         newTournament.tournamentType = _tournamentType;
@@ -86,14 +87,15 @@ contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata
         newTournament.registerStartTime = _registerStartTime;
         newTournament.registerEndTime = _registerEndTime;
         newTournament.prizeCount = _prizeCount;
+        newTournament.PlayersLimit = _playerLimit;
         newTournament.tournamentEnded = false;
         
         addOnGoingTournament(_tournamentId);
 
         emit CreateTournament(_tournamentId);
     }
-    /*
-    function ADMINcreateTournament(uint _tournamentId, uint8 _tournamentType, address _organizer, uint _registerStartTime, uint _registerEndTime, uint _prizeCount) public onlyRole(DEFAULT_ADMIN_ROLE) {
+    
+    function ADMINcreateTournament(uint _tournamentId, uint8 _tournamentType, address _organizer, uint _registerStartTime, uint _registerEndTime, uint _prizeCount, uint _playerLimit) public onlyRole(DEFAULT_ADMIN_ROLE) {
         Tournament storage newTournament = tournamentMapping[_tournamentId];
         newTournament.created = true;
         newTournament.tournamentType = _tournamentType;
@@ -101,6 +103,7 @@ contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata
         newTournament.registerStartTime = _registerStartTime;
         newTournament.registerEndTime = _registerEndTime;
         newTournament.prizeCount = _prizeCount;
+        newTournament.PlayersLimit = _playerLimit;
         newTournament.tournamentEnded = false;
         
         addOnGoingTournament(_tournamentId);
@@ -112,11 +115,12 @@ contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata
         tournamentMapping[tournamentId].players.push(_player);
         emit Registered(tournamentId, _player);
     }
-    */
+    
     function register(uint _tournamentId, address _player) public payable registrationOpen(_tournamentId) onlyRole(ESCROW_ROLE){
         require(block.timestamp > tournamentMapping[_tournamentId].registerStartTime, "Registration has not started yet");
         require(block.timestamp < tournamentMapping[_tournamentId].registerEndTime, "Registration deadline passed");
         require(!tournamentMapping[_tournamentId].playerRegistered[_player], "Address already registered");
+        require(tournamentMapping[_tournamentId].players.length < tournamentMapping[_tournamentId].PlayersLimit, "The number of participants in the tournament is full.");
         tournamentMapping[_tournamentId].playerRegistered[_player] = true;
         tournamentMapping[_tournamentId].players.push(_player);
         emit Registered(_tournamentId, _player);

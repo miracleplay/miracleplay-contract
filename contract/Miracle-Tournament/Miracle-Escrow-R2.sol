@@ -62,7 +62,7 @@ contract MiracleTournamentEscrow is ContractMetadata {
         PrizeRoyaltyRate = 5;
         regfeeRoyaltyRate = 5;
         deployer = adminAddr;
-        _setupContractURI("ipfs://QmdFLCkqSK8ZANLP9NnAmVpbHFD5YuiaSvEZwGdYZ4yfZc/BublleShooterEscrowR2.json");
+        _setupContractURI("ipfs://QmTx1v2sdMVePkw3zZHdjGeDpwy7DE8rRMvw7p2eG6GqgE/BublleShooterEscrowR3.json");
     }
 
     function _canSetContractURI() internal view virtual override returns (bool){
@@ -90,7 +90,7 @@ contract MiracleTournamentEscrow is ContractMetadata {
         miracletournament = MiracleTournament(_miracletournament);
     }
 
-    function createTournamentEscrow(uint _tournamentId, uint8 _tournamentType, address _prizeToken, address _feeToken, uint _prizeAmount, uint _joinFee, uint _registerStartTime, uint _registerEndTime, uint256[] memory _prizeAmountArray, string memory _tournamentURI) public {
+    function createTournamentEscrow(uint _tournamentId, uint8 _tournamentType, address _prizeToken, address _feeToken, uint _prizeAmount, uint _joinFee, uint _registerStartTime, uint _registerEndTime, uint256[] memory _prizeAmountArray, string memory _tournamentURI, uint _playerLimit) public {
         require(IERC20(_prizeToken).allowance(msg.sender, address(this)) >= _prizeAmount, "Allowance is not sufficient.");
         require(_prizeAmount <= IERC20(_prizeToken).balanceOf(msg.sender), "Insufficient balance.");
         uint256 totalWithdrawAmount;
@@ -115,7 +115,7 @@ contract MiracleTournamentEscrow is ContractMetadata {
         newTournament.tournamentCanceled = false;
         newTournament.tournamentURI = _tournamentURI;
         
-        miracletournament.createTournament(_tournamentId, _tournamentType, msg.sender, _registerStartTime, _registerEndTime, _prizeAmountArray.length);
+        miracletournament.createTournament(_tournamentId, _tournamentType, msg.sender, _registerStartTime, _registerEndTime, _prizeAmountArray.length, _playerLimit);
         emit CreateTournament(_tournamentId, msg.sender, _tournamentURI);
         emit LockPrizeToken(_tournamentId, _prizeAmount);
     }
