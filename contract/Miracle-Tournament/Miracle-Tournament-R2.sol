@@ -22,8 +22,6 @@ contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata
     uint[] private OnGoingTournaments;
     uint[] private EndedTournaments;
 
-    
-
     struct Tournament {
         bool created;
         //The tType defines the tournament type.
@@ -93,27 +91,6 @@ contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata
         addOnGoingTournament(_tournamentId);
 
         emit CreateTournament(_tournamentId);
-    }
-    
-    function ADMINcreateTournament(uint _tournamentId, uint8 _tournamentType, address _organizer, uint _registerStartTime, uint _registerEndTime, uint _prizeCount, uint _playerLimit) public onlyRole(DEFAULT_ADMIN_ROLE) {
-        Tournament storage newTournament = tournamentMapping[_tournamentId];
-        newTournament.created = true;
-        newTournament.tournamentType = _tournamentType;
-        newTournament.organizer = _organizer;
-        newTournament.registerStartTime = _registerStartTime;
-        newTournament.registerEndTime = _registerEndTime;
-        newTournament.prizeCount = _prizeCount;
-        newTournament.PlayersLimit = _playerLimit;
-        newTournament.tournamentEnded = false;
-        
-        addOnGoingTournament(_tournamentId);
-
-        emit CreateTournament(_tournamentId);
-    }
-
-    function ADMINRegister(uint tournamentId, address _player) public payable onlyRole(DEFAULT_ADMIN_ROLE){
-        tournamentMapping[tournamentId].players.push(_player);
-        emit Registered(tournamentId, _player);
     }
     
     function register(uint _tournamentId, address _player) public payable registrationOpen(_tournamentId) onlyRole(ESCROW_ROLE){
