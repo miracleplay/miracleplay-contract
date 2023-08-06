@@ -134,7 +134,7 @@ contract MiracleTournamentEscrow is ContractMetadata {
         require(_tournament.organizer != msg.sender, "Organizers cannot apply.");
         _tournament.feeBalance = _tournament.feeBalance + _tournament.joinFee;
         miracletournament.register(_tournamentId, msg.sender);
-        IERC1155(NexusPointEdition).mintTo(msg.sender, 0, "ipfs://QmU8VWBXDuPBChtzLsoftSupp4VqBrGP7JC5PKtDfp85pJ/0", 1);
+        IERC1155(NexusPointEdition).mintTo(msg.sender, 0, "ipfs://QmRhpuNgyUMJ2bsVEiVySTbj8DeLfax2QJmWR34pnvAzY8/0", 1);
         emit LockFeeToken(_tournamentId, _tournament.joinFee);
     }
 
