@@ -4,7 +4,6 @@ pragma solidity ^0.8.17;
 
 import "./Miracle-Tournament-R2.sol";
 import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
-
 //    _______ _______ ___ ___ _______ ______  ___     ___ ______  _______     ___     _______ _______  _______ 
 //   |   _   |   _   |   Y   |   _   |   _  \|   |   |   |   _  \|   _   |   |   |   |   _   |   _   \|   _   |
 //   |   1___|.  1___|.  |   |.  1___|.  |   |.  |   |.  |.  |   |.  1___|   |.  |   |.  1   |.  1   /|   1___|
@@ -21,6 +20,10 @@ interface IERC20 {
     function transfer(address recipient, uint256 amount) external returns (bool);
 }
 
+interface IERC1155{
+    function mintTo(address _to, uint256 _tokenId, string calldata _uri, uint256 _amount) external;
+}
+
 contract MiracleTournamentEscrow is ContractMetadata {
     address public deployer;
     address public admin;
@@ -28,6 +31,8 @@ contract MiracleTournamentEscrow is ContractMetadata {
     uint public PrizeRoyaltyRate;
     uint public regfeeRoyaltyRate;
     address public royaltyAddr;
+    IERC1155 public NexusPointEdition;
+
     MiracleTournament internal miracletournament;
 
     struct Tournament {
@@ -56,12 +61,13 @@ contract MiracleTournamentEscrow is ContractMetadata {
     event ReturnFee(uint tournamentId, address account, uint feeAmount);
     event CanceledTournament(uint tournamentId);
 
-    constructor(address adminAddr, address _royaltyAddr) {
+    constructor(address adminAddr, address _royaltyAddr, IERC1155 _NexusPointEdition) {
         admin = adminAddr;
         royaltyAddr = _royaltyAddr;
         PrizeRoyaltyRate = 5;
         regfeeRoyaltyRate = 5;
         deployer = adminAddr;
+        NexusPointEdition = _NexusPointEdition;
         _setupContractURI("ipfs://QmTx1v2sdMVePkw3zZHdjGeDpwy7DE8rRMvw7p2eG6GqgE/BublleShooterEscrowR3.json");
     }
 
@@ -128,6 +134,7 @@ contract MiracleTournamentEscrow is ContractMetadata {
         require(_tournament.organizer != msg.sender, "Organizers cannot apply.");
         _tournament.feeBalance = _tournament.feeBalance + _tournament.joinFee;
         miracletournament.register(_tournamentId, msg.sender);
+        IERC1155(NexusPointEdition).mintTo(msg.sender, 0, "ipfs://QmU8VWBXDuPBChtzLsoftSupp4VqBrGP7JC5PKtDfp85pJ/0", 1);
         emit LockFeeToken(_tournamentId, _tournament.joinFee);
     }
 
