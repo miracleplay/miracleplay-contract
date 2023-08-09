@@ -59,7 +59,6 @@ contract MiracleTournamentEscrow is ContractMetadata {
     event WithdrawFee(uint tournamentId, uint feeBalance);
     event PrizePaid(uint tournamentId, address account, uint PrizeAmount);
     event ReturnFee(uint tournamentId, address account, uint feeAmount);
-    event ReturnPrize(uint tournamentId, address account, uint PrizeAmount);
     event CanceledTournament(uint tournamentId);
 
     constructor(address adminAddr, address _royaltyAddr, IERC1155 _NexusPointEdition) {
@@ -208,8 +207,6 @@ contract MiracleTournamentEscrow is ContractMetadata {
         IERC20 token = _tournament.prizeToken;
         uint256 withdrawAmount = _tournament.prizeAmount;
         require(token.transfer(msg.sender, withdrawAmount), "Transfer failed.");
-
-        emit ReturnPrize(_tournamentId, msg.sender, withdrawAmount);
     }
 
     function cancelRegFeeWithdraw(uint _tournamentId) public {
