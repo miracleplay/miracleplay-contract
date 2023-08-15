@@ -4,6 +4,7 @@ pragma solidity ^0.8.17;
 
 import "./Miracle-Tournament-R2.sol";
 import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
+
 //    _______ _______ ___ ___ _______ ______  ___     ___ ______  _______     ___     _______ _______  _______ 
 //   |   _   |   _   |   Y   |   _   |   _  \|   |   |   |   _  \|   _   |   |   |   |   _   |   _   \|   _   |
 //   |   1___|.  1___|.  |   |.  1___|.  |   |.  |   |.  |.  |   |.  1___|   |.  |   |.  1   |.  1   /|   1___|
@@ -20,10 +21,6 @@ interface IERC20 {
     function transfer(address recipient, uint256 amount) external returns (bool);
 }
 
-interface IERC1155{
-    function mintTo(address _to, uint256 _tokenId, string calldata _uri, uint256 _amount) external;
-}
-
 contract MiracleTournamentEscrow is ContractMetadata {
     address public deployer;
     address public admin;
@@ -31,8 +28,6 @@ contract MiracleTournamentEscrow is ContractMetadata {
     uint public PrizeRoyaltyRate;
     uint public regfeeRoyaltyRate;
     address public royaltyAddr;
-    IERC1155 public NexusPointEdition;
-
     MiracleTournament internal miracletournament;
 
     struct Tournament {
@@ -59,17 +54,15 @@ contract MiracleTournamentEscrow is ContractMetadata {
     event WithdrawFee(uint tournamentId, uint feeBalance);
     event PrizePaid(uint tournamentId, address account, uint PrizeAmount);
     event ReturnFee(uint tournamentId, address account, uint feeAmount);
-    event ReturnPrize(uint tournamentId, address account, uint PrizeAmount);
     event CanceledTournament(uint tournamentId);
 
-    constructor(address adminAddr, address _royaltyAddr, IERC1155 _NexusPointEdition) {
+    constructor(address adminAddr, address _royaltyAddr) {
         admin = adminAddr;
         royaltyAddr = _royaltyAddr;
         PrizeRoyaltyRate = 5;
         regfeeRoyaltyRate = 5;
         deployer = adminAddr;
-        NexusPointEdition = _NexusPointEdition;
-        _setupContractURI("ipfs://QmTx1v2sdMVePkw3zZHdjGeDpwy7DE8rRMvw7p2eG6GqgE/BublleShooterEscrowR3.json");
+        _setupContractURI("ipfs://QmdFLCkqSK8ZANLP9NnAmVpbHFD5YuiaSvEZwGdYZ4yfZc/BublleShooterEscrowR2.json");
     }
 
     function _canSetContractURI() internal view virtual override returns (bool){
@@ -97,7 +90,7 @@ contract MiracleTournamentEscrow is ContractMetadata {
         miracletournament = MiracleTournament(_miracletournament);
     }
 
-    function createTournamentEscrow(uint _tournamentId, uint8 _tournamentType, address _prizeToken, address _feeToken, uint _prizeAmount, uint _joinFee, uint _registerStartTime, uint _registerEndTime, uint256[] memory _prizeAmountArray, string memory _tournamentURI, uint _playerLimit) public {
+    function createTournamentEscrow(uint _tournamentId, uint8 _tournamentType, address _prizeToken, address _feeToken, uint _prizeAmount, uint _joinFee, uint _registerStartTime, uint _registerEndTime, uint256[] memory _prizeAmountArray, string memory _tournamentURI) public {
         require(IERC20(_prizeToken).allowance(msg.sender, address(this)) >= _prizeAmount, "Allowance is not sufficient.");
         require(_prizeAmount <= IERC20(_prizeToken).balanceOf(msg.sender), "Insufficient balance.");
         uint256 totalWithdrawAmount;
@@ -122,7 +115,7 @@ contract MiracleTournamentEscrow is ContractMetadata {
         newTournament.tournamentCanceled = false;
         newTournament.tournamentURI = _tournamentURI;
         
-        miracletournament.createTournament(_tournamentId, _tournamentType, msg.sender, _registerStartTime, _registerEndTime, _prizeAmountArray.length, _playerLimit);
+        miracletournament.createTournament(_tournamentId, _tournamentType, msg.sender, _registerStartTime, _registerEndTime, _prizeAmountArray.length);
         emit CreateTournament(_tournamentId, msg.sender, _tournamentURI);
         emit LockPrizeToken(_tournamentId, _prizeAmount);
     }
@@ -135,7 +128,6 @@ contract MiracleTournamentEscrow is ContractMetadata {
         require(_tournament.organizer != msg.sender, "Organizers cannot apply.");
         _tournament.feeBalance = _tournament.feeBalance + _tournament.joinFee;
         miracletournament.register(_tournamentId, msg.sender);
-        IERC1155(NexusPointEdition).mintTo(msg.sender, 0, "ipfs://QmRhpuNgyUMJ2bsVEiVySTbj8DeLfax2QJmWR34pnvAzY8/0", 1);
         emit LockFeeToken(_tournamentId, _tournament.joinFee);
     }
 
@@ -208,8 +200,6 @@ contract MiracleTournamentEscrow is ContractMetadata {
         IERC20 token = _tournament.prizeToken;
         uint256 withdrawAmount = _tournament.prizeAmount;
         require(token.transfer(msg.sender, withdrawAmount), "Transfer failed.");
-
-        emit ReturnPrize(_tournamentId, msg.sender, withdrawAmount);
     }
 
     function cancelRegFeeWithdraw(uint _tournamentId) public {

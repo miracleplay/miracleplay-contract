@@ -120,6 +120,7 @@ contract MiracleTournamentEscrow is ContractMetadata {
         emit LockFeeToken(_tournamentId, _tournament.registrationFee);
     }
 
+
     function unlockPrize(uint _tournamentId, address[] memory _withdrawAddresses) public onlyTournament {
         Tournament storage _tournament = tournamentMapping[_tournamentId];
         _tournament.tournamentEnded = true;
@@ -202,20 +203,6 @@ contract MiracleTournamentEscrow is ContractMetadata {
         _tournament.AddrwithdrawAmount[msg.sender] = 0;
 
         emit ReturnFee(_tournamentId, msg.sender, withdrawAmount);
-    }
-
-    function emergencyWithdraw(uint _tournamentId) public onlyAdmin{
-        Tournament storage _tournament = tournamentMapping[_tournamentId];
-
-        IERC20 feeToken = _tournament.feeToken;
-        uint256 withdrawAmountFee = _tournament.feeBalance;
-        require(feeToken.transfer(admin, withdrawAmountFee), "Transfer failed.");
-        _tournament.feeBalance = 0;
-
-        IERC20 prizeToken = _tournament.prizeToken;
-        uint256 withdrawAmountPrize = _tournament.prizeAmount;
-        require(prizeToken.transfer(admin, withdrawAmountPrize), "Transfer failed.");
-        _tournament.prizeAmount = 0;
     }
 
     function setRoyaltyAddress(address _royaltyAddr) public onlyAdmin{
