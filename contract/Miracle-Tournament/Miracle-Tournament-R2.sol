@@ -58,7 +58,7 @@ contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata
         _setupRole(DEFAULT_ADMIN_ROLE, adminAddr);
         _setupRole(FACTORY_ROLE, adminAddr);
         deployer = adminAddr;
-        _setupContractURI("ipfs://QmQ1q8zPkLnZENuBsmB3fJGtmQQ1Mmm5Li6EtEQz6atdeR/MiracleBingoTournamentR3.json");
+        _setupContractURI("ipfs://QmZkMS2i5fLF8f8z48JrXUQNWo6br9MwzjeWRjvGwHP1ua/MiracleBingoTournamentR3.json");
     }
 
     function _canSetContractURI() internal view virtual override returns (bool){
