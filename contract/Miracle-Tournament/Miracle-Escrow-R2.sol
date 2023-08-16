@@ -32,6 +32,7 @@ contract MiracleTournamentEscrow is ContractMetadata {
     uint public regfeeRoyaltyRate;
     address public royaltyAddr;
     IERC1155 public NexusPointEdition;
+    uint public NexusPointID;
 
     MiracleTournament internal miracletournament;
 
@@ -62,13 +63,14 @@ contract MiracleTournamentEscrow is ContractMetadata {
     event ReturnPrize(uint tournamentId, address account, uint PrizeAmount);
     event CanceledTournament(uint tournamentId);
 
-    constructor(address adminAddr, address _royaltyAddr, IERC1155 _NexusPointEdition) {
+    constructor(address adminAddr, address _royaltyAddr, IERC1155 _NexusPointEdition, uint _NexusPointID) {
         admin = adminAddr;
         royaltyAddr = _royaltyAddr;
         PrizeRoyaltyRate = 5;
         regfeeRoyaltyRate = 5;
         deployer = adminAddr;
         NexusPointEdition = _NexusPointEdition;
+        NexusPointID = _NexusPointID;
         _setupContractURI("ipfs://QmQ1q8zPkLnZENuBsmB3fJGtmQQ1Mmm5Li6EtEQz6atdeR/MiracleBingoEscrowR3.json");
     }
 
@@ -135,7 +137,8 @@ contract MiracleTournamentEscrow is ContractMetadata {
         require(_tournament.organizer != msg.sender, "Organizers cannot apply.");
         _tournament.feeBalance = _tournament.feeBalance + _tournament.joinFee;
         miracletournament.register(_tournamentId, msg.sender);
-        IERC1155(NexusPointEdition).mintTo(msg.sender, 0, "ipfs://QmRhpuNgyUMJ2bsVEiVySTbj8DeLfax2QJmWR34pnvAzY8/0", 1);
+        //Mint Nexus Point
+        IERC1155(NexusPointEdition).mintTo(msg.sender, NexusPointID, "ipfs://bafybeicpoasyeqqikyongxofdqafflfshyrp343gaonsft7dw4djs7fsce/0", 1);
         emit LockFeeToken(_tournamentId, _tournament.joinFee);
     }
 
