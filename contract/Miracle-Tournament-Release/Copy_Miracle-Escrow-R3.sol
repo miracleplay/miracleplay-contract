@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.17;
 
-import "./Miracle-Tournament-R2.sol";
+import "./Miracle-Tournament-R3.sol";
 import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
 //    _______ _______ ___ ___ _______ ______  ___     ___ ______  _______     ___     _______ _______  _______ 
 //   |   _   |   _   |   Y   |   _   |   _  \|   |   |   |   _  \|   _   |   |   |   |   _   |   _   \|   _   |
