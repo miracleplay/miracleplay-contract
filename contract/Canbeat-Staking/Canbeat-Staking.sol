@@ -26,8 +26,8 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 import "./module/Canbeat-Stake-Core.sol";
 
-// CanbeatStakeDeca, CanbeatStakePeta, CanbeatStakeQuetta
-contract CanbeatStakeDeca is StakeMiracleCore
+// CanbeatStakeDeca 0, CanbeatStakePeta 1, CanbeatStakeQuetta 2
+contract TabStakeQuetta is StakeMiracleCore
 {
     constructor(address _defaultAdmin, uint256 _stakingsection, DropERC1155 _NodeNFTToken, TokenERC20 _RewardToken, address _DaoAddress, uint256 _rewardPerMin, uint256 _alreadyClaimed) {
         StakingSection = _stakingsection;
@@ -54,7 +54,7 @@ contract CanbeatStakeDeca is StakeMiracleCore
     // User Function 
     // ===================================================================================
     function stake(uint256 _depositAmount) external nonReentrant{
-        _stake(msg.sender, _depositAmount, 0);
+        _stake(msg.sender, _depositAmount, 2);
     }
 
     function withdraw(uint256 _withdrawAmount) external nonReentrant {
@@ -85,7 +85,7 @@ contract CanbeatStakeDeca is StakeMiracleCore
     // Admin Function 
     // ===================================================================================
     function adminStake(address _user, uint256 _depositAmount) external onlyRole(DEFAULT_ADMIN_ROLE) nonReentrant {
-        _stake(_user, _depositAmount, 0);
+        _stake(_user, _depositAmount, 2);
     }
 
     function adminWithdraw(address _user, uint256 _withdrawAmount) external onlyRole(DEFAULT_ADMIN_ROLE) nonReentrant {
