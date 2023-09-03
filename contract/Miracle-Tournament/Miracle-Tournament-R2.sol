@@ -129,8 +129,7 @@ contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata
             prizeAddr[i] = _rankers[i];
         }
         // Unlock Escrow Prize Token / Fee Token to Escrow contract
-        MiracleTournamentEscrow(EscrowAddr).unlockPrize(_tournamentId, prizeAddr);
-        MiracleTournamentEscrow(EscrowAddr).unlockRegFee(_tournamentId);
+        MiracleTournamentEscrow(EscrowAddr).endedTournament(_tournamentId, prizeAddr);
         tournament.tournamentEnded = true;
 
         removeOnGoingTournament(_tournamentId);
