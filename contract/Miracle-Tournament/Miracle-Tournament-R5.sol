@@ -14,7 +14,7 @@ import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
 //   |:  1   |:  1   |:  1   |:  1   |:  |   |:  1   |:  |:  |   |:  1   |   |:  1   |:  |   |:  1    |:  1   |
 //   |::.. . |::.. . |\:.. ./|::.. . |::.|   |::.. . |::.|::.|   |::.. . |   |::.. . |::.|:. |::.. .  |::.. . |
 //   `-------`-------' `---' `-------`--- ---`-------`---`--- ---`-------'   `-------`--- ---`-------'`-------'
-//   Tournament V0.3.0
+//   Tournament V0.5.0
 
 contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata {
     address public deployer;
@@ -24,9 +24,6 @@ contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata
 
     struct Tournament {
         bool created;
-        //The tType defines the tournament type.
-        // 1 - Total Score Tournament
-        // 2 - Top Score Tournament
         uint8 tournamentType;
         address [] players;
         mapping(address => bool) playerRegistered;

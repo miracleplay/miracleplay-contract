@@ -11,7 +11,7 @@ import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
 //   |:  1   |:  1   |:  1   |:  1   |:  |   |:  1   |:  |:  |   |:  1   |   |:  1   |:  |   |:  1    |:  1   |
 //   |::.. . |::.. . |\:.. ./|::.. . |::.|   |::.. . |::.|::.|   |::.. . |   |::.. . |::.|:. |::.. .  |::.. . |
 //   `-------`-------' `---' `-------`--- ---`-------`---`--- ---`-------'   `-------`--- ---`-------'`-------'
-//   TournamentEscrow V0.3.1
+//   TournamentEscrow V0.5.0
 
 interface IERC20 {
     function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
@@ -75,8 +75,10 @@ contract MiracleTournamentEscrow is ContractMetadata {
         admin = adminAddr;
         royaltyAddrDev = _royaltyAddrDev;
         royaltyAddrFlp = _royaltyAddrFlp;
+        // Set default dev royalty 
         RoyaltyPrizeDev = 5;
         RoyaltyregfeeDev = 5;
+        // Set default platform royalty 
         RoyaltyPrizeFlp = 5;
         RoyaltyregfeeFlp = 5;
         deployer = adminAddr;
@@ -155,7 +157,7 @@ contract MiracleTournamentEscrow is ContractMetadata {
         require(_tournament.feeToken.allowance(msg.sender, address(this)) >= _tournament.joinFee, "Allowance is not sufficient.");
         require(_tournament.joinFee <= _tournament.feeToken.balanceOf(msg.sender), "Insufficient balance.");
         require(_tournament.feeToken.transferFrom(msg.sender, address(this), _tournament.joinFee), "Transfer failed.");
-        require(_tournament.organizer != msg.sender, "Organizers cannot apply.");
+        require(_tournament.organizer != msg.sender, "Organizers cannot register.");
         _tournament.feeBalance = _tournament.feeBalance + _tournament.joinFee;
         miracletournament.register(_tournamentId, msg.sender);
         //Mint Nexus Point
@@ -163,7 +165,7 @@ contract MiracleTournamentEscrow is ContractMetadata {
         emit LockFeeToken(_tournamentId, _tournament.joinFee);
     }
 
-    //The tournament ends and the ORGANIZER withdraws the entry fee.
+    //The tournament END and the ORGANIZER withdraws the entry fee.
     function feeWithdraw(uint _tournamentId) external onlyOrganizer(_tournamentId){
         Tournament storage _tournament = tournamentMapping[_tournamentId];
         require(_tournament.tournamentEnded, "Tournament has not ended yet");
@@ -182,7 +184,7 @@ contract MiracleTournamentEscrow is ContractMetadata {
         emit WithdrawFee(_tournamentId, totalAmount);
     }
 
-    // The tournament ends and the WINNER withdraws the prize token.
+    // The tournament END and the WINNER withdraws the prize token.
     function prizeWithdraw(uint _tournamentId) external {
         Tournament storage _tournament = tournamentMapping[_tournamentId];
         require(_tournament.tournamentEnded, "Tournament has not ended yet");
@@ -201,7 +203,7 @@ contract MiracleTournamentEscrow is ContractMetadata {
         emit PrizePaid(_tournamentId, msg.sender, totalAmount);
     }
 
-    // The tournament will be canceled and the ORGANIZER will withdraw the prize token.
+    // The tournament CANCEL and the ORGANIZER withdraw the prize token.
     function cancelPrizeWithdraw(uint _tournamentId) external onlyOrganizer(_tournamentId){
         Tournament storage _tournament = tournamentMapping[_tournamentId];
         require(_tournament.tournamentCanceled, "Tournament has not canceled");
@@ -214,7 +216,7 @@ contract MiracleTournamentEscrow is ContractMetadata {
         emit ReturnPrize(_tournamentId, msg.sender, withdrawAmount);
     }
 
-    // The tournament will be canceled and the entry fee will be withdrawn by the USERS.
+    // The tournament CANCEL and the USERS withdrawn entry fee.
     function cancelRegFeeWithdraw(uint _tournamentId) external {
         Tournament storage _tournament = tournamentMapping[_tournamentId];
         require(_tournament.tournamentCanceled, "Tournament has not canceled");
@@ -228,9 +230,12 @@ contract MiracleTournamentEscrow is ContractMetadata {
         emit ReturnFee(_tournamentId, msg.sender, withdrawAmount);
     }
 
+    // Tournament cancel unlock prize and entry fee
     function _CanceledUnlock(uint _tournamentId, address[] memory _withdrawAddresses) internal {
         Tournament storage _tournament = tournamentMapping[_tournamentId];
+        // Set tournament status canceled
         _tournament.tournamentCanceled = true;
+        // Set users entry fee return
         for (uint256 i = 0; i < _withdrawAddresses.length; i++) {
             _tournament.playersWithdrawableFee[_withdrawAddresses[i]] = _tournament.joinFee;
         }
@@ -238,16 +243,19 @@ contract MiracleTournamentEscrow is ContractMetadata {
         emit CanceledUnlock(_tournamentId);
     }
 
+    // Tournament end unlock prize and entry fee
     function _EndedUnlock(uint _tournamentId, address[] memory _withdrawAddresses) internal {
         Tournament storage _tournament = tournamentMapping[_tournamentId];
+        // Set tournament status ended
         _tournament.tournamentEnded = true;
 
         uint256[] memory _prizeAmountArray = _tournament.prizeAmountArray;
         require(_withdrawAddresses.length == _prizeAmountArray.length, "Arrays must be the same length.");
-
+        // Set winner prize amount
         for (uint256 i = 0; i < _withdrawAddresses.length; i++) {
             _tournament.playersWithdrawablePrize[_withdrawAddresses[i]] = _prizeAmountArray[i];
         }
+        // Set users entry fee to org
         _tournament.playersWithdrawableFee[_tournament.organizer] = _tournament.feeBalance;
 
         emit EndedUnlock(_tournamentId, _withdrawAddresses);
