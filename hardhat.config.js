@@ -10,6 +10,6 @@ module.exports = {
     },
   },
   paths: {
-    sources: "./contract/Canbeat-Staking/",
+    sources: "./contract/Miracle-Tournament/",
   },
 };
