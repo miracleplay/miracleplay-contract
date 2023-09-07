@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.17;    
 
-import "./Miracle-Escrow-R2.sol";
+import "./Miracle-Escrow-R5.sol";
 import "@thirdweb-dev/contracts/extension/PermissionsEnumerable.sol";
 import "@thirdweb-dev/contracts/extension/Multicall.sol";
 import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
@@ -136,12 +136,7 @@ contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata
     }
 
     function cancelTournament(uint _tournamentId) public onlyRole(FACTORY_ROLE) {
-        Tournament storage tournament = tournamentMapping[_tournamentId];
-        
-        // Get the list of player addresses
-        address [] memory players = tournament.players;
-        // Unlock Escrow Prize Token / Fee Token to Escrow contract
-        MiracleTournamentEscrow(EscrowAddr).canceledTournament(_tournamentId, players);
+        MiracleTournamentEscrow(EscrowAddr).canceledTournament(_tournamentId);
 
         removeOnGoingTournament(_tournamentId);
         addEndedTournament(_tournamentId);

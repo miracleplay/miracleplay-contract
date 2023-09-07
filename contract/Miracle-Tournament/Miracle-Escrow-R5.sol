@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.17;
 
-import "./Miracle-Tournament-R2.sol";
+import "./Miracle-Tournament-R5.sol";
 import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
 //    _______ _______ ___ ___ _______ ______  ___     ___ ______  _______     ___     _______ _______  _______ 
 //   |   _   |   _   |   Y   |   _   |   _  \|   |   |   |   _  \|   _   |   |   |   |   _   |   _   \|   _   |
@@ -50,12 +50,14 @@ contract MiracleTournamentEscrow is ContractMetadata {
         uint joinFee;
         uint feeBalance;
         uint256[] prizeAmountArray;
+        address [] players;
         mapping (address => uint256) playersWithdrawablePrize;
         mapping (address => uint256) playersWithdrawableFee;
         bool tournamentCreated;
         bool tournamentEnded;
         bool tournamentCanceled;
         string tournamentURI;
+        uint PlayersLimit;
     }
     mapping(uint => Tournament) public tournamentMapping;
 
@@ -137,6 +139,7 @@ contract MiracleTournamentEscrow is ContractMetadata {
         newTournament.tournamentEnded = false;
         newTournament.tournamentCanceled = false;
         newTournament.tournamentURI = _tournamentURI;
+        newTournament.PlayersLimit = _playerLimit;
         
         miracletournament.createTournament(_tournamentId, _tournamentType, msg.sender, _registerStartTime, _registerEndTime, _prizeAmountArray.length, _playerLimit);
         emit CreateTournament(_tournamentId, msg.sender, _tournamentURI);
@@ -147,8 +150,8 @@ contract MiracleTournamentEscrow is ContractMetadata {
         _EndedUnlock(_tournamentId, _withdrawAddresses);
     }
 
-    function canceledTournament(uint _tournamentId, address[] memory _withdrawAddresses) external onlyTournament{
-        _CanceledUnlock(_tournamentId, _withdrawAddresses);
+    function canceledTournament(uint _tournamentId) external onlyTournament{
+        _CanceledUnlock(_tournamentId);
     }
 
     // The USERS sign up for the tournament.
@@ -158,11 +161,45 @@ contract MiracleTournamentEscrow is ContractMetadata {
         require(_tournament.joinFee <= _tournament.feeToken.balanceOf(msg.sender), "Insufficient balance.");
         require(_tournament.feeToken.transferFrom(msg.sender, address(this), _tournament.joinFee), "Transfer failed.");
         require(_tournament.organizer != msg.sender, "Organizers cannot register.");
+        require(tournamentMapping[_tournamentId].players.length < tournamentMapping[_tournamentId].PlayersLimit, "The number of participants in the tournament is full.");
+
         _tournament.feeBalance = _tournament.feeBalance + _tournament.joinFee;
         miracletournament.register(_tournamentId, msg.sender);
+        _tournament.players.push(msg.sender);
         //Mint Nexus Point
         IERC1155(NexusPointEdition).mintTo(msg.sender, NexusPointID, "ipfs://bafybeicpoasyeqqikyongxofdqafflfshyrp343gaonsft7dw4djs7fsce/0", 1);
         emit LockFeeToken(_tournamentId, _tournament.joinFee);
+    }
+
+    // Tournament CANCEL unlock PRIZE and entry fee
+    function _CanceledUnlock(uint _tournamentId) internal {
+        Tournament storage _tournament = tournamentMapping[_tournamentId];
+        // Set tournament status canceled
+        _tournament.tournamentCanceled = true;
+        // Set users entry fee return
+        for (uint256 i = 0; i < _tournament.players.length; i++) {
+            _tournament.playersWithdrawableFee[_tournament.players[i]] = _tournament.joinFee;
+        }
+        _tournament.playersWithdrawablePrize[_tournament.organizer] = _tournament.prizeAmount;
+        emit CanceledUnlock(_tournamentId);
+    }
+
+    // Tournament ENC unlock PRIZE and entry fee
+    function _EndedUnlock(uint _tournamentId, address[] memory _winnerAddresses) internal {
+        Tournament storage _tournament = tournamentMapping[_tournamentId];
+        // Set tournament status ended
+        _tournament.tournamentEnded = true;
+
+        uint256[] memory _prizeAmountArray = _tournament.prizeAmountArray;
+        require(_winnerAddresses.length == _prizeAmountArray.length, "Arrays must be the same length.");
+        // Set winner prize amount
+        for (uint256 i = 0; i < _winnerAddresses.length; i++) {
+            _tournament.playersWithdrawablePrize[_winnerAddresses[i]] = _prizeAmountArray[i];
+        }
+        // Set users entry fee to org
+        _tournament.playersWithdrawableFee[_tournament.organizer] = _tournament.feeBalance;
+
+        emit EndedUnlock(_tournamentId, _winnerAddresses);
     }
 
     //The tournament END and the ORGANIZER withdraws the entry fee.
@@ -179,7 +216,7 @@ contract MiracleTournamentEscrow is ContractMetadata {
         require(token.transfer(royaltyAddrDev, royaltyAmountDev), "Transfer failed.");
         require(token.transfer(royaltyAddrFlp, royaltyAmountFlp), "Transfer failed.");
         require(token.transfer(_tournament.organizer, regfeeAmount), "Transfer failed.");
-        _tournament.feeBalance = 0;
+        _tournament.playersWithdrawableFee[_tournament.organizer] = 0;
         
         emit WithdrawFee(_tournamentId, totalAmount);
     }
@@ -203,7 +240,7 @@ contract MiracleTournamentEscrow is ContractMetadata {
         emit PrizePaid(_tournamentId, msg.sender, totalAmount);
     }
 
-    // The tournament CANCEL and the ORGANIZER withdraw the prize token.
+    // The tournament CANCEL and the ORGANIZER withdraw the PRIZE token.
     function cancelPrizeWithdraw(uint _tournamentId) external onlyOrganizer(_tournamentId){
         Tournament storage _tournament = tournamentMapping[_tournamentId];
         require(_tournament.tournamentCanceled, "Tournament has not canceled");
@@ -216,7 +253,7 @@ contract MiracleTournamentEscrow is ContractMetadata {
         emit ReturnPrize(_tournamentId, msg.sender, withdrawAmount);
     }
 
-    // The tournament CANCEL and the USERS withdrawn entry fee.
+    // The tournament CANCEL and the USERS withdrawn entry FEE.
     function cancelRegFeeWithdraw(uint _tournamentId) external {
         Tournament storage _tournament = tournamentMapping[_tournamentId];
         require(_tournament.tournamentCanceled, "Tournament has not canceled");
@@ -230,36 +267,7 @@ contract MiracleTournamentEscrow is ContractMetadata {
         emit ReturnFee(_tournamentId, msg.sender, withdrawAmount);
     }
 
-    // Tournament cancel unlock prize and entry fee
-    function _CanceledUnlock(uint _tournamentId, address[] memory _withdrawAddresses) internal {
-        Tournament storage _tournament = tournamentMapping[_tournamentId];
-        // Set tournament status canceled
-        _tournament.tournamentCanceled = true;
-        // Set users entry fee return
-        for (uint256 i = 0; i < _withdrawAddresses.length; i++) {
-            _tournament.playersWithdrawableFee[_withdrawAddresses[i]] = _tournament.joinFee;
-        }
-        _tournament.playersWithdrawablePrize[_tournament.organizer] = _tournament.prizeAmount;
-        emit CanceledUnlock(_tournamentId);
-    }
 
-    // Tournament end unlock prize and entry fee
-    function _EndedUnlock(uint _tournamentId, address[] memory _withdrawAddresses) internal {
-        Tournament storage _tournament = tournamentMapping[_tournamentId];
-        // Set tournament status ended
-        _tournament.tournamentEnded = true;
-
-        uint256[] memory _prizeAmountArray = _tournament.prizeAmountArray;
-        require(_withdrawAddresses.length == _prizeAmountArray.length, "Arrays must be the same length.");
-        // Set winner prize amount
-        for (uint256 i = 0; i < _withdrawAddresses.length; i++) {
-            _tournament.playersWithdrawablePrize[_withdrawAddresses[i]] = _prizeAmountArray[i];
-        }
-        // Set users entry fee to org
-        _tournament.playersWithdrawableFee[_tournament.organizer] = _tournament.feeBalance;
-
-        emit EndedUnlock(_tournamentId, _withdrawAddresses);
-    }
 
     // Set royalty address
     function setRoyaltyDevAddress(address _royaltyAddr) external onlyAdmin{
@@ -296,6 +304,16 @@ contract MiracleTournamentEscrow is ContractMetadata {
     function withdrawableFee(uint _tournamentId, address player) external view returns(uint _amount) {
         Tournament storage _tournament = tournamentMapping[_tournamentId];
         return _tournament.playersWithdrawableFee[player];
+    }
+
+    function withdrawableAmount(uint _tournamentId, address player) external view returns(uint [] memory) {
+        Tournament storage _tournament = tournamentMapping[_tournamentId];
+        uint _prizeAmount = _tournament.playersWithdrawablePrize[player];
+        uint _feeAmount = _tournament.playersWithdrawableFee[player];
+        uint[] memory amounts = new uint[](2);
+        amounts[0] = _prizeAmount;
+        amounts[1] = _feeAmount;
+        return amounts;
     }
 
 }
