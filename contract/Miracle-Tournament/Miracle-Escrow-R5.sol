@@ -86,6 +86,8 @@ contract MiracleTournamentEscrow is ContractMetadata {
         deployer = adminAddr;
         NexusPointEdition = _NexusPointEdition;
         NexusPointID = _NexusPointID;
+        // Bubble shooter : ipfs://QmVxtz27K6oCPeDZKHDoXGpqu3eYcDmXTXkQ66bn5z5uEm/BubbleShooterEscrowR5.json
+        // Miracle bingo : ipfs://QmVxtz27K6oCPeDZKHDoXGpqu3eYcDmXTXkQ66bn5z5uEm/MiracleBingoEscrowR5.json
         _setupContractURI("ipfs://QmZkMS2i5fLF8f8z48JrXUQNWo6br9MwzjeWRjvGwHP1ua/MiracleBingoEscrowR3.json");
     }
 
@@ -167,6 +169,8 @@ contract MiracleTournamentEscrow is ContractMetadata {
         miracletournament.register(_tournamentId, msg.sender);
         _tournament.players.push(msg.sender);
         //Mint Nexus Point
+        // Bubble shooter IPFS : ipfs://QmRhpuNgyUMJ2bsVEiVySTbj8DeLfax2QJmWR34pnvAzY8/0
+        // Miracle bingo IPFS : ipfs://QmTgk6ni1Tx826UTKZsMf8Dz6otf9UoyEnrt8y54t8cPLc/0
         IERC1155(NexusPointEdition).mintTo(msg.sender, NexusPointID, "ipfs://bafybeicpoasyeqqikyongxofdqafflfshyrp343gaonsft7dw4djs7fsce/0", 1);
         emit LockFeeToken(_tournamentId, _tournament.joinFee);
     }
