@@ -11,7 +11,7 @@ import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
 //   |:  1   |:  1   |:  1   |:  1   |:  |   |:  1   |:  |:  |   |:  1   |   |:  1   |:  |   |:  1    |:  1   |
 //   |::.. . |::.. . |\:.. ./|::.. . |::.|   |::.. . |::.|::.|   |::.. . |   |::.. . |::.|:. |::.. .  |::.. . |
 //   `-------`-------' `---' `-------`--- ---`-------`---`--- ---`-------'   `-------`--- ---`-------'`-------'
-//   TournamentEscrow V0.7                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              .0
+//   TournamentEscrow v1.0                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           .0
                                              
 interface IERC20 {
     function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
@@ -28,20 +28,21 @@ contract MiracleTournamentEscrow is ContractMetadata {
     address public deployer;
     address public admin;
     address payable public tournamentAddr;
-
-    uint public RoyaltyPrizeDev; // Royalty rate
-    uint public RoyaltyregfeeDev; // Royalty rate
-    uint public RoyaltyPrizeFlp; // Royalty rate
-    uint public RoyaltyregfeeFlp; // Royalty rate
-    
+     // Royalty rate
+    uint public RoyaltyPrizeDev;
+    uint public RoyaltyregfeeDev;
+    uint public RoyaltyPrizeFlp;
+    uint public RoyaltyregfeeFlp;
+    // Royalty address
     address public royaltyAddrDev;
     address public royaltyAddrFlp;
-    
+    // NexusPoint
     IERC1155 public NexusPointEdition;
+    string private NexusPointIPFS;
     uint public NexusPointID;
-
+    // Miracle tournament
     MiracleTournament internal miracletournament;
-
+    // Tournament struct
     struct Tournament {
         address organizer;
         IERC20 prizeToken;
@@ -56,6 +57,7 @@ contract MiracleTournamentEscrow is ContractMetadata {
         string tournamentURI;
         uint PlayersLimit;
     }
+    // Mapping tournament ID
     mapping(uint => Tournament) public tournamentMapping;
 
     event CreateTournament(uint tournamentId, address organizer, string tournamentURI);
@@ -70,7 +72,7 @@ contract MiracleTournamentEscrow is ContractMetadata {
     event CanceledUnlock(uint tournamentId);
     event EndedUnlock(uint tournamentId, address [] _withdrawAddresses);
 
-    constructor(address adminAddr, address _royaltyAddrDev, address _royaltyAddrFlp, IERC1155 _NexusPointEdition, uint _NexusPointID) {
+    constructor(address adminAddr, address _royaltyAddrDev, address _royaltyAddrFlp, IERC1155 _NexusPointEdition, uint _NexusPointID, string memory _contractURI, string memory _NexusPointIPFS) {
         admin = adminAddr;
         royaltyAddrDev = _royaltyAddrDev;
         royaltyAddrFlp = _royaltyAddrFlp;
@@ -83,9 +85,8 @@ contract MiracleTournamentEscrow is ContractMetadata {
         deployer = adminAddr;
         NexusPointEdition = _NexusPointEdition;
         NexusPointID = _NexusPointID;
-        // Bubble shooter : ipfs://QmVxtz27K6oCPeDZKHDoXGpqu3eYcDmXTXkQ66bn5z5uEm/BubbleShooterEscrowR5.json
-        // Miracle bingo : ipfs://QmVxtz27K6oCPeDZKHDoXGpqu3eYcDmXTXkQ66bn5z5uEm/MiracleBingoEscrowR5.json
-        _setupContractURI("ipfs://QmVxtz27K6oCPeDZKHDoXGpqu3eYcDmXTXkQ66bn5z5uEm/MiracleBingoEscrowR5.json");
+        NexusPointIPFS = _NexusPointIPFS;
+        _setupContractURI(_contractURI);
     }
 
     function _canSetContractURI() internal view virtual override returns (bool){
@@ -146,11 +147,11 @@ contract MiracleTournamentEscrow is ContractMetadata {
     }
 
     function endedTournament(uint _tournamentId, address[] memory _withdrawAddresses) external onlyTournament {
-        _EndedUnlock(_tournamentId, _withdrawAddresses);
+        _EndedUnlockTransfer(_tournamentId, _withdrawAddresses);
     }
 
     function canceledTournament(uint _tournamentId, address[] memory _entryPlayers) external onlyTournament{
-        _CanceledUnlock(_tournamentId, _entryPlayers);
+        _CanceledUnlockTransfer(_tournamentId, _entryPlayers);
     }
 
     // The USERS sign up for the tournament.
@@ -164,13 +165,10 @@ contract MiracleTournamentEscrow is ContractMetadata {
         _tournament.feeBalance = _tournament.feeBalance + _tournament.joinFee;
         miracletournament.register(_tournamentId, msg.sender);
         //Mint Nexus Point
-        // Bubble shooter IPFS : ipfs://QmRhpuNgyUMJ2bsVEiVySTbj8DeLfax2QJmWR34pnvAzY8/0
-        // Miracle bingo IPFS : ipfs://QmTgk6ni1Tx826UTKZsMf8Dz6otf9UoyEnrt8y54t8cPLc/0
-        IERC1155(NexusPointEdition).mintTo(msg.sender, NexusPointID, "ipfs://QmTgk6ni1Tx826UTKZsMf8Dz6otf9UoyEnrt8y54t8cPLc/0", 1);
+        IERC1155(NexusPointEdition).mintTo(msg.sender, NexusPointID, NexusPointIPFS, 1);
         emit LockFeeToken(_tournamentId, _tournament.joinFee);
     }
 
-    // R5.1
     // Tournament CANCEL unlock PRIZE and entry fee (auto transfer)
     function _CanceledUnlockTransfer(uint _tournamentId, address[] memory _players) internal {
         Tournament storage _tournament = tournamentMapping[_tournamentId];
@@ -184,7 +182,6 @@ contract MiracleTournamentEscrow is ContractMetadata {
         emit CanceledUnlock(_tournamentId);
     }
 
-    //R5.1
     // Tournament END unlock PRIZE and entry fee (auto transfer)
     function _EndedUnlockTransfer(uint _tournamentId, address[] memory _winner) internal {
         Tournament storage _tournament = tournamentMapping[_tournamentId];
@@ -203,30 +200,38 @@ contract MiracleTournamentEscrow is ContractMetadata {
         emit EndedUnlock(_tournamentId, _winnerAddresses);
     }
 
-    // Set royalty address
-    function setRoyaltyDevAddress(address _royaltyAddr) external onlyAdmin{
+    // upgrade royalty address
+    function upgradeRoyaltyDevAddress(address _royaltyAddr) external onlyAdmin{
         royaltyAddrDev = _royaltyAddr;
     }
-
-    function setRoyaltyFlpAddress(address _royaltyAddr) external onlyAdmin{
+    function upgradeRoyaltyFlpAddress(address _royaltyAddr) external onlyAdmin{
         royaltyAddrFlp = _royaltyAddr;
     }
 
-    // Set prize royalty rate
-    function setPrizeRoyaltyDevRate(uint _royaltyRate) external onlyAdmin{
+    // upgrade prize royalty rate
+    function upgradePrizeRoyaltyDevRate(uint _royaltyRate) external onlyAdmin{
         RoyaltyPrizeDev = _royaltyRate;
     }
-
-    function setPrizeRoyaltyFlpRate(uint _royaltyRate) external onlyAdmin{
+    function upgradePrizeRoyaltyFlpRate(uint _royaltyRate) external onlyAdmin{
         RoyaltyPrizeFlp = _royaltyRate;
     }
 
-    // Set regfee royalty rate
-    function setRegfeeRoyaltyDevRate(uint _royaltyRate) external onlyAdmin{
+    // upgrade regfee royalty rate
+    function upgradeRegfeeRoyaltyDevRate(uint _royaltyRate) external onlyAdmin{
         RoyaltyregfeeDev = _royaltyRate;
     }
-
-    function setRegfeeRoyaltyFlpRate(uint _royaltyRate) external onlyAdmin{
+    function upgradeRegfeeRoyaltyFlpRate(uint _royaltyRate) external onlyAdmin{
         RoyaltyregfeeFlp = _royaltyRate;
+    }
+
+    //upgrade NexusPoint
+    function upgradeNexusEdition(address _NexusPointEdition) external onlyAdmin{
+        NexusPointEdition = _NexusPointEdition;
+    }
+    function upgradeNexusID(address _NexusPointID) external onlyAdmin{
+        NexusPointID = _NexusPointID;
+    }
+    function upgradeNexusIPFS(string memory _NexusPointIPFS) external onlyAdmin{
+        NexusPointIPFS = _NexusPointIPFS;
     }
 }

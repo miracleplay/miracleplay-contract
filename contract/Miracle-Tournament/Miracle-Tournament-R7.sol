@@ -14,7 +14,7 @@ import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
 //   |:  1   |:  1   |:  1   |:  1   |:  |   |:  1   |:  |:  |   |:  1   |   |:  1   |:  |   |:  1    |:  1   |
 //   |::.. . |::.. . |\:.. ./|::.. . |::.|   |::.. . |::.|::.|   |::.. . |   |::.. . |::.|:. |::.. .  |::.. . |
 //   `-------`-------' `---' `-------`--- ---`-------`---`--- ---`-------'   `-------`--- ---`-------'`-------'
-//   Tournament V0.5.0
+//   Tournament V1.0
 
 contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata {
     address public deployer;
@@ -48,16 +48,14 @@ contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata
     event TournamentCanceled(uint tournamentId);
     event ShuffledPlayers(uint tournamentId, uint playersCount);
 
-    bytes32 public constant FACTORY_ROLE = keccak256("FACTORY_ROLE");
-    bytes32 public constant ESCROW_ROLE = keccak256("ESCROW_ROLE");
+    bytes32 private constant FACTORY_ROLE = keccak256("FACTORY_ROLE");
+    bytes32 private constant ESCROW_ROLE = keccak256("ESCROW_ROLE");
 
-    constructor(address adminAddr) {
+    constructor(address adminAddr, stirng memory _contractURI)  {
         _setupRole(DEFAULT_ADMIN_ROLE, adminAddr);
         _setupRole(FACTORY_ROLE, adminAddr);
         deployer = adminAddr;
-		// Bubble shooter : ipfs://QmVxtz27K6oCPeDZKHDoXGpqu3eYcDmXTXkQ66bn5z5uEm/BubbleShooterTournamentR5.json
-        // Miracle bingo : ipfs://QmVxtz27K6oCPeDZKHDoXGpqu3eYcDmXTXkQ66bn5z5uEm/MiracleBingoTournamentR5.json
-        _setupContractURI("ipfs://QmVxtz27K6oCPeDZKHDoXGpqu3eYcDmXTXkQ66bn5z5uEm/MiracleBingoTournamentR5.json");
+        _setupContractURI(_contractURI);
     }
 
     function _canSetContractURI() internal view virtual override returns (bool){
@@ -88,7 +86,6 @@ contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata
         newTournament.tournamentEnded = false;
         
         addOnGoingTournament(_tournamentId);
-
         emit CreateTournament(_tournamentId);
     }
     
@@ -96,7 +93,7 @@ contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata
         require(block.timestamp > tournamentMapping[_tournamentId].registerStartTime, "Registration has not started yet");
         require(block.timestamp < tournamentMapping[_tournamentId].registerEndTime, "Registration deadline passed");
         require(!tournamentMapping[_tournamentId].playerRegistered[_player], "Address already registered");
-        require(tournamentMapping[_tournamentId].players.length < tournamentMapping[_tournamentId].PlayersLimit, "The number of participants in the tournament is full.");
+        require(tournamentMapping[_tournamentId].players.length < tournamentMapping[_tournamentId].PlayersLimit, "Tournament is full.");
         tournamentMapping[_tournamentId].playerRegistered[_player] = true;
         tournamentMapping[_tournamentId].players.push(_player);
         emit Registered(_tournamentId, _player);
@@ -106,7 +103,7 @@ contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata
         tournamentMapping[tournamentId].scoreURI = _uri;
     }
 
-    function playersShuffle(uint tournamentId) public onlyRole(DEFAULT_ADMIN_ROLE) onlyRole(FACTORY_ROLE){
+    function playersShuffle(uint tournamentId) public onlyRole(FACTORY_ROLE){
         Tournament storage tournament = tournamentMapping[tournamentId];
         address[] memory shuffledArray = tournament.players;
         uint n = shuffledArray.length;
@@ -168,24 +165,24 @@ contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata
         }
     }
     
-    function getAllTournamentCount() public view returns (uint) {
+    function getAllTournamentCount() external view returns (uint) {
         uint count = OnGoingTournaments.length + EndedTournaments.length;
         return count;
     }
 
-    function getOnGoingTournamentsCount() public view returns (uint) {
+    function getOnGoingTournamentsCount() external view returns (uint) {
         return OnGoingTournaments.length;
     }
 
-    function getEndedTournamentsCount() public view returns (uint) {
+    function getEndedTournamentsCount() external view returns (uint) {
         return EndedTournaments.length;
     }
 
-    function getOnGoingTournaments() public view returns (uint[] memory) {
+    function getOnGoingTournaments() external view returns (uint[] memory) {
         return OnGoingTournaments;
     }
 
-    function getEndedTournaments() public view returns (uint[] memory) {
+    function getEndedTournaments() external view returns (uint[] memory) {
         return EndedTournaments;
     }
 
