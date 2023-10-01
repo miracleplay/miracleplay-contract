@@ -70,7 +70,7 @@ contract MiracleTournamentEscrow is ContractMetadata {
     event CanceledUnlock(uint tournamentId);
     event EndedUnlock(uint tournamentId, address [] _withdrawAddresses);
 
-    constructor(address adminAddr, address _royaltyAddrDev, address _royaltyAddrFlp, IERC1155 _NexusPointEdition, uint _NexusPointID, string memory _nexusURI, string memory _contractURI) {
+    constructor(address adminAddr, address _royaltyAddrDev, address _royaltyAddrFlp, IERC1155 _NexusPointEdition, uint _NexusPointID, string memory _nexusURI) {
         admin = adminAddr;
         royaltyAddrDev = _royaltyAddrDev;
         royaltyAddrFlp = _royaltyAddrFlp;
@@ -84,7 +84,6 @@ contract MiracleTournamentEscrow is ContractMetadata {
         NexusPointEdition = _NexusPointEdition;
         NexusPointID = _NexusPointID;
         NexusPointURI = _nexusURI;
-        _setupContractURI(_contractURI);
     }
 
     function _canSetContractURI() internal view virtual override returns (bool){
