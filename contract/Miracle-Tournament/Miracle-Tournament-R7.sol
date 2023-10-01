@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.17;    
 
-import "./Miracle-Escrow-R5.sol";
+import "./Miracle-Escrow-R7.sol";
 import "@thirdweb-dev/contracts/extension/PermissionsEnumerable.sol";
 import "@thirdweb-dev/contracts/extension/Multicall.sol";
 import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
@@ -51,7 +51,7 @@ contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata
     bytes32 private constant FACTORY_ROLE = keccak256("FACTORY_ROLE");
     bytes32 private constant ESCROW_ROLE = keccak256("ESCROW_ROLE");
 
-    constructor(address adminAddr, stirng memory _contractURI)  {
+    constructor(address adminAddr, string memory _contractURI)  {
         _setupRole(DEFAULT_ADMIN_ROLE, adminAddr);
         _setupRole(FACTORY_ROLE, adminAddr);
         deployer = adminAddr;
@@ -126,7 +126,7 @@ contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata
         }
         // Unlock Escrow Prize Token / Fee Token to Escrow contract
         MiracleTournamentEscrow(EscrowAddr).endedTournament(_tournamentId, prizeAddr);
-        tournament.tournamentEnded = true;
+        _tournament.tournamentEnded = true;
 
         removeOnGoingTournament(_tournamentId);
         addEndedTournament(_tournamentId);

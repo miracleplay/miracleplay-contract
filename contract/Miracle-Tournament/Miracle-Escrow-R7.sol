@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.17;
 
-import "./Miracle-Tournament-R5.sol";
+import "./Miracle-Tournament-R7.sol";
 import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
 //    _______ _______ ___ ___ _______ ______  ___     ___ ______  _______     ___     _______ _______  _______ 
 //   |   _   |   _   |   Y   |   _   |   _  \|   |   |   |   _  \|   _   |   |   |   |   _   |   _   \|   _   |
@@ -28,17 +28,17 @@ contract MiracleTournamentEscrow is ContractMetadata {
     address public deployer;
     address public admin;
     address payable public tournamentAddr;
-
-    uint public RoyaltyPrizeDev; // Royalty rate
-    uint public RoyaltyregfeeDev; // Royalty rate
-    uint public RoyaltyPrizeFlp; // Royalty rate
-    uint public RoyaltyregfeeFlp; // Royalty rate
-    
+    //Royalty strring
+    uint public RoyaltyPrizeDev;
+    uint public RoyaltyregfeeDev;
+    uint public RoyaltyPrizeFlp;
+    uint public RoyaltyregfeeFlp;
     address public royaltyAddrDev;
     address public royaltyAddrFlp;
-    
+    // Nexus point
     IERC1155 public NexusPointEdition;
     uint public NexusPointID;
+    string public NexusPointURI;
 
     MiracleTournament internal miracletournament;
 
@@ -70,7 +70,7 @@ contract MiracleTournamentEscrow is ContractMetadata {
     event CanceledUnlock(uint tournamentId);
     event EndedUnlock(uint tournamentId, address [] _withdrawAddresses);
 
-    constructor(address adminAddr, address _royaltyAddrDev, address _royaltyAddrFlp, IERC1155 _NexusPointEdition, uint _NexusPointID) {
+    constructor(address adminAddr, address _royaltyAddrDev, address _royaltyAddrFlp, IERC1155 _NexusPointEdition, uint _NexusPointID, string memory _nexusURI, string memory _contractURI) {
         admin = adminAddr;
         royaltyAddrDev = _royaltyAddrDev;
         royaltyAddrFlp = _royaltyAddrFlp;
@@ -83,9 +83,8 @@ contract MiracleTournamentEscrow is ContractMetadata {
         deployer = adminAddr;
         NexusPointEdition = _NexusPointEdition;
         NexusPointID = _NexusPointID;
-        // Bubble shooter : ipfs://QmVxtz27K6oCPeDZKHDoXGpqu3eYcDmXTXkQ66bn5z5uEm/BubbleShooterEscrowR5.json
-        // Miracle bingo : ipfs://QmVxtz27K6oCPeDZKHDoXGpqu3eYcDmXTXkQ66bn5z5uEm/MiracleBingoEscrowR5.json
-        _setupContractURI("ipfs://QmVxtz27K6oCPeDZKHDoXGpqu3eYcDmXTXkQ66bn5z5uEm/MiracleBingoEscrowR5.json");
+        NexusPointURI = _nexusURI;
+        _setupContractURI(_contractURI);
     }
 
     function _canSetContractURI() internal view virtual override returns (bool){
@@ -146,14 +145,14 @@ contract MiracleTournamentEscrow is ContractMetadata {
     }
 
     function endedTournament(uint _tournamentId, address[] memory _withdrawAddresses) external onlyTournament {
-        _EndedUnlock(_tournamentId, _withdrawAddresses);
+        _EndedUnlockTransfer(_tournamentId, _withdrawAddresses);
     }
 
     function canceledTournament(uint _tournamentId, address[] memory _entryPlayers) external onlyTournament{
-        _CanceledUnlock(_tournamentId, _entryPlayers);
+        _CanceledUnlockTransfer(_tournamentId, _entryPlayers);
     }
 
-    // The USERS sign up for the tournament.
+    // USER entry to the tournament.
     function register(uint _tournamentId) external {
         Tournament storage _tournament = tournamentMapping[_tournamentId];
         require(_tournament.feeToken.allowance(msg.sender, address(this)) >= _tournament.joinFee, "Allowance is not sufficient.");
@@ -163,10 +162,10 @@ contract MiracleTournamentEscrow is ContractMetadata {
 
         _tournament.feeBalance = _tournament.feeBalance + _tournament.joinFee;
         miracletournament.register(_tournamentId, msg.sender);
-        //Mint Nexus Point
+        // Mint Nexus Point
         // Bubble shooter IPFS : ipfs://QmRhpuNgyUMJ2bsVEiVySTbj8DeLfax2QJmWR34pnvAzY8/0
         // Miracle bingo IPFS : ipfs://QmTgk6ni1Tx826UTKZsMf8Dz6otf9UoyEnrt8y54t8cPLc/0
-        IERC1155(NexusPointEdition).mintTo(msg.sender, NexusPointID, "ipfs://QmTgk6ni1Tx826UTKZsMf8Dz6otf9UoyEnrt8y54t8cPLc/0", 1);
+        IERC1155(NexusPointEdition).mintTo(msg.sender, NexusPointID, NexusPointURI, 1);
         emit LockFeeToken(_tournamentId, _tournament.joinFee);
     }
 
@@ -192,7 +191,7 @@ contract MiracleTournamentEscrow is ContractMetadata {
         _tournament.tournamentEnded = true;
 
         uint256[] memory _prizeAmountArray = _tournament.prizeAmountArray;
-        require(_winnerAddresses.length == _prizeAmountArray.length, "Arrays must be the same length.");
+        require(_winner.length == _prizeAmountArray.length, "Arrays must be the same length.");
         // Transfer prize to winner
         for (uint256 i = 0; i < _winner.length; i++) {
             _tournament.prizeToken.transfer(_winner[i], _prizeAmountArray[i]);
@@ -200,7 +199,7 @@ contract MiracleTournamentEscrow is ContractMetadata {
         // Transfer fee to organizer
         _tournament.feeToken.transfer(_tournament.organizer, _tournament.feeBalance);
 
-        emit EndedUnlock(_tournamentId, _winnerAddresses);
+        emit EndedUnlock(_tournamentId, _winner);
     }
 
     // Set royalty address
