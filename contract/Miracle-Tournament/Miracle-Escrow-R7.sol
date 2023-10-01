@@ -193,8 +193,8 @@ contract MiracleTournamentEscrow is ContractMetadata {
         // Transfer prize to winner
         for (uint256 i = 0; i < _winner.length; i++) {
             uint256 _prizeAmount = _prizeAmountArray[i];
-            uint256 _prizeFeeDev = _prizeAmount * RoyaltyPrizeDev;
-            uint256 _prizeFeeFlp = _prizeAmount * RoyaltyPrizeFlp;
+            uint256 _prizeFeeDev = _prizeAmount * RoyaltyPrizeDev / 100;
+            uint256 _prizeFeeFlp = _prizeAmount * RoyaltyPrizeFlp / 100;
             uint256 _prizeUser = _prizeAmount - (_prizeFeeDev + _prizeFeeFlp);
             
             _tournament.prizeToken.transfer(royaltyAddrDev, _prizeFeeDev);
@@ -203,8 +203,8 @@ contract MiracleTournamentEscrow is ContractMetadata {
         }
         // Transfer entry fee
         uint256 _feeAmount = _tournament.feeBalance;
-        uint256 _feeFeeDev = _feeAmount * RoyaltyregfeeDev;
-        uint256 _feeFeeFlp = _feeAmount * RoyaltyregfeeFlp;
+        uint256 _feeFeeDev = _feeAmount * RoyaltyregfeeDev / 100;
+        uint256 _feeFeeFlp = _feeAmount * RoyaltyregfeeFlp / 100;
         uint256 _feeOrg = _feeAmount - (_feeFeeDev + _feeFeeFlp);
         _tournament.prizeToken.transfer(royaltyAddrDev, _feeFeeDev);
         _tournament.prizeToken.transfer(royaltyAddrFlp, _feeFeeFlp);
