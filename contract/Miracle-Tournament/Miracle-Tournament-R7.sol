@@ -51,10 +51,11 @@ contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata
     bytes32 private constant FACTORY_ROLE = keccak256("FACTORY_ROLE");
     bytes32 private constant ESCROW_ROLE = keccak256("ESCROW_ROLE");
 
-    constructor(address adminAddr)  {
+    constructor(address adminAddr, string memory _contractURI)  {
         _setupRole(DEFAULT_ADMIN_ROLE, adminAddr);
         _setupRole(FACTORY_ROLE, adminAddr);
         deployer = adminAddr;
+        _setupContractURI(_contractURI);
     }
 
     function _canSetContractURI() internal view virtual override returns (bool){

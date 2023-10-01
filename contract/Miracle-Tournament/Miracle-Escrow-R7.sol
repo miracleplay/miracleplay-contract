@@ -70,7 +70,7 @@ contract MiracleTournamentEscrow is ContractMetadata {
     event CanceledUnlock(uint tournamentId);
     event EndedUnlock(uint tournamentId, address [] _withdrawAddresses);
 
-    constructor(address adminAddr, address _royaltyAddrDev, address _royaltyAddrFlp, IERC1155 _NexusPointEdition, uint _NexusPointID, string memory _nexusURI) {
+    constructor(address adminAddr, address _royaltyAddrDev, address _royaltyAddrFlp, IERC1155 _NexusPointEdition, uint _NexusPointID, string memory _nexusURI, string memory _contractURI) {
         admin = adminAddr;
         royaltyAddrDev = _royaltyAddrDev;
         royaltyAddrFlp = _royaltyAddrFlp;
@@ -84,6 +84,7 @@ contract MiracleTournamentEscrow is ContractMetadata {
         NexusPointEdition = _NexusPointEdition;
         NexusPointID = _NexusPointID;
         NexusPointURI = _nexusURI;
+        _setupContractURI(_contractURI);
     }
 
     function _canSetContractURI() internal view virtual override returns (bool){
@@ -162,8 +163,6 @@ contract MiracleTournamentEscrow is ContractMetadata {
         _tournament.feeBalance = _tournament.feeBalance + _tournament.joinFee;
         miracletournament.register(_tournamentId, msg.sender);
         // Mint Nexus Point
-        // Bubble shooter IPFS : ipfs://QmRhpuNgyUMJ2bsVEiVySTbj8DeLfax2QJmWR34pnvAzY8/0
-        // Miracle bingo IPFS : ipfs://QmTgk6ni1Tx826UTKZsMf8Dz6otf9UoyEnrt8y54t8cPLc/0
         IERC1155(NexusPointEdition).mintTo(msg.sender, NexusPointID, NexusPointURI, 1);
         emit LockFeeToken(_tournamentId, _tournament.joinFee);
     }
@@ -193,10 +192,23 @@ contract MiracleTournamentEscrow is ContractMetadata {
         require(_winner.length == _prizeAmountArray.length, "Arrays must be the same length.");
         // Transfer prize to winner
         for (uint256 i = 0; i < _winner.length; i++) {
-            _tournament.prizeToken.transfer(_winner[i], _prizeAmountArray[i]);
+            uint256 _prizeAmount = _prizeAmountArray[i];
+            uint256 _prizeFeeDev = _prizeAmount * RoyaltyPrizeDev;
+            uint256 _prizeFeeFlp = _prizeAmount * RoyaltyPrizeFlp;
+            uint256 _prizeUser = _prizeAmount - (_prizeFeeDev + _prizeFeeFlp);
+            
+            _tournament.prizeToken.transfer(royaltyAddrDev, _prizeFeeDev);
+            _tournament.prizeToken.transfer(royaltyAddrFlp, _prizeFeeFlp);
+            _tournament.prizeToken.transfer(_winner[i], _prizeUser);
         }
-        // Transfer fee to organizer
-        _tournament.feeToken.transfer(_tournament.organizer, _tournament.feeBalance);
+        // Transfer entry fee
+        uint256 _feeAmount = _tournament.feeBalance;
+        uint256 _feeFeeDev = _feeAmount * RoyaltyregfeeDev;
+        uint256 _feeFeeFlp = _feeAmount * RoyaltyregfeeFlp;
+        uint256 _feeOrg = _feeAmount - (_feeFeeDev + _feeFeeFlp);
+        _tournament.prizeToken.transfer(royaltyAddrDev, _feeFeeDev);
+        _tournament.prizeToken.transfer(royaltyAddrFlp, _feeFeeFlp);
+        _tournament.feeToken.transfer(_tournament.organizer, _feeOrg);
 
         emit EndedUnlock(_tournamentId, _winner);
     }
