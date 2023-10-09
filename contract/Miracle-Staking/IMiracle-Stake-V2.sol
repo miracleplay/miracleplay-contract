@@ -19,6 +19,7 @@ pragma solidity ^0.8.17;
 // Token
 import "@thirdweb-dev/contracts/drop/DropERC1155.sol"; // For my collection of Node
 import "@thirdweb-dev/contracts/token/TokenERC20.sol"; // For my ERC-20 Token contract
+import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
 
 // Access Control + security
 import "@thirdweb-dev/contracts/extension/PermissionsEnumerable.sol";
@@ -26,9 +27,11 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 import "./module/Miralce-Stake-Core.sol";
 
-contract TabStakingDeca is StakeMiracleCore
+contract ERC1155Staking is StakeMiracleCore
 {
-    constructor(address _defaultAdmin, uint256 _stakingsection, DropERC1155 _NodeNFTToken, TokenERC20 _RewardToken, address _DaoAddress, uint256 _rewardPerMin, uint256 _alreadyClaimed) {
+    address public deployer;
+
+    constructor(address _defaultAdmin, uint256 _stakingsection, DropERC1155 _NodeNFTToken, TokenERC20 _RewardToken, address _DaoAddress, uint256 _rewardPerMin, uint256 _alreadyClaimed, string memory _contractURI) {
         StakingSection = _stakingsection;
         IStakingSection = _stakingsection - 1;
         
@@ -48,6 +51,7 @@ contract TabStakingDeca is StakeMiracleCore
         _owner = _defaultAdmin;
         totalClaimed = _alreadyClaimed;
         _setupRole(DEFAULT_ADMIN_ROLE, _defaultAdmin);
+        _setupContractURI(_contractURI);
     }
 
     // ===================================================================================

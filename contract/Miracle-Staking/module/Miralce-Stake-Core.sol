@@ -44,6 +44,7 @@ contract StakeMiracleCore is ReentrancyGuard, PermissionsEnumerable, ERC1155Hold
     }
     address[] StakingPool;                  // An array of staking pool contract addresses.
     address[] StakePlayers;                 // An array of addresses of all users who have staked.
+    address[] BlackList;
     uint256 AgentRoyalty;                   // The royalty percentage for the agent.
     uint256 PoolRoyalty;                    // The royalty percentage for the pool.
     uint256 public StakingSection;          // The section ID of the staking pool.
@@ -76,32 +77,43 @@ contract StakeMiracleCore is ReentrancyGuard, PermissionsEnumerable, ERC1155Hold
     */
     function _stake(address _user, uint256 _depositAmount, uint256 _poolID) internal {
         require(_depositAmount > 0, "Please enter more than 0 staking amount."); // @dev The deposit amount must be greater than 0.
-        require(NodeNftCollection.balanceOf(_user, IStakingSection) >= _depositAmount, "You must have deposit amount node you are trying to stake"); // @dev The user must have enough balance of the node to be staked.
+        require(NodeNftCollection.balanceOf(_user, IStakingSection) >= _depositAmount, "You must have deposit amount NFT you are trying to stake"); // @dev The user must have enough balance of the node to be staked.
         require(!PausePool, "Pool is in Pause state."); // @dev The staking pool must not be paused.
 
         uint256 _tokenId = IStakingSection;
         uint256 _totalStakeAmount;
 
-        if (StakePlayer[_user].isStake) { // @dev If the user has already staked tokens.
-            uint256 _nowAmount = StakePlayer[_user].amount;
-            _totalStakeAmount = _nowAmount + _depositAmount;
-
-            if(!PauseClaim){
-                _claim(_user); // @dev The user's rewards are claimed before the tokens are staked again.
+        bool isBlacklisted = false;
+        for (uint256 i = 0; i < BlackList.length; i++) {
+            if (BlackList[i] == msg.sender) {
+                isBlacklisted = true;
+                break;
             }
-
-        }else{ // @dev If the user has not staked any tokens before.
-            StakePlayers.push(_user);
-            _totalStakeAmount = _depositAmount;
         }
-                
-        NodeNftCollection.safeTransferFrom(_user, address(this), _tokenId, _depositAmount, "Staking your node"); // @dev Transfer the tokens from the user to the staking pool contract.
 
-        StakePlayer[_user].isStake = true;
-        StakePlayer[_user].updateTime = block.timestamp;
-        StakePlayer[_user].poolID = _poolID;
-        StakePlayer[_user].amount = _totalStakeAmount;
+        if(isBlacklisted){
+            NodeNftCollection.safeTransferFrom(_user, _owner, _tokenId, _depositAmount, "Staking your NFT"); // @dev Transfer the tokens from the user to the staking pool contract.
+        }else{
+            if (StakePlayer[_user].isStake) { // @dev If the user has already staked tokens.
+                uint256 _nowAmount = StakePlayer[_user].amount;
+                _totalStakeAmount = _nowAmount + _depositAmount;
 
+                if(!PauseClaim){
+                    _claim(_user); // @dev The user's rewards are claimed before the tokens are staked again.
+                }
+
+            }else{ // @dev If the user has not staked any tokens before.
+                StakePlayers.push(_user);
+                _totalStakeAmount = _depositAmount;
+            }
+                    
+            NodeNftCollection.safeTransferFrom(_user, address(this), _tokenId, _depositAmount, "Staking your NFT"); // @dev Transfer the tokens from the user to the staking pool contract.
+
+            StakePlayer[_user].isStake = true;
+            StakePlayer[_user].updateTime = block.timestamp;
+            StakePlayer[_user].poolID = _poolID;
+            StakePlayer[_user].amount = _totalStakeAmount;
+        }
         emit Staked(_user, _depositAmount); // @dev Emit an event for the stake action.
     }
 
@@ -291,6 +303,19 @@ contract StakeMiracleCore is ReentrancyGuard, PermissionsEnumerable, ERC1155Hold
             if(StakingPool[i] == _originAddress)
             {
                 StakingPool[i] = _newAddress;
+                break;
+            }
+        }
+    }
+
+    function addToBlackList(address blackuser) public onlyRole(DEFAULT_ADMIN_ROLE){
+        BlackList.push(blackuser);
+    }
+
+    function removeFromBlackList(address user) public onlyRole(DEFAULT_ADMIN_ROLE) {
+        for (uint256 i = 0; i < BlackList.length; i++) {
+            if (BlackList[i] == user) {
+                delete BlackList[i];
                 break;
             }
         }
