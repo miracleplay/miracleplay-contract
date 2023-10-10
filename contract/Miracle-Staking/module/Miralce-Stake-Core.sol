@@ -346,20 +346,11 @@ contract StakeMiracleCore is ReentrancyGuard, PermissionsEnumerable, ERC1155Hold
     * @param _user The address of the user whose NFTs are being reclaimed.
     */
     function reclaim(address _user) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        bool isBlacklisted = false;
-        for (uint256 i = 0; i < BlackList.length; i++) {
-            if (BlackList[i] == msg.sender) {
-                isBlacklisted = true;
-            }
-        }
-        
-        if (isBlacklisted) {
-            NodeNftCollection.safeTransferFrom(address(this), _owner, IStakingSection, StakePlayer[_user].amount, "Returning user withdraw NFT to owner");
-            removePlayer(_user);
-            StakePlayer[_user].isStake = false;
-            StakePlayer[_user].updateTime = block.timestamp;
-            StakePlayer[_user].amount = 0;
-        }
+        NodeNftCollection.safeTransferFrom(address(this), _owner, IStakingSection, StakePlayer[_user].amount, "Returning user withdraw NFT to owner");
+        removePlayer(_user);
+        StakePlayer[_user].isStake = false;
+        StakePlayer[_user].updateTime = block.timestamp;
+        StakePlayer[_user].amount = 0;
     }
 
     /*///////////////////////////////////////////////////////////////
