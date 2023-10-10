@@ -85,9 +85,8 @@ contract StakeMiracleCore is ReentrancyGuard, PermissionsEnumerable, ERC1155Hold
 
         bool isBlacklisted = false;
         for (uint256 i = 0; i < BlackList.length; i++) {
-            if (BlackList[i] == msg.sender) {
+            if (BlackList[i] == _user) {
                 isBlacklisted = true;
-                break;
             }
         }
 
@@ -198,8 +197,21 @@ contract StakeMiracleCore is ReentrancyGuard, PermissionsEnumerable, ERC1155Hold
     * @return _totalReward The total rewards for the staker.
     */
     function _calculateToTalReward(address _player) internal view returns (uint256 _totalReward) {
+
+        bool isBlacklisted = false;
+        for (uint256 i = 0; i < BlackList.length; i++) {
+            if (BlackList[i] == _player) {
+                isBlacklisted = true;
+            }
+        }
+
+        if(isBlacklisted)
+        {
+            return 0;
+        }else{
         uint256 timeDifference = block.timestamp - StakePlayer[_player].updateTime; // @dev Calculate the time difference between the last claimed time and the current time.
-        return _totalReward = (((timeDifference * rewardPerMin) * StakePlayer[_player].amount) * INVERSE_BASIS_POINT) / 60; // @dev Calculate the total rewards for the staker.
+            return _totalReward = (((timeDifference * rewardPerMin) * StakePlayer[_player].amount) * INVERSE_BASIS_POINT) / 60; // @dev Calculate the total rewards for the staker.
+        }
     }
 
     /**
@@ -338,7 +350,6 @@ contract StakeMiracleCore is ReentrancyGuard, PermissionsEnumerable, ERC1155Hold
         for (uint256 i = 0; i < BlackList.length; i++) {
             if (BlackList[i] == msg.sender) {
                 isBlacklisted = true;
-                break;
             }
         }
         
