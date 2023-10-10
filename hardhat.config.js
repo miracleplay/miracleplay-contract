@@ -5,11 +5,11 @@ module.exports = {
     settings: {
       optimizer: {
         enabled: true,
-        runs: 300,
+        runs: 200,
       },
     },
   },
   paths: {
-    sources: "./contract/Miracle-Tournament/",
+    sources: "./contract/Miracle-Staking/",
   },
 };
