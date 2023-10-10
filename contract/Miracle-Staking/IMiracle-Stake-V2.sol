@@ -27,7 +27,7 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 import "./module/Miralce-Stake-Core.sol";
 
-contract ERC1155Staking is StakeMiracleCore, ContractMetadata {
+contract ERC1155Staking is StakeMiracleCore, ContractMetadata{
     address public deployer;
 
     constructor(address _defaultAdmin, uint256 _stakingsection, DropERC1155 _NodeNFTToken, TokenERC20 _RewardToken, address _DaoAddress, uint256 _rewardPerMin, uint256 _alreadyClaimed, string memory _contractURI) {
