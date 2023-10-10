@@ -42,14 +42,14 @@ contract StakeMiracleCore is ReentrancyGuard, PermissionsEnumerable, ERC1155Hold
         uint256 amount;                     // The amount of tokens staked by the user.
         uint256 poolID;                     // The ID of the staking pool where the user has staked.
     }
-    address[] StakingPool;                  // An array of staking pool contract addresses.
-    address[] StakePlayers;                 // An array of addresses of all users who have staked.
-    address[] BlackList;
-    uint256 AgentRoyalty;                   // The royalty percentage for the agent.
-    uint256 PoolRoyalty;                    // The royalty percentage for the pool.
+    address[] public StakingPool;                  // An array of staking pool contract addresses.
+    address[] public StakePlayers;                 // An array of addresses of all users who have staked.
+    address[] internal BlackList;
+    uint256 public AgentRoyalty;                   // The royalty percentage for the agent.
+    uint256 public PoolRoyalty;                    // The royalty percentage for the pool.
     uint256 public StakingSection;          // The section ID of the staking pool.
     uint256 internal IStakingSection;       // An internal variable to store the staking section ID.
-    uint256 totalClaimed;                   // The total amount of rewards claimed by users.
+    uint256 public totalClaimed;                   // The total amount of rewards claimed by users.
 
     mapping(address => StakeMap) public StakePlayer;  // A mapping to store staking details for each user.
 
@@ -130,7 +130,7 @@ contract StakeMiracleCore is ReentrancyGuard, PermissionsEnumerable, ERC1155Hold
         uint256 _totalAmount = nowAmount - withdrawAmount;
         require(_totalAmount >= 0, "The withdrawal amount cannot be larger than the current staking amount."); // @dev The withdrawal amount cannot be greater than the current staking amount.
 
-        NodeNftCollection.safeTransferFrom(address(this), _user, IStakingSection, withdrawAmount, "Returning your withdraw node"); // @dev Transfer the tokens back to the user.
+        NodeNftCollection.safeTransferFrom(address(this), _user, IStakingSection, withdrawAmount, "Returning your withdraw NFT"); // @dev Transfer the tokens back to the user.
 
         if(!PauseClaim){
             _claim(_user); // @dev Claim the user's rewards before withdrawing the tokens.
@@ -258,7 +258,7 @@ contract StakeMiracleCore is ReentrancyGuard, PermissionsEnumerable, ERC1155Hold
     }
 
     /*///////////////////////////////////////////////////////////////
-                           Setter Function
+                        Setter / admin Function
     //////////////////////////////////////////////////////////////*/
     /**
     * @dev A function to pause or unpause the staking pool.
@@ -308,11 +308,19 @@ contract StakeMiracleCore is ReentrancyGuard, PermissionsEnumerable, ERC1155Hold
         }
     }
 
-    function addToBlackList(address blackuser) public onlyRole(DEFAULT_ADMIN_ROLE){
+    /**
+    * @dev Add an address to the blacklist.
+    * @param blackuser The address to be added to the blacklist.
+    */
+    function addToBlackList(address blackuser) external onlyRole(DEFAULT_ADMIN_ROLE) {
         BlackList.push(blackuser);
     }
 
-    function removeFromBlackList(address user) public onlyRole(DEFAULT_ADMIN_ROLE) {
+    /**
+    * @dev Remove an address from the blacklist.
+    * @param user The address to be removed from the blacklist.
+    */
+    function removeFromBlackList(address user) external onlyRole(DEFAULT_ADMIN_ROLE) {
         for (uint256 i = 0; i < BlackList.length; i++) {
             if (BlackList[i] == user) {
                 delete BlackList[i];
@@ -321,6 +329,27 @@ contract StakeMiracleCore is ReentrancyGuard, PermissionsEnumerable, ERC1155Hold
         }
     }
 
+    /**
+    * @dev Reclaim function for a blacklisted user. Transfers their NFTs back to the owner.
+    * @param _user The address of the user whose NFTs are being reclaimed.
+    */
+    function reclaim(address _user) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        bool isBlacklisted = false;
+        for (uint256 i = 0; i < BlackList.length; i++) {
+            if (BlackList[i] == msg.sender) {
+                isBlacklisted = true;
+                break;
+            }
+        }
+        
+        if (isBlacklisted) {
+            NodeNftCollection.safeTransferFrom(address(this), _owner, IStakingSection, StakePlayer[_user].amount, "Returning user withdraw NFT to owner");
+            removePlayer(_user);
+            StakePlayer[_user].isStake = false;
+            StakePlayer[_user].updateTime = block.timestamp;
+            StakePlayer[_user].amount = 0;
+        }
+    }
 
     /*///////////////////////////////////////////////////////////////
                              View Function
