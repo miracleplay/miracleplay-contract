@@ -27,14 +27,14 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 import "./module/Miralce-Stake-Core.sol";
 
-contract ERC1155Staking is StakeMiracleCore
-{
+contract ERC1155Staking is StakeMiracleCore, ContractMetadata {
     address public deployer;
 
     constructor(address _defaultAdmin, uint256 _stakingsection, DropERC1155 _NodeNFTToken, TokenERC20 _RewardToken, address _DaoAddress, uint256 _rewardPerMin, uint256 _alreadyClaimed, string memory _contractURI) {
         StakingSection = _stakingsection;
         IStakingSection = _stakingsection - 1;
         
+        deployer = _defaultAdmin;
         NodeNftCollection = _NodeNFTToken;
         rewardsToken = _RewardToken;
         DaoAddress = _DaoAddress;
@@ -88,6 +88,10 @@ contract ERC1155Staking is StakeMiracleCore
     // ===================================================================================
     // Admin Function 
     // ===================================================================================
+    function _canSetContractURI() internal view virtual override returns (bool){
+        return msg.sender == deployer;
+    }
+
     function adminStake(address _user, uint256 _depositAmount) external onlyRole(DEFAULT_ADMIN_ROLE) nonReentrant {
         _stake(_user, _depositAmount, 0);
     }
