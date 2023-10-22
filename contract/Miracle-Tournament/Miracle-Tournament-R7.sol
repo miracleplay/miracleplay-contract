@@ -119,6 +119,9 @@ contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata
 
     function endTournament(uint _tournamentId, address[] calldata _rankers) public onlyRole(FACTORY_ROLE) {
         Tournament storage _tournament = tournamentMapping[_tournamentId];
+
+        require(!_tournament.tournamentEnded, "Tournament has already ended");
+
         uint _prizeCount = _tournament.prizeCount;
         address[] memory prizeAddr = new address[](_prizeCount);
         for(uint i = 0; i < _prizeCount; i++){
@@ -134,10 +137,14 @@ contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata
         emit TournamentEnded(_tournamentId);
     }
 
+
     function cancelTournament(uint _tournamentId) public onlyRole(FACTORY_ROLE) {
         Tournament storage _tournament = tournamentMapping[_tournamentId];
+        require(!_tournament.tournamentEnded, "Tournament has already ended");
+
         address[] memory _entryPlayers = _tournament.players;
         MiracleTournamentEscrow(EscrowAddr).canceledTournament(_tournamentId, _entryPlayers);
+        _tournament.tournamentEnded = true;
 
         removeOnGoingTournament(_tournamentId);
         addEndedTournament(_tournamentId);
