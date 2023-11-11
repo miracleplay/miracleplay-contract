@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.17;
 
-import "./Miracle-Tournament.sol";
+// import "./Miracle-Tournament.sol";
 import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
 //    _______ _______ ___ ___ _______ ______  ___     ___ ______  _______     ___     _______ _______  _______ 
 //   |   _   |   _   |   Y   |   _   |   _  \|   |   |   |   _  \|   _   |   |   |   |   _   |   _   \|   _   |
@@ -17,18 +17,21 @@ interface IERC20 {
     function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
     function balanceOf(address account) external view returns (uint256);
     function allowance(address owner, address spender) external view returns (uint256);
-    function approve(address spender, uint256 value) external returns (bool);
     function transfer(address recipient, uint256 amount) external returns (bool);
 }
 
 interface IERC1155{
     function mintTo(address _to, uint256 _tokenId, string calldata _uri, uint256 _amount) external;
+    function safeTransferFrom(address _from, address _to, uint256 _id, uint256 _value, bytes calldata _data) external;
+    function safeBatchTransferFrom(address _from, address _to, uint256[] calldata _ids, uint256[] calldata _values, bytes calldata _data) external;
     function balanceOf(address _owner, uint256 _id) external view returns (uint256);
     function isApprovedForAll(address _owner, address _operator) external view returns (bool);
 }
 
 interface IERC721{
-    
+    function safeTransferFrom(address from, address to, uint256 tokenId) external;
+    function ownerOf(uint256 tokenId) external view returns (address);
+    function isApprovedForAll(address owner, address operator) external view returns (bool);
 }
 
 contract MiracleTournamentEscrow is ContractMetadata {
@@ -47,23 +50,63 @@ contract MiracleTournamentEscrow is ContractMetadata {
     uint public NexusPointID;
     string public NexusPointURI;
 
-    MiracleTournament internal miracletournament;
+    // MiracleTournament internal miracletournament;
 
     struct Tournament {
         address organizer;
-        IERC20 prizeToken;
-        IERC20 feeToken;
-        uint prizeAmount;
-        uint joinFee;
-        uint feeBalance;
-        uint256[] prizeAmountArray;
-        bool tournamentCreated;
-        bool tournamentEnded;
-        bool tournamentCanceled;
+        TournamentJoinfee joinFee;
+        mapping(uint => TournamentPrizeAssets) ranksPrize;
+        createTotalAssets createAssets;
+        TournamentStatus tournamentStatus;
+        uint prizeCount;
         string tournamentURI;
         uint PlayersLimit;
     }
-    mapping(uint => Tournament) public tournamentMapping;
+
+    struct TournamentPrizeAssets {
+        PrizeAssetsERC20 Token;
+        PrizeAssetsERC721 NFT;
+        PrizeAssetsERC1155 Edition;
+    }
+
+    struct PrizeAssetsERC20{
+        address tokenAddress;
+        uint amount;
+    }
+
+    struct PrizeAssetsERC721{
+        address NFTAddress;
+        uint NFTId;
+    }
+
+    struct PrizeAssetsERC1155{
+        address EditionAddress;
+        uint EditionId;
+        uint EditionAmount;
+    }
+
+    struct createTotalAssets{
+        address[] TokenIndex;
+        mapping (address=>uint) tokenAmount;
+        address[] NFTIndex;
+        mapping (address=>uint[]) NFT;
+        address[] EditionIndex;
+        mapping (address=>mapping(uint=>uint)) Edition;
+    }
+
+    struct TournamentJoinfee {
+        address feeToken;
+        uint feeAmount;
+        uint feeBalance;
+    }
+
+    struct TournamentStatus {
+        bool tournamentCreated;
+        bool tournamentEnded;
+        bool tournamentCanceled;
+    }
+
+    mapping(uint => Tournament) tournamentMap;
 
     event CreateTournament(uint tournamentId, address organizer, string tournamentURI);
     event LockPrizeToken(uint tournamentId, uint prizeAmount);
@@ -79,14 +122,15 @@ contract MiracleTournamentEscrow is ContractMetadata {
 
     constructor(address adminAddr, address _royaltyAddrDev, address _royaltyAddrFlp, IERC1155 _NexusPointEdition, uint _NexusPointID, string memory _nexusURI, string memory _contractURI) {
         admin = adminAddr;
+        // Set Royalty address
         royaltyAddrDev = _royaltyAddrDev;
         royaltyAddrFlp = _royaltyAddrFlp;
         // Set default dev royalty 
         RoyaltyPrizeDev = 5;
         RoyaltyregfeeDev = 5;
         // Set default platform royalty 
-        RoyaltyPrizeFlp = 5;
-        RoyaltyregfeeFlp = 5;
+        RoyaltyPrizeFlp = 0;
+        RoyaltyregfeeFlp = 0;
         deployer = adminAddr;
         NexusPointEdition = _NexusPointEdition;
         NexusPointID = _NexusPointID;
@@ -109,145 +153,88 @@ contract MiracleTournamentEscrow is ContractMetadata {
     }
 
     modifier onlyOrganizer(uint _tournamentId){
-        Tournament storage _tournament = tournamentMapping[_tournamentId];
+        Tournament storage _tournament = tournamentMap[_tournamentId];
         require(msg.sender == _tournament.organizer, "Only organizer can call this function");
         _;
     }
 
     function connectTournament(address payable _miracletournament) public onlyAdmin{
         tournamentAddr = _miracletournament;
-        miracletournament = MiracleTournament(_miracletournament);
+        // miracletournament = MiracleTournament(_miracletournament);
     }
 
     // Create tournament
-    function createTournamentEscrow(uint _tournamentId, uint8 _tournamentType, address _prizeToken, address _feeToken, uint _prizeAmount, uint _joinFee, uint _registerStartTime, uint _registerEndTime, uint256[] memory _prizeAmountArray, string memory _tournamentURI, uint _playerLimit) external {
-        require(IERC20(_prizeToken).allowance(msg.sender, address(this)) >= _prizeAmount, "Allowance is not sufficient.");
-        require(_prizeAmount <= IERC20(_prizeToken).balanceOf(msg.sender), "Insufficient balance.");
-        uint256 totalWithdrawAmount;
-        for (uint256 i = 0; i < _prizeAmountArray.length; i++) {
-            totalWithdrawAmount += _prizeAmountArray[i];
+    function createTournamentEscrow(uint _tournamentId, uint8 _tournamentType, uint _prizeCount, address[] calldata _prizeToken, uint[] calldata _prizeAmount, address[] calldata _prizeNFT, uint[] calldata _NFTtokens, address[] calldata _prizeEdition, uint[] calldata _editionTokens, uint[] calldata _editionAmount, IERC20 _joinFeeToken, uint _joinFee, uint _joinStartTime, uint _joinEndTime, string memory _tournamentURI, uint _playerLimit) external {
+        Tournament storage _newTournament = tournamentMap[_tournamentId];
+        createTotalAssets storage _createTotalAssets = _newTournament.createAssets;
+
+        require(_newTournament.tournamentStatus.tournamentCreated == false, "Tournament already created.");
+
+        // Set prize array and save memory to transfer assests.
+        for (uint i = 0; i < _prizeCount; i++){
+            TournamentPrizeAssets storage prizeAssets = _newTournament.ranksPrize[i];
+
+            address selectedToken = _prizeToken[i];
+            uint selectedTokenAmount = _prizeAmount[i];
+
+            address selectedNFT = _prizeNFT[i];
+            uint selectedNFTId = _NFTtokens[i];
+
+            address selectedEdition = _prizeEdition[i];
+            uint selectedEditionId = _editionTokens[i];
+            uint selectedEditionAmount = _editionAmount[i];
+
+            address[] storage prizeTokensIndex;
+            address[] storage prizeNFTsIndex;
+            address[] storage prizeEditionIndex;
+
+            // ERC20 Escrow
+            if(selectedToken != address(0)){
+                prizeAssets.Token.tokenAddress = selectedToken;
+                prizeAssets.Token.amount = selectedTokenAmount;
+
+                uint currentAmount = _createTotalAssets.tokenAmount[selectedToken];
+
+                _createTotalAssets.tokenAmount[selectedToken] = currentAmount + selectedTokenAmount;
+                if (currentAmount == 0) {
+                    _createTotalAssets.TokenIndex.push(selectedToken);
+                }
+            }
+            // ERC721 Escrow
+            if (selectedNFT != address(0)){
+                prizeAssets.NFT.NFTAddress = selectedNFT;
+                prizeAssets.NFT.NFTId = (selectedNFTId);
+
+                bool isAdded = false;
+                for (uint ii = 0; ii < _createTotalAssets.NFTIndex.length; ii++){
+                    if (_createTotalAssets.NFTIndex[ii] == selectedNFT){
+                        isAdded = true;
+                        break;
+                    }
+                }
+                if(!isAdded){
+                    _createTotalAssets.NFTIndex.push(selectedNFT);
+                }
+                _createTotalAssets.NFT[selectedNFT].push(selectedNFTId);
+            }
+            // ERC1155 Escrow
+            if (_prizeEdition[i] != address(0)){
+                prizeAssets.Edition.EditionAddress = selectedEdition;
+                prizeAssets.Edition.EditionId = selectedEditionId;
+                prizeAssets.Edition.EditionAmount = selectedEditionAmount;
+                
+                bool isAdded = false;
+                for (uint ii = 0; ii < _createTotalAssets.EditionIndex.length; ii++){
+                    if(_createTotalAssets.EditionIndex[ii] == selectedEdition){
+                        isAdded = true;
+                        break;
+                    }
+                }
+                if(!isAdded){
+                    _createTotalAssets.EditionIndex.push(selectedEdition);
+                    _createTotalAssets.Edition[selectedEdition][selectedEditionId] = selectedEditionAmount;
+                }
+            }
         }
-        require(totalWithdrawAmount == _prizeAmount, "Total withdraw amount must equal prize amount.");
-
-        Tournament storage newTournament = tournamentMapping[_tournamentId];
-        require(newTournament.tournamentCreated == false, "Tournament already created.");
-        require(IERC20(_prizeToken).transferFrom(msg.sender, address(this), _prizeAmount), "Transfer failed.");
-
-        newTournament.organizer = msg.sender;
-        newTournament.prizeToken = IERC20(_prizeToken);
-        newTournament.feeToken = IERC20(_feeToken);
-        newTournament.prizeAmount = _prizeAmount;
-        newTournament.joinFee = _joinFee;
-        newTournament.feeBalance = 0;
-        newTournament.prizeAmountArray = _prizeAmountArray;
-        newTournament.tournamentCreated = true;
-        newTournament.tournamentEnded = false;
-        newTournament.tournamentCanceled = false;
-        newTournament.tournamentURI = _tournamentURI;
-        newTournament.PlayersLimit = _playerLimit;
-        
-        miracletournament.createTournament(_tournamentId, _tournamentType, msg.sender, _registerStartTime, _registerEndTime, _prizeAmountArray.length, _playerLimit);
-        emit CreateTournament(_tournamentId, msg.sender, _tournamentURI);
-        emit LockPrizeToken(_tournamentId, _prizeAmount);
-    }
-
-    function endedTournament(uint _tournamentId, address[] memory _withdrawAddresses) external onlyTournament {
-        _EndedUnlockTransfer(_tournamentId, _withdrawAddresses);
-    }
-
-    function canceledTournament(uint _tournamentId, address[] memory _entryPlayers) external onlyTournament{
-        _CanceledUnlockTransfer(_tournamentId, _entryPlayers);
-    }
-
-    // USER entry to the tournament.
-    function register(uint _tournamentId) external {
-        Tournament storage _tournament = tournamentMapping[_tournamentId];
-        require(_tournament.feeToken.allowance(msg.sender, address(this)) >= _tournament.joinFee, "Allowance is not sufficient.");
-        require(_tournament.joinFee <= _tournament.feeToken.balanceOf(msg.sender), "Insufficient balance.");
-        require(_tournament.feeToken.transferFrom(msg.sender, address(this), _tournament.joinFee), "Transfer failed.");
-        require(_tournament.organizer != msg.sender, "Organizers cannot register.");
-
-        _tournament.feeBalance = _tournament.feeBalance + _tournament.joinFee;
-        miracletournament.register(_tournamentId, msg.sender);
-        // Mint Nexus Point
-        IERC1155(NexusPointEdition).mintTo(msg.sender, NexusPointID, NexusPointURI, 1);
-        emit LockFeeToken(_tournamentId, _tournament.joinFee);
-    }
-
-    // Tournament CANCEL unlock PRIZE and entry fee (auto transfer)
-    function _CanceledUnlockTransfer(uint _tournamentId, address[] memory _players) internal {
-        Tournament storage _tournament = tournamentMapping[_tournamentId];
-        // Set tournament status canceled
-        _tournament.tournamentCanceled = true;
-        // Transfer entry fee to users
-        for (uint256 i = 0; i < _players.length; i++) {
-            _tournament.feeToken.transfer(_players[i], _tournament.joinFee);
-        }
-        _tournament.prizeToken.transfer(_tournament.organizer, _tournament.prizeAmount);
-        emit CanceledUnlock(_tournamentId);
-    }
-
-    // Tournament END unlock PRIZE and entry fee (auto transfer)
-    function _EndedUnlockTransfer(uint _tournamentId, address[] memory _winner) internal {
-        Tournament storage _tournament = tournamentMapping[_tournamentId];
-        // Set tournament status ended
-        _tournament.tournamentEnded = true;
-
-        uint256[] memory _prizeAmountArray = _tournament.prizeAmountArray;
-        require(_winner.length == _prizeAmountArray.length, "Arrays must be the same length.");
-        // Transfer prize to winner
-    for (uint256 i = 0; i < _winner.length; i++) {
-        uint256 _prizeAmount = _prizeAmountArray[i];
-
-        if (_prizeAmount == 0) {
-            continue;
-        }
-
-        uint256 _prizeFeeDev = (_prizeAmount * RoyaltyPrizeDev) / 100;
-        uint256 _prizeFeeFlp = (_prizeAmount * RoyaltyPrizeFlp) / 100;
-        uint256 _prizeUser = _prizeAmount - (_prizeFeeDev + _prizeFeeFlp);
-        
-        _tournament.prizeToken.transfer(royaltyAddrDev, _prizeFeeDev);
-        _tournament.prizeToken.transfer(royaltyAddrFlp, _prizeFeeFlp);
-        _tournament.prizeToken.transfer(_winner[i], _prizeUser);
-    }
-
-        // Transfer entry fee
-        uint256 _feeAmount = _tournament.feeBalance;
-        uint256 _feeFeeDev = (_feeAmount * RoyaltyregfeeDev) / 100;
-        uint256 _feeFeeFlp = (_feeAmount * RoyaltyregfeeFlp) / 100;
-        uint256 _feeOrg = _feeAmount - (_feeFeeDev + _feeFeeFlp);
-        _tournament.feeToken.transfer(royaltyAddrDev, _feeFeeDev);
-        _tournament.feeToken.transfer(royaltyAddrFlp, _feeFeeFlp);
-        _tournament.feeToken.transfer(_tournament.organizer, _feeOrg);
-
-        emit EndedUnlock(_tournamentId, _winner);
-    }
-
-    // Set royalty address
-    function setRoyaltyDevAddress(address _royaltyAddr) external onlyAdmin{
-        royaltyAddrDev = _royaltyAddr;
-    }
-
-    function setRoyaltyFlpAddress(address _royaltyAddr) external onlyAdmin{
-        royaltyAddrFlp = _royaltyAddr;
-    }
-
-    // Set prize royalty rate
-    function setPrizeRoyaltyDevRate(uint _royaltyRate) external onlyAdmin{
-        RoyaltyPrizeDev = _royaltyRate;
-    }
-
-    function setPrizeRoyaltyFlpRate(uint _royaltyRate) external onlyAdmin{
-        RoyaltyPrizeFlp = _royaltyRate;
-    }
-
-    // Set regfee royalty rate
-    function setRegfeeRoyaltyDevRate(uint _royaltyRate) external onlyAdmin{
-        RoyaltyregfeeDev = _royaltyRate;
-    }
-
-    function setRegfeeRoyaltyFlpRate(uint _royaltyRate) external onlyAdmin{
-        RoyaltyregfeeFlp = _royaltyRate;
     }
 }
