@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.17;
 
-import "./Miracle-Tournament-R7.sol";
+import "./Miracle-Tournament.sol";
 import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
 //    _______ _______ ___ ___ _______ ______  ___     ___ ______  _______     ___     _______ _______  _______ 
 //   |   _   |   _   |   Y   |   _   |   _  \|   |   |   |   _  \|   _   |   |   |   |   _   |   _   \|   _   |
@@ -11,7 +11,7 @@ import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
 //   |:  1   |:  1   |:  1   |:  1   |:  |   |:  1   |:  |:  |   |:  1   |   |:  1   |:  |   |:  1    |:  1   |
 //   |::.. . |::.. . |\:.. ./|::.. . |::.|   |::.. . |::.|::.|   |::.. . |   |::.. . |::.|:. |::.. .  |::.. . |
 //   `-------`-------' `---' `-------`--- ---`-------`---`--- ---`-------'   `-------`--- ---`-------'`-------'
-//   TournamentEscrow V0.7                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              .0
+//   TournamentEscrow V1.1                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          .0
                                              
 interface IERC20 {
     function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
