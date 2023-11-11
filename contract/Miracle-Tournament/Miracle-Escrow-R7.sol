@@ -24,6 +24,10 @@ interface IERC1155{
     function mintTo(address _to, uint256 _tokenId, string calldata _uri, uint256 _amount) external;
 }
 
+interface IERC721{
+    
+}
+
 contract MiracleTournamentEscrow is ContractMetadata {
     address public deployer;
     address public admin;
@@ -167,7 +171,6 @@ contract MiracleTournamentEscrow is ContractMetadata {
         emit LockFeeToken(_tournamentId, _tournament.joinFee);
     }
 
-    // R5.1
     // Tournament CANCEL unlock PRIZE and entry fee (auto transfer)
     function _CanceledUnlockTransfer(uint _tournamentId, address[] memory _players) internal {
         Tournament storage _tournament = tournamentMapping[_tournamentId];
@@ -181,7 +184,6 @@ contract MiracleTournamentEscrow is ContractMetadata {
         emit CanceledUnlock(_tournamentId);
     }
 
-    //R5.1
     // Tournament END unlock PRIZE and entry fee (auto transfer)
     function _EndedUnlockTransfer(uint _tournamentId, address[] memory _winner) internal {
         Tournament storage _tournament = tournamentMapping[_tournamentId];
@@ -191,16 +193,22 @@ contract MiracleTournamentEscrow is ContractMetadata {
         uint256[] memory _prizeAmountArray = _tournament.prizeAmountArray;
         require(_winner.length == _prizeAmountArray.length, "Arrays must be the same length.");
         // Transfer prize to winner
-        for (uint256 i = 0; i < _winner.length; i++) {
-            uint256 _prizeAmount = _prizeAmountArray[i];
-            uint256 _prizeFeeDev = (_prizeAmount * RoyaltyPrizeDev) / 100;
-            uint256 _prizeFeeFlp = (_prizeAmount * RoyaltyPrizeFlp) / 100;
-            uint256 _prizeUser = _prizeAmount - (_prizeFeeDev + _prizeFeeFlp);
-            
-            _tournament.prizeToken.transfer(royaltyAddrDev, _prizeFeeDev);
-            _tournament.prizeToken.transfer(royaltyAddrFlp, _prizeFeeFlp);
-            _tournament.prizeToken.transfer(_winner[i], _prizeUser);
+    for (uint256 i = 0; i < _winner.length; i++) {
+        uint256 _prizeAmount = _prizeAmountArray[i];
+
+        if (_prizeAmount == 0) {
+            continue;
         }
+
+        uint256 _prizeFeeDev = (_prizeAmount * RoyaltyPrizeDev) / 100;
+        uint256 _prizeFeeFlp = (_prizeAmount * RoyaltyPrizeFlp) / 100;
+        uint256 _prizeUser = _prizeAmount - (_prizeFeeDev + _prizeFeeFlp);
+        
+        _tournament.prizeToken.transfer(royaltyAddrDev, _prizeFeeDev);
+        _tournament.prizeToken.transfer(royaltyAddrFlp, _prizeFeeFlp);
+        _tournament.prizeToken.transfer(_winner[i], _prizeUser);
+    }
+
         // Transfer entry fee
         uint256 _feeAmount = _tournament.feeBalance;
         uint256 _feeFeeDev = (_feeAmount * RoyaltyregfeeDev) / 100;
