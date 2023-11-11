@@ -17,11 +17,14 @@ interface IERC20 {
     function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
     function balanceOf(address account) external view returns (uint256);
     function allowance(address owner, address spender) external view returns (uint256);
+    function approve(address spender, uint256 value) external returns (bool);
     function transfer(address recipient, uint256 amount) external returns (bool);
 }
 
 interface IERC1155{
     function mintTo(address _to, uint256 _tokenId, string calldata _uri, uint256 _amount) external;
+    function balanceOf(address _owner, uint256 _id) external view returns (uint256);
+    function isApprovedForAll(address _owner, address _operator) external view returns (bool);
 }
 
 interface IERC721{
