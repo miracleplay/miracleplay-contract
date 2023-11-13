@@ -16,7 +16,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 //   |:  1   |:  1   |:  1   |:  1   |:  |   |:  1   |:  |:  |   |:  1   |   |:  1   |:  |   |:  1    |:  1   |
 //   |::.. . |::.. . |\:.. ./|::.. . |::.|   |::.. . |::.|::.|   |::.. . |   |::.. . |::.|:. |::.. .  |::.. . |
 //   `-------`-------' `---' `-------`--- ---`-------`---`--- ---`-------'   `-------`--- ---`-------'`-------'
-//   TournamentEscrow V1.1                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          .0
+//   TournamentEscrow V2.0                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          .0
 
 
 contract MiracleTournamentEscrow is ContractMetadata, ERC1155Holder, ERC721Holder {
@@ -180,9 +180,11 @@ contract MiracleTournamentEscrow is ContractMetadata, ERC1155Holder, ERC721Holde
         TournamentEscrow storage _newEscrow = escrowMap[_tournamentId];
         createTotalAssets storage _createTotalAssets = _newEscrow.createAssets;
 
+        _newEscrow.prizeCount = _prizeCount;
+
         // Set prize array and save memory to transfer assests.
         for (uint i = 0; i < _prizeCount; i++){
-            TournamentPrizeAssets memory prizeAssets = _newEscrow.ranksPrize[i];
+            TournamentPrizeAssets storage prizeAssets = _newEscrow.ranksPrize[i];
 
             address selectedToken = _prizeToken[i];
             uint selectedTokenAmount = _prizeAmount[i];
@@ -281,6 +283,11 @@ contract MiracleTournamentEscrow is ContractMetadata, ERC1155Holder, ERC721Holde
                 }
             }
         }
+    }
+
+    function isTournamentCreated(uint tournamentId) public view returns (bool) {
+        Tournament storage _Tournament = tournamentMap[tournamentId];
+        return _Tournament.tournamentStatus.tournamentCreated;
     }
 
     function getPrizeCount(uint tournamentId) public view returns (uint) {
