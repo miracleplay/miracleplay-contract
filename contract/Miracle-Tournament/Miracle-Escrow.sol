@@ -54,13 +54,16 @@ contract MiracleTournamentEscrow is ContractMetadata {
 
     struct Tournament {
         address organizer;
-        TournamentJoinfee joinFee;
-        mapping(uint => TournamentPrizeAssets) ranksPrize;
-        createTotalAssets createAssets;
         TournamentStatus tournamentStatus;
         uint prizeCount;
         string tournamentURI;
         uint PlayersLimit;
+    }
+
+    struct TournamentEscrow {
+        TournamentJoinfee joinFee;
+        mapping(uint => TournamentPrizeAssets) ranksPrize;
+        createTotalAssets createAssets;
     }
 
     struct TournamentPrizeAssets {
@@ -107,6 +110,7 @@ contract MiracleTournamentEscrow is ContractMetadata {
     }
 
     mapping(uint => Tournament) tournamentMap;
+    mapping(uint => TournamentEscrow) escrowMap;
 
     event CreateTournament(uint tournamentId, address organizer, string tournamentURI);
     event LockPrizeToken(uint tournamentId, uint prizeAmount);
@@ -164,15 +168,17 @@ contract MiracleTournamentEscrow is ContractMetadata {
     }
 
     // Create tournament
-    function createTournamentEscrow(uint _tournamentId, uint8 _tournamentType, uint _prizeCount, address[] calldata _prizeToken, uint[] calldata _prizeAmount, address[] calldata _prizeNFT, uint[] calldata _NFTtokens, address[] calldata _prizeEdition, uint[] calldata _editionTokens, uint[] calldata _editionAmount, IERC20 _joinFeeToken, uint _joinFee, uint _joinStartTime, uint _joinEndTime, string memory _tournamentURI, uint _playerLimit) external {
+    //  _joinFeeToken, uint _joinFee, uint _joinStartTime, uint _joinEndTime, string memory _tournamentURI, uint _playerLimit
+    function createTournamentEscrow(uint _tournamentId, uint _prizeCount, address[] memory _prizeToken, uint[] memory _prizeAmount, address[] memory _prizeNFT, uint[] memory _NFTtokens, address[] memory _prizeEdition, uint[] memory _editionTokens, uint[] memory _editionAmount) external {
+        TournamentEscrow storage _newEscrow = escrowMap[_tournamentId];
         Tournament storage _newTournament = tournamentMap[_tournamentId];
-        createTotalAssets storage _createTotalAssets = _newTournament.createAssets;
+        createTotalAssets storage _createTotalAssets = _newEscrow.createAssets;
 
         require(_newTournament.tournamentStatus.tournamentCreated == false, "Tournament already created.");
 
         // Set prize array and save memory to transfer assests.
         for (uint i = 0; i < _prizeCount; i++){
-            TournamentPrizeAssets storage prizeAssets = _newTournament.ranksPrize[i];
+            TournamentPrizeAssets memory prizeAssets = _newEscrow.ranksPrize[i];
 
             address selectedToken = _prizeToken[i];
             uint selectedTokenAmount = _prizeAmount[i];
@@ -184,11 +190,7 @@ contract MiracleTournamentEscrow is ContractMetadata {
             uint selectedEditionId = _editionTokens[i];
             uint selectedEditionAmount = _editionAmount[i];
 
-            address[] storage prizeTokensIndex;
-            address[] storage prizeNFTsIndex;
-            address[] storage prizeEditionIndex;
-
-            // ERC20 Escrow
+            // ERC20
             if(selectedToken != address(0)){
                 prizeAssets.Token.tokenAddress = selectedToken;
                 prizeAssets.Token.amount = selectedTokenAmount;
@@ -200,7 +202,7 @@ contract MiracleTournamentEscrow is ContractMetadata {
                     _createTotalAssets.TokenIndex.push(selectedToken);
                 }
             }
-            // ERC721 Escrow
+            // ERC721
             if (selectedNFT != address(0)){
                 prizeAssets.NFT.NFTAddress = selectedNFT;
                 prizeAssets.NFT.NFTId = (selectedNFTId);
@@ -217,8 +219,8 @@ contract MiracleTournamentEscrow is ContractMetadata {
                 }
                 _createTotalAssets.NFT[selectedNFT].push(selectedNFTId);
             }
-            // ERC1155 Escrow
-            if (_prizeEdition[i] != address(0)){
+            // ERC1155
+            if (selectedEdition != address(0)){
                 prizeAssets.Edition.EditionAddress = selectedEdition;
                 prizeAssets.Edition.EditionId = selectedEditionId;
                 prizeAssets.Edition.EditionAmount = selectedEditionAmount;
@@ -236,5 +238,9 @@ contract MiracleTournamentEscrow is ContractMetadata {
                 }
             }
         }
+
+        // Escrow Assest
+        if _createTotalAssets.
+
     }
 }
