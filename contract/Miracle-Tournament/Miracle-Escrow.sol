@@ -118,7 +118,7 @@ contract MiracleTournamentEscrow is ContractMetadata {
         uint playersLimit;
     }
 
-    mapping(uint => Tournament) tournamentMap;
+    mapping(uint => Tournament) public tournamentMap;
     mapping(uint => TournamentEscrow) escrowMap;
 
     event CreateTournament(uint tournamentId, address organizer, string tournamentURI);
@@ -210,6 +210,7 @@ contract MiracleTournamentEscrow is ContractMetadata {
             address selectedEdition = _prizeEdition[i];
             uint selectedEditionId = _editionTokens[i];
             uint selectedEditionAmount = _editionAmount[i];
+            // Check null adress 0x0000000000000000000000000000000000000000
 
             // ERC20
             if(selectedToken != address(0)){
@@ -297,5 +298,22 @@ contract MiracleTournamentEscrow is ContractMetadata {
                 }
             }
         }
+    }
+
+    function getPrizeCount(uint tournamentId) public view returns (uint) {
+        return escrowMap[tournamentId].prizeCount;
+    }
+
+    function getRanksPrizeToken(uint tournamentId, uint rank) public view returns (address, uint) {
+        TournamentPrizeAssets storage prize = escrowMap[tournamentId].ranksPrize[rank];
+        return (prize.Token.tokenAddress, prize.Token.amount);
+    }
+    function getRanksPrizeNFT(uint tournamentId, uint rank) public view returns (address, uint) {
+        TournamentPrizeAssets storage prize = escrowMap[tournamentId].ranksPrize[rank];
+        return (prize.NFT.NFTAddress, prize.NFT.NFTId);
+    }
+    function getRanksPrizeEdition(uint tournamentId, uint rank) public view returns (address, uint, uint) {
+        TournamentPrizeAssets storage prize = escrowMap[tournamentId].ranksPrize[rank];
+        return (prize.Edition.EditionAddress, prize.Edition.EditionId, prize.Edition.EditionAmount);
     }
 }
