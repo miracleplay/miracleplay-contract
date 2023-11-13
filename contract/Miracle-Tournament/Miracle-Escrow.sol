@@ -4,6 +4,11 @@ pragma solidity ^0.8.17;
 
 // import "./Miracle-Tournament.sol";
 import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
+import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
+import "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
+import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 //    _______ _______ ___ ___ _______ ______  ___     ___ ______  _______     ___     _______ _______  _______ 
 //   |   _   |   _   |   Y   |   _   |   _  \|   |   |   |   _  \|   _   |   |   |   |   _   |   _   \|   _   |
 //   |   1___|.  1___|.  |   |.  1___|.  |   |.  |   |.  |.  |   |.  1___|   |.  |   |.  1   |.  1   /|   1___|
@@ -12,31 +17,9 @@ import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
 //   |::.. . |::.. . |\:.. ./|::.. . |::.|   |::.. . |::.|::.|   |::.. . |   |::.. . |::.|:. |::.. .  |::.. . |
 //   `-------`-------' `---' `-------`--- ---`-------`---`--- ---`-------'   `-------`--- ---`-------'`-------'
 //   TournamentEscrow V1.1                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          .0
-                                             
-interface IERC20 {
-    function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
-    function balanceOf(address account) external view returns (uint256);
-    function allowance(address owner, address spender) external view returns (uint256);
-    function transfer(address recipient, uint256 amount) external returns (bool);
-}
 
-interface IERC1155{
-    function mintTo(address _to, uint256 _tokenId, string calldata _uri, uint256 _amount) external;
-    function safeTransferFrom(address _from, address _to, uint256 _id, uint256 _value, bytes calldata _data) external;
-    function safeBatchTransferFrom(address _from, address _to, uint256[] calldata _ids, uint256[] calldata _values, bytes calldata _data) external;
-    function balanceOf(address _owner, uint256 _id) external view returns (uint256);
-    function isApprovedForAll(address _owner, address _operator) external view returns (bool);
-}
 
-interface IERC721{
-    function safeTransferFrom(address from, address to, uint256 tokenId) external;
-    function transferFrom(address from, address to, uint256 tokenId) external;
-    function ownerOf(uint256 tokenId) external view returns (address);
-    function isApprovedForAll(address owner, address operator) external view returns (bool);
-    function getApproved(uint256 tokenId) external view returns (address operator);
-}
-
-contract MiracleTournamentEscrow is ContractMetadata {
+contract MiracleTournamentEscrow is ContractMetadata, ERC1155Holder, ERC721Holder {
     address public deployer;
     address public admin;
     address payable public tournamentAddr;
