@@ -240,7 +240,20 @@ contract MiracleTournamentEscrow is ContractMetadata {
         }
 
         // Escrow Assest
-        if _createTotalAssets.
+        if (_createTotalAssets.TokenIndex.length > 0){
+            for (uint erc20i = 0; erc20i < _createTotalAssets.TokenIndex.length; erc20i++){
+                address _tokenAddress = _createTotalAssets.TokenIndex[erc20i];
+                uint _tokenAmount = _createTotalAssets.tokenAmount[erc20i];
+            }
+        }
+
+        if(_createTotalAssets.NFTIndex.length >0){
+
+        }
+
+        if(_createTotalAssets.EditionIndex.length >0){
+
+        }
 
     }
 }
