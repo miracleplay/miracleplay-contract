@@ -30,8 +30,10 @@ interface IERC1155{
 
 interface IERC721{
     function safeTransferFrom(address from, address to, uint256 tokenId) external;
+    function transferFrom(address from, address to, uint256 tokenId) external;
     function ownerOf(uint256 tokenId) external view returns (address);
     function isApprovedForAll(address owner, address operator) external view returns (bool);
+    function getApproved(uint256 tokenId) external view returns (address operator);
 }
 
 contract MiracleTournamentEscrow is ContractMetadata {
@@ -55,13 +57,13 @@ contract MiracleTournamentEscrow is ContractMetadata {
     struct Tournament {
         address organizer;
         TournamentStatus tournamentStatus;
-        uint prizeCount;
+        TournamentJoinfee joinFee;
+        TournamentJoinInfo tournamentJoinInfo;
         string tournamentURI;
-        uint PlayersLimit;
     }
 
     struct TournamentEscrow {
-        TournamentJoinfee joinFee;
+        uint prizeCount;
         mapping(uint => TournamentPrizeAssets) ranksPrize;
         createTotalAssets createAssets;
     }
@@ -94,11 +96,12 @@ contract MiracleTournamentEscrow is ContractMetadata {
         address[] NFTIndex;
         mapping (address=>uint[]) NFT;
         address[] EditionIndex;
-        mapping (address=>mapping(uint=>uint)) Edition;
+        uint [] EditionId;
+        mapping (address=>mapping(uint=>uint)) EditionAmount;
     }
 
     struct TournamentJoinfee {
-        address feeToken;
+        address feeTokenAddress;
         uint feeAmount;
         uint feeBalance;
     }
@@ -107,6 +110,12 @@ contract MiracleTournamentEscrow is ContractMetadata {
         bool tournamentCreated;
         bool tournamentEnded;
         bool tournamentCanceled;
+    }
+
+    struct TournamentJoinInfo {
+        uint joinStartTime;
+        uint joinEndTime;
+        uint playersLimit;
     }
 
     mapping(uint => Tournament) tournamentMap;
@@ -167,14 +176,26 @@ contract MiracleTournamentEscrow is ContractMetadata {
         // miracletournament = MiracleTournament(_miracletournament);
     }
 
-    // Create tournament
-    //  _joinFeeToken, uint _joinFee, uint _joinStartTime, uint _joinEndTime, string memory _tournamentURI, uint _playerLimit
-    function createTournamentEscrow(uint _tournamentId, uint _prizeCount, address[] memory _prizeToken, uint[] memory _prizeAmount, address[] memory _prizeNFT, uint[] memory _NFTtokens, address[] memory _prizeEdition, uint[] memory _editionTokens, uint[] memory _editionAmount) external {
-        TournamentEscrow storage _newEscrow = escrowMap[_tournamentId];
+    function createTournament(uint _tournamentId, address _joinFeeToken, uint _joinFeeAmount, uint _joinStartTime, uint _joinEndTime, uint _playerLimit, string memory _tournamentURI) external {
         Tournament storage _newTournament = tournamentMap[_tournamentId];
-        createTotalAssets storage _createTotalAssets = _newEscrow.createAssets;
-
         require(_newTournament.tournamentStatus.tournamentCreated == false, "Tournament already created.");
+        _newTournament.tournamentStatus.tournamentCreated = true;
+        _newTournament.organizer = msg.sender;
+        _newTournament.joinFee.feeTokenAddress = _joinFeeToken;
+        _newTournament.joinFee.feeAmount = _joinFeeAmount;
+        _newTournament.tournamentJoinInfo.joinStartTime = _joinStartTime;
+        _newTournament.tournamentJoinInfo.joinEndTime = _joinEndTime;
+        _newTournament.tournamentJoinInfo.playersLimit = _playerLimit;
+        _newTournament.tournamentURI = _tournamentURI;
+    }
+
+    // Create tournament
+    // address _joinFeeToken, uint _joinFee, uint _joinStartTime, uint _joinEndTime, string memory _tournamentURI, uint _playerLimit
+    function createEscrow(uint _tournamentId, uint _prizeCount, address[] memory _prizeToken, uint[] memory _prizeAmount, address[] memory _prizeNFT, uint[] memory _NFTtokens, address[] memory _prizeEdition, uint[] memory _editionTokens, uint[] memory _editionAmount) external {
+        Tournament memory _newTournament = tournamentMap[_tournamentId];
+        require(_newTournament.tournamentStatus.tournamentCreated, "Tournament Not created.");
+        TournamentEscrow storage _newEscrow = escrowMap[_tournamentId];
+        createTotalAssets storage _createTotalAssets = _newEscrow.createAssets;
 
         // Set prize array and save memory to transfer assests.
         for (uint i = 0; i < _prizeCount; i++){
@@ -205,7 +226,7 @@ contract MiracleTournamentEscrow is ContractMetadata {
             // ERC721
             if (selectedNFT != address(0)){
                 prizeAssets.NFT.NFTAddress = selectedNFT;
-                prizeAssets.NFT.NFTId = (selectedNFTId);
+                prizeAssets.NFT.NFTId = selectedNFTId;
 
                 bool isAdded = false;
                 for (uint ii = 0; ii < _createTotalAssets.NFTIndex.length; ii++){
@@ -233,8 +254,10 @@ contract MiracleTournamentEscrow is ContractMetadata {
                     }
                 }
                 if(!isAdded){
+                    uint currentAmount = _createTotalAssets.EditionAmount[selectedEdition][selectedEditionId];
                     _createTotalAssets.EditionIndex.push(selectedEdition);
-                    _createTotalAssets.Edition[selectedEdition][selectedEditionId] = selectedEditionAmount;
+                    _createTotalAssets.EditionId.push(selectedEditionId);
+                    _createTotalAssets.EditionAmount[selectedEdition][selectedEditionId] = currentAmount + selectedEditionAmount;
                 }
             }
         }
@@ -243,17 +266,36 @@ contract MiracleTournamentEscrow is ContractMetadata {
         if (_createTotalAssets.TokenIndex.length > 0){
             for (uint erc20i = 0; erc20i < _createTotalAssets.TokenIndex.length; erc20i++){
                 address _tokenAddress = _createTotalAssets.TokenIndex[erc20i];
-                uint _tokenAmount = _createTotalAssets.tokenAmount[erc20i];
+                uint _tokenAmount = _createTotalAssets.tokenAmount[_tokenAddress];
+                require(IERC20(_tokenAddress).allowance(msg.sender, address(this)) >= _tokenAmount, "ERC20: Allowance is not sufficient.");
+                require(_tokenAmount <= IERC20(_tokenAddress).balanceOf(msg.sender), "ERC20: Insufficient balance.");
+                require(IERC20(_tokenAddress).transferFrom(msg.sender, address(this), _tokenAmount), "ERC20: Transfer failed.");
             }
         }
 
-        if(_createTotalAssets.NFTIndex.length >0){
-
+        if(_createTotalAssets.NFTIndex.length > 0){
+            for (uint erc721i = 0; erc721i < _createTotalAssets.NFTIndex.length; erc721i++){
+                address _NFTAddress = _createTotalAssets.NFTIndex[erc721i];
+                uint[] memory _NFTID = _createTotalAssets.NFT[_NFTAddress];
+                for(uint j = 0; j < _NFTID.length; j++){
+                    require(IERC721(_NFTAddress).ownerOf(_NFTID[j]) == msg.sender, "ERC721: transfer caller is not owner");
+                    require(IERC721(_NFTAddress).getApproved(_NFTID[j]) == address(this) || IERC721(_NFTAddress).isApprovedForAll(msg.sender, address(this)), "ERC721: transfer caller is not approved");
+                    IERC721(_NFTAddress).transferFrom(msg.sender, address(this), _NFTID[j]);
+                }
+            }
         }
 
-        if(_createTotalAssets.EditionIndex.length >0){
-
+        if(_createTotalAssets.EditionIndex.length > 0){
+            for (uint erc1155i = 0; erc1155i < _createTotalAssets.EditionIndex.length; erc1155i++){
+                address _EditionAddress = _createTotalAssets.EditionIndex[erc1155i];
+                uint _EditionID = _createTotalAssets.EditionId[erc1155i];
+                for(uint k = 0; k < _createTotalAssets.EditionId.length; k++){
+                    uint _EditionAmount = _createTotalAssets.EditionAmount[_EditionAddress][_EditionID];
+                    require(IERC1155(_EditionAddress).balanceOf(msg.sender, _EditionID) >= _EditionAmount, "ERC1155: insufficient balance for transfer");
+                    require(IERC1155(_EditionAddress).isApprovedForAll(msg.sender, address(this)), "ERC1155: transfer caller is not approved");
+                    IERC1155(_EditionAddress).safeTransferFrom(msg.sender, address(this), _EditionID, _EditionAmount, "");
+                }
+            }
         }
-
     }
 }
