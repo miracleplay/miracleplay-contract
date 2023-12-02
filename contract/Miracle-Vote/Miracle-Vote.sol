@@ -1,6 +1,20 @@
+// SPDX-License-Identifier: MIT
+
+//    _______ _______ ___ ___ _______ ______  ___     ___ ______  _______     ___     _______ _______  _______ 
+//   |   _   |   _   |   Y   |   _   |   _  \|   |   |   |   _  \|   _   |   |   |   |   _   |   _   \|   _   |
+//   |   1___|.  1___|.  |   |.  1___|.  |   |.  |   |.  |.  |   |.  1___|   |.  |   |.  1   |.  1   /|   1___|
+//   |____   |.  __)_|.  |   |.  __)_|.  |   |.  |___|.  |.  |   |.  __)_    |.  |___|.  _   |.  _   \|____   |
+//   |:  1   |:  1   |:  1   |:  1   |:  |   |:  1   |:  |:  |   |:  1   |   |:  1   |:  |   |:  1    |:  1   |
+//   |::.. . |::.. . |\:.. ./|::.. . |::.|   |::.. . |::.|::.|   |::.. . |   |::.. . |::.|:. |::.. .  |::.. . |
+//   `-------`-------' `---' `-------`--- ---`-------`---`--- ---`-------'   `-------`--- ---`-------'`-------'
+//   Miracleplay Voting with ERC-20 Token
+
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@thirdweb-dev/contracts/extension/PermissionsEnumerable.sol";
+import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
+import "@thirdweb-dev/contracts/extension/Multicall.sol";
 
 contract VotingContract {
     address public owner;
@@ -11,29 +25,22 @@ contract VotingContract {
     mapping(address => uint256) private votes;
     address[] private winners;
 
-    modifier onlyOwner() {
-        require(msg.sender == owner, "Only owner can call this function.");
-        _;
-    }
-
-    constructor(address _votingToken) {
+    constructor(address _adminAddr, address _votingToken, string memory _contractURI) {
+        _setupRole(DEFAULT_ADMIN_ROLE, _adminAddr);
         owner = msg.sender;
         votingToken = IERC20(_votingToken);
+        _setupContractURI(_contractURI);
     }
 
-    function setVotingPeriod(uint256 _startTime, uint256 _endTime) public onlyOwner {
+    function setVotingPeriod(uint256 _startTime, uint256 _endTime) public onlyRole(DEFAULT_ADMIN_ROLE) {
         require(_startTime < _endTime, "Start time must be before end time.");
         startTime = _startTime;
         endTime = _endTime;
     }
 
-    function registerCandidate(address _candidate) public onlyOwner {
+    function registerCandidate(address _candidate) public onlyRole(DEFAULT_ADMIN_ROLE) {
         candidateList.push(_candidate);
         votes[_candidate] = 0;
-    }
-
-    function getCandidates() public view returns (address[] memory) {
-        return candidateList;
     }
 
     function vote(address _candidate) public {
@@ -44,10 +51,23 @@ contract VotingContract {
         votes[_candidate] += 1;
     }
 
-    function endVoting() public onlyOwner {
+    function endVoting() public onlyRole(DEFAULT_ADMIN_ROLE) {
         require(block.timestamp > endTime, "Voting not ended.");
         _burnTokens();
         _sortWinners();
+    }
+
+
+    function resetVoting() public onlyOwner {
+        require(block.timestamp > endTime, "Voting is still in progress.");
+
+        for (uint i = 0; i < candidateList.length; i++) {
+            delete votes[candidateList[i]];
+        }
+        delete candidateList;
+        delete winners;
+        startTime = 0;
+        endTime = 0;
     }
 
     function _burnTokens() private {
@@ -74,15 +94,20 @@ contract VotingContract {
         return winners;
     }
 
-    function resetVoting() public onlyOwner {
-        require(block.timestamp > endTime, "Voting is still in progress.");
+    function getCandidates() public view returns (address[] memory) {
+        return candidateList;
+    }
 
-        for (uint i = 0; i < candidateList.length; i++) {
-            delete votes[candidateList[i]];
+    function getVoteCount(address _candidate) public view returns (uint256) {
+        return votes[_candidate]
+    }
+
+    function getVoteCountAll() public view returns (address[] memory, uint[] memory) {
+        address [] memory _candidateList = getCandidates;
+        uint [] storage _voteCount;
+        for (uint i = 0; i < _candidateList.length; i++){
+            _voteCount.push(getVoteCount(_candidateList[i]));
         }
-        delete candidateList;
-        delete winners;
-        startTime = 0;
-        endTime = 0;
+        return _candidateList, _voteCount;
     }
 }
