@@ -13,23 +13,28 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@thirdweb-dev/contracts/extension/PermissionsEnumerable.sol";
-import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
 import "@thirdweb-dev/contracts/extension/Multicall.sol";
 
-contract VotingContract {
-    address public owner;
+contract VotingContract is PermissionsEnumerable{
+    address public deployer;
     uint256 public startTime;
     uint256 public endTime;
+    string public voteContent;
     IERC20 public votingToken;
     address[] private candidateList;
     mapping(address => uint256) private votes;
     address[] private winners;
 
-    constructor(address _adminAddr, address _votingToken, string memory _contractURI) {
-        _setupRole(DEFAULT_ADMIN_ROLE, _adminAddr);
-        owner = msg.sender;
+    constructor() {
+        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
+    }
+
+    function setVotingToken(address _votingToken) public onlyRole(DEFAULT_ADMIN_ROLE) {
         votingToken = IERC20(_votingToken);
-        _setupContractURI(_contractURI);
+    }
+
+    function setVotingContent(string memory _contentURI) public onlyRole(DEFAULT_ADMIN_ROLE) {
+        voteContent = _contentURI;
     }
 
     function setVotingPeriod(uint256 _startTime, uint256 _endTime) public onlyRole(DEFAULT_ADMIN_ROLE) {
@@ -58,7 +63,7 @@ contract VotingContract {
     }
 
 
-    function resetVoting() public onlyOwner {
+    function resetVoting() public onlyRole(DEFAULT_ADMIN_ROLE) {
         require(block.timestamp > endTime, "Voting is still in progress.");
 
         for (uint i = 0; i < candidateList.length; i++) {
@@ -90,6 +95,10 @@ contract VotingContract {
         }
     }
 
+    function getVoteContent() public view returns (string memory) {
+        return voteContent;
+    }
+
     function getWinners() public view returns (address[] memory) {
         return winners;
     }
@@ -99,15 +108,15 @@ contract VotingContract {
     }
 
     function getVoteCount(address _candidate) public view returns (uint256) {
-        return votes[_candidate]
+        return votes[_candidate];
     }
 
     function getVoteCountAll() public view returns (address[] memory, uint[] memory) {
-        address [] memory _candidateList = getCandidates;
-        uint [] storage _voteCount;
-        for (uint i = 0; i < _candidateList.length; i++){
-            _voteCount.push(getVoteCount(_candidateList[i]));
+        address[] memory _candidateList = getCandidates();
+        uint[] memory _voteCount = new uint[](_candidateList.length);
+        for (uint i = 0; i < _candidateList.length; i++) {
+            _voteCount[i] = getVoteCount(_candidateList[i]);
         }
-        return _candidateList, _voteCount;
+        return (_candidateList, _voteCount);
     }
 }
