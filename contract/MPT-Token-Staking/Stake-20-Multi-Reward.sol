@@ -48,7 +48,7 @@ contract ERC20Staking is Ownable {
         uint256 _reward2APR,
         string memory _contractURI
     ) {
-        _setupRole(DEFAULT_ADMIN_ROLE, _adminAddr,);
+        _setupRole(DEFAULT_ADMIN_ROLE, _adminAddr);
         stakingToken = IERC20(_stakingToken);
         rewardToken1 = IMintableERC20(_rewardToken1);
         rewardToken2 = IMintableERC20(_rewardToken2);
