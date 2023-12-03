@@ -7,7 +7,7 @@
 //   |:  1   |:  1   |:  1   |:  1   |:  |   |:  1   |:  |:  |   |:  1   |   |:  1   |:  |   |:  1    |:  1   |
 //   |::.. . |::.. . |\:.. ./|::.. . |::.|   |::.. . |::.|::.|   |::.. . |   |::.. . |::.|:. |::.. .  |::.. . |
 //   `-------`-------' `---' `-------`--- ---`-------`---`--- ---`-------'   `-------`--- ---`-------'`-------'
-//   Miracleplay ERC-20 to ERC-20 staking
+//   Miracleplay ERC-20 to ERC-20 staking v0.1
 
 pragma solidity ^0.8.0;
 
@@ -16,11 +16,12 @@ import "@thirdweb-dev/contracts/extension/PermissionsEnumerable.sol";
 import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
 import "@thirdweb-dev/contracts/extension/Multicall.sol";
 
-interface IMintableERC20 is IERC20, ContractMetadata {
+interface IMintableERC20 is IERC20 {
     function mintTo(address to, uint256 amount) external;
 }
 
-contract ERC20Staking is Ownable {
+contract ERC20Staking is PermissionsEnumerable, ContractMetadata {
+    address public deployer;
     IERC20 public stakingToken;
     IMintableERC20 public rewardToken1;
     IMintableERC20 public rewardToken2;
@@ -134,7 +135,7 @@ contract ERC20Staking is Ownable {
     }
 
     function getTotalStakedBalance() public view returns (uint256) {
-        return IERC20(stakingToken).balanceOf(address(this);)
+        return IERC20(stakingToken).balanceOf(address(this));
     }
 
     function getRewardToken1Balance() public view returns (uint256) {
