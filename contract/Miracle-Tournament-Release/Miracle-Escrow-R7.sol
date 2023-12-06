@@ -11,7 +11,7 @@ import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
 //   |:  1   |:  1   |:  1   |:  1   |:  |   |:  1   |:  |:  |   |:  1   |   |:  1   |:  |   |:  1    |:  1   |
 //   |::.. . |::.. . |\:.. ./|::.. . |::.|   |::.. . |::.|::.|   |::.. . |   |::.. . |::.|:. |::.. .  |::.. . |
 //   `-------`-------' `---' `-------`--- ---`-------`---`--- ---`-------'   `-------`--- ---`-------'`-------'
-//   TournamentEscrow V0.7                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              .0
+//   TournamentEscrow V0.7.2                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              .0
                                              
 interface IERC20 {
     function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
@@ -39,10 +39,6 @@ contract MiracleTournamentEscrow is ContractMetadata {
     uint public RoyaltyregfeeFlp;
     address public royaltyAddrDev;
     address public royaltyAddrFlp;
-    // Nexus point
-    IERC1155 public NexusPointEdition;
-    uint public NexusPointID;
-    string public NexusPointURI;
 
     MiracleTournament internal miracletournament;
 
@@ -74,7 +70,7 @@ contract MiracleTournamentEscrow is ContractMetadata {
     event CanceledUnlock(uint tournamentId);
     event EndedUnlock(uint tournamentId, address [] _withdrawAddresses);
 
-    constructor(address adminAddr, address _royaltyAddrDev, address _royaltyAddrFlp, IERC1155 _NexusPointEdition, uint _NexusPointID, string memory _nexusURI, string memory _contractURI) {
+    constructor(address adminAddr, address _royaltyAddrDev, address _royaltyAddrFlp, string memory _contractURI) {
         admin = adminAddr;
         royaltyAddrDev = _royaltyAddrDev;
         royaltyAddrFlp = _royaltyAddrFlp;
@@ -85,9 +81,6 @@ contract MiracleTournamentEscrow is ContractMetadata {
         RoyaltyPrizeFlp = 5;
         RoyaltyregfeeFlp = 5;
         deployer = adminAddr;
-        NexusPointEdition = _NexusPointEdition;
-        NexusPointID = _NexusPointID;
-        NexusPointURI = _nexusURI;
         _setupContractURI(_contractURI);
     }
 
@@ -166,8 +159,6 @@ contract MiracleTournamentEscrow is ContractMetadata {
 
         _tournament.feeBalance = _tournament.feeBalance + _tournament.joinFee;
         miracletournament.register(_tournamentId, msg.sender);
-        // Mint Nexus Point
-        IERC1155(NexusPointEdition).mintTo(msg.sender, NexusPointID, NexusPointURI, 1);
         emit LockFeeToken(_tournamentId, _tournament.joinFee);
     }
 
