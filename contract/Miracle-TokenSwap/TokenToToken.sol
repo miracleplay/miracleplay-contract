@@ -50,4 +50,12 @@ contract TokenToTokenSwap {
     function withdrawMUC(uint256 amount) public onlyAdmin {
         require(tokenMUC.transfer(owner, amount), "Withdrawal of MUC failed");
     }
+
+    function getBalanceMZC() public view returns (uint256) {
+        return tokenMZC.balanceOf(address(this));
+    }
+
+    function getBalanceMUC() public view returns (uint256) {
+        return tokenMUC.balanceOf(address(this));
+    }
 }
