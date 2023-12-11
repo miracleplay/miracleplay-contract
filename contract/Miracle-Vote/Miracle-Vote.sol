@@ -86,12 +86,15 @@ contract VotingContract is PermissionsEnumerable{
         emit VotingItemUpdated(_votingItemCnt);
     }
 
-    function vote(uint256 _candidate) public {
+    function vote(uint256 _candidate, uint256 tokenAmountWei) public {
         require(block.timestamp >= startTime && block.timestamp <= endTime, "Voting is not active.");
         require(votes[_candidate] >= 0, "Not a valid candidate.");
-        require(votingToken.transferFrom(msg.sender, address(this), 1), "Token transfer failed.");
 
-        votes[_candidate] += 1;
+        uint256 tokenAmountToTransfer = tokenAmountWei * (10**18);
+
+        require(votingToken.transferFrom(msg.sender, address(this), tokenAmountToTransfer), "Token transfer failed.");
+
+        votes[_candidate] += tokenAmountWei;
         emit UserVoted(msg.sender, _candidate);
     }
 

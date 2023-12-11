@@ -10,15 +10,16 @@ interface IERC20 {
     function allowance(address owner, address spender) external view returns (uint256);
 }
 
-contract TokenSwap {
+contract TokenToTokenSwap {
     address public owner;
-    IERC20 public tokenA;
-    IERC20 public tokenB;
+    address public admin;
+    IERC20 public tokenMZC;
+    IERC20 public tokenMUC;
 
-    constructor(address _tokenA, address _tokenB) {
+    constructor(address _tokenMZC, address _tokenMUC) {
         owner = msg.sender;
-        tokenA = IERC20(_tokenA);
-        tokenB = IERC20(_tokenB);
+        tokenMZC = IERC20(_tokenMZC);
+        tokenMUC = IERC20(_tokenMUC);
     }
 
     modifier onlyOwner() {
@@ -26,24 +27,27 @@ contract TokenSwap {
         _;
     }
 
+    modifier onlyAdmin() {
+        require(msg.sender == owner, "Not the owner");
+        _;
+    }
+
     // 소유자가 B 토큰을 예치하는 함수
-    function depositTokenB(uint256 amount) public onlyOwner {
-        require(tokenB.transferFrom(msg.sender, address(this), amount), "Transfer failed");
+    function depositMUC(uint256 amount) public onlyAdmin {
+        require(tokenMUC.transferFrom(msg.sender, address(this), amount), "Transfer failed");
     }
 
     // 사용자가 A 토큰을 보내면 B 토큰을 반환하는 함수
-    function swapTokenAForTokenB(uint256 amount) public {
-        require(tokenA.transferFrom(msg.sender, address(this), amount), "Transfer of token A failed");
-        require(tokenB.transfer(msg.sender, amount), "Transfer of token B failed");
+    function swapMZCForMUC(uint256 amount) public {
+        require(tokenMZC.transferFrom(msg.sender, address(this), amount), "Transfer of MZC failed");
+        require(tokenMUC.transfer(msg.sender, amount), "Transfer of MUC failed");
     }
 
-    // 소유자가 A 토큰을 인출하는 함수
-    function withdrawTokenA(uint256 amount) public onlyOwner {
-        require(tokenA.transfer(owner, amount), "Withdrawal of token A failed");
+    function withdrawMZC(uint256 amount) public onlyAdmin {
+        require(tokenMZC.transfer(owner, amount), "Withdrawal of MZC failed");
     }
 
-    // 소유자가 B 토큰을 인출하는 함수
-    function withdrawTokenB(uint256 amount) public onlyOwner {
-        require(tokenB.transfer(owner, amount), "Withdrawal of token B failed");
+    function withdrawMUC(uint256 amount) public onlyAdmin {
+        require(tokenMUC.transfer(owner, amount), "Withdrawal of MUC failed");
     }
 }
