@@ -16,7 +16,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 //   |:  1   |:  1   |:  1   |:  1   |:  |   |:  1   |:  |:  |   |:  1   |   |:  1   |:  |   |:  1    |:  1   |
 //   |::.. . |::.. . |\:.. ./|::.. . |::.|   |::.. . |::.|::.|   |::.. . |   |::.. . |::.|:. |::.. .  |::.. . |
 //   `-------`-------' `---' `-------`--- ---`-------`---`--- ---`-------'   `-------`--- ---`-------'`-------'
-//   TournamentEscrow V2.0                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          .0
+//   TournamentEscrow V1.0                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          .0
 
 
 contract MiracleTournamentEscrow is ContractMetadata, ERC1155Holder, ERC721Holder {
