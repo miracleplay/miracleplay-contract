@@ -16,8 +16,9 @@ contract TokenToTokenSwap {
     IERC20 public tokenMZC;
     IERC20 public tokenMUC;
 
-    constructor(address _tokenMZC, address _tokenMUC) {
+    constructor(address _admin, address _tokenMZC, address _tokenMUC) {
         owner = msg.sender;
+        admin = _admin;
         tokenMZC = IERC20(_tokenMZC);
         tokenMUC = IERC20(_tokenMUC);
     }
