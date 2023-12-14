@@ -6,13 +6,13 @@ import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 
 contract Tournament {
+    uint256 tournamentID;
     address public deployer;
     address public organizer;
-    bool public isTournamentActive;
     IERC20 public entryFeeToken; // 참가비로 사용될 ERC-20 토큰
     uint256 public entryFeeAmount; // 참가비 금액
-    mapping(address => bool) public users; // 참가자 
-    address[] public usersList; // 참가자 주소 목록
+    mapping(address => bool) public players; // 참가자 
+    address[] public playerList; // 참가자 주소 목록
     uint256 public startTime;
     uint256 public endTime;
     
@@ -33,12 +33,12 @@ contract Tournament {
     }
     TournamentState public state;
 
-    constructor(address _organizer, uint256 _startTime, uint256 _endTime, address _entryFeeToken, uint256 _entryFeeAmount) {
+    constructor(uint256 _tournamentID, address _organizer, uint256 _startTime, uint256 _endTime, address _entryFeeToken, uint256 _entryFeeAmount) {
         require(_startTime < _endTime, "Start time must be before end time");
         require(_startTime > block.timestamp, "Start time must be in the future");
+        tournamentID = _tournamentID;
         deployer = msg.sender;
         organizer = _organizer;
-        isTournamentActive = true;
         startTime = _startTime;
         endTime = _endTime;
         state = TournamentState.Created;
@@ -49,16 +49,40 @@ contract Tournament {
     // 참가 신청 함수
     function enterTournament() external {
         require(block.timestamp >= startTime && block.timestamp <= endTime, "Tournament registration is not open");
-        require(!users[msg.sender], "User already registered");
+        require(state == TournamentState.EscrowCompleted, "Tournament is not in the escrow completed");
+        require(!players[msg.sender], "User already registered");
 
         if (entryFeeAmount > 0) {
             // 참가비 전송이 성공적으로 이루어졌는지 확인
             require(entryFeeToken.transferFrom(msg.sender, address(this), entryFeeAmount), "Failed to transfer entry fee");
         }
 
-        if (!users[msg.sender]) {
-            users[msg.sender] = true;
-            usersList.push(msg.sender); // 참가자 목록에 추가
+        if (!players[msg.sender]) {
+            players[msg.sender] = true;
+            playerList.push(msg.sender); // 참가자 목록에 추가
+        }
+    }
+
+    // 참가자 제거
+    function removePlayer(address _player) external {
+        require(msg.sender == deployer, "Only deployer can remove a player");
+        require(players[_player], "Player not found");
+
+        // 참가자 매핑에서 제거
+        players[_player] = false;
+
+        // 참가자 목록에서 제거
+        for (uint i = 0; i < playerList.length; i++) {
+            if (playerList[i] == _player) {
+                playerList[i] = playerList[playerList.length - 1]; // 마지막 요소로 이동
+                playerList.pop(); // 배열 크기 줄임
+                break;
+            }
+        }
+    
+        // 참가비 반환
+        if (entryFeeAmount > 0) {
+            entryFeeToken.transfer(_player, entryFeeAmount);
         }
     }
 
@@ -122,7 +146,6 @@ contract Tournament {
         }
     }
 
-
     //Prize ERC-1155 Editions
     struct ERC1155Prize {
         address tokenAddress;
@@ -182,6 +205,11 @@ contract Tournament {
         
         uint256 winnersCount = _winners.length;
 
+        // 수상자 주소 저장
+        for (uint i = 0; i < _winners.length; i++) {
+            winners.push(_winners[i]);
+        }
+
         // ERC-20 상금 분배
         for (uint i = 0; i < winnersCount; i++) {
             if (i < erc20PrizesByRank.length && erc20PrizesByRank[i] > 0) {
@@ -203,14 +231,38 @@ contract Tournament {
             }
         }
 
+        // 남은 ERC-20 상금 반환
+        if (winnersCount < erc20PrizesByRank.length) {
+            for (uint i = winnersCount; i < erc20PrizesByRank.length; i++) {
+                uint256 remainingPrize = erc20PrizesByRank[i];
+                if (remainingPrize > 0) {
+                    erc20Prize.transfer(organizer, remainingPrize);
+                }
+            }
+        }
+
+        // 남은 ERC-721 상금 반환
+        for (uint i = winnersCount; i < prizesByRankNFT.length; i++) {
+            if (prizesByRankNFT[i].tokenAddress != address(0)) {
+                IERC721(prizesByRankNFT[i].tokenAddress).transferFrom(address(this), organizer, prizesByRankNFT[i].tokenId);
+            }
+        }
+
+        // 남은 ERC-1155 상금 반환
+        for (uint i = winnersCount; i < prizesByRankEditions.length; i++) {
+            if (prizesByRankEditions[i].tokenAddress != address(0)) {
+                IERC1155(prizesByRankEditions[i].tokenAddress).safeTransferFrom(address(this), organizer, prizesByRankEditions[i].tokenId, prizesByRankEditions[i].amount, "");
+            }
+        }
+
         state = TournamentState.Finished; // 상태 변경
     }
 
     // 참가비 반환 함수
     function refundEntryFees() private {
-        for (uint256 i = 0; i < usersList.length; i++) {
-            if (entryFeeAmount > 0 && users[usersList[i]]) {
-                entryFeeToken.transfer(usersList[i], entryFeeAmount);
+        for (uint256 i = 0; i < playerList.length; i++) {
+            if (entryFeeAmount > 0 && players[playerList[i]]) {
+                entryFeeToken.transfer(playerList[i], entryFeeAmount);
             }
         }
     }
@@ -242,6 +294,6 @@ contract Tournament {
 
     // 참가자 수를 반환하는 함수
     function getParticipantCount() public view returns (uint256) {
-        return usersList.length;
+        return playerList.length;
     }
 }
