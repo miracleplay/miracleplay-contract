@@ -21,7 +21,6 @@ contract VotingTournament {
     uint public endTime;
     uint public numberOfCandidates;
     mapping(uint => uint) public votes;
-    uint[] public sortedVoteCounts;
     bool public votingEnded = false;
 
     constructor(
@@ -40,11 +39,19 @@ contract VotingTournament {
         numberOfCandidates = _numberOfCandidates;
     }
 
-    function vote(uint candidateId, uint amount) public {
+    function vote(uint candidateId, uint ethAmount) public payable {
         require(block.timestamp >= startTime && block.timestamp <= endTime, "Voting is not active");
         require(candidateId < numberOfCandidates, "Invalid candidate");
-        votingToken.transferFrom(msg.sender, address(this), amount);
-        votes[candidateId] += amount;
+        // Ethereum 단위의 정수를 실제 토큰 수량으로 변환
+        uint256 tokenAmountToTransfer = ethAmount * (10**18);
+
+        // 사용자의 토큰 잔액 확인
+        uint256 voterBalance = votingToken.balanceOf(msg.sender);
+        require(voterBalance >= tokenAmountToTransfer, "Insufficient token balance");
+
+        // 토큰 이전 및 투표 로직
+        require(votingToken.transferFrom(msg.sender, address(this), tokenAmountToTransfer), "Token transfer failed.");
+        votes[candidateId] += ethAmount;
     }
 
     function endVoting() public {
@@ -59,20 +66,6 @@ contract VotingTournament {
         for (uint i = 0; i < numberOfCandidates; i++) {
             voteCounts[i] = votes[i];
         }
-
-        // 버블 정렬로 득표 수 정렬
-        for (uint i = 0; i < voteCounts.length; i++) {
-            for (uint j = 0; j < voteCounts.length - i - 1; j++) {
-                if (voteCounts[j] < voteCounts[j + 1]) {
-                    uint temp = voteCounts[j];
-                    voteCounts[j] = voteCounts[j + 1];
-                    voteCounts[j + 1] = temp;
-                }
-            }
-        }
-
-        // 정렬된 득표 수를 저장
-        sortedVoteCounts = voteCounts;
 
         // 컨트랙트가 보유한 토큰의 총량을 확인
         uint256 balance = votingToken.balanceOf(address(this));
