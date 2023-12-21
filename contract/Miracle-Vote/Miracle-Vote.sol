@@ -59,14 +59,6 @@ contract VotingTournament {
         require(!votingEnded, "Voting already ended");
         votingEnded = true;
 
-        // 득표 수를 저장할 배열 초기화
-        uint[] memory voteCounts = new uint[](numberOfCandidates);
-
-        // 맵핑에서 득표 수를 배열로 복사
-        for (uint i = 0; i < numberOfCandidates; i++) {
-            voteCounts[i] = votes[i];
-        }
-
         // 컨트랙트가 보유한 토큰의 총량을 확인
         uint256 balance = votingToken.balanceOf(address(this));
 

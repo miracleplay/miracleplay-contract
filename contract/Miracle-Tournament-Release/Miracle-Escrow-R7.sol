@@ -20,14 +20,6 @@ interface IERC20 {
     function transfer(address recipient, uint256 amount) external returns (bool);
 }
 
-interface IERC1155{
-    function mintTo(address _to, uint256 _tokenId, string calldata _uri, uint256 _amount) external;
-}
-
-interface IERC721{
-    
-}
-
 contract MiracleTournamentEscrow is ContractMetadata {
     address public deployer;
     address public admin;
