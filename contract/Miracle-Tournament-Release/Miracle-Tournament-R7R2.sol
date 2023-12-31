@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.17;    
 
-import "./Miracle-Escrow-R7.sol";
+import "./Miracle-Escrow-R7P2.sol";
 import "@thirdweb-dev/contracts/extension/PermissionsEnumerable.sol";
 import "@thirdweb-dev/contracts/extension/Multicall.sol";
 import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
@@ -21,6 +21,10 @@ contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata
     address payable public EscrowAddr;
     uint[] private OnGoingTournaments;
     uint[] private EndedTournaments;
+    uint[] public mvpMintAmount;
+    uint[] public bptMintAmount;
+    IERC20 VoteToken;
+    IERC20 BattlePoint;
 
     struct Tournament {
         bool created;
@@ -51,9 +55,13 @@ contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata
     bytes32 private constant FACTORY_ROLE = keccak256("FACTORY_ROLE");
     bytes32 private constant ESCROW_ROLE = keccak256("ESCROW_ROLE");
 
-    constructor(address adminAddr, string memory _contractURI)  {
+    constructor(address adminAddr, address _VoteToken, address _BattlePoint, string memory _contractURI)  {
         _setupRole(DEFAULT_ADMIN_ROLE, adminAddr);
         _setupRole(FACTORY_ROLE, adminAddr);
+        VoteToken = IERC20(_VoteToken);
+        BattlePoint = IERC20(_BattlePoint);
+        mvpMintAmount = [10000000000000000000,5000000000000000000,3000000000000000000,1000000000000000000]; // Wei
+        bptMintAmount = [100000000000000000000,50000000000000000000,10000000000000000000]; // Wei
         deployer = adminAddr;
         _setupContractURI(_contractURI);
     }
@@ -127,7 +135,9 @@ contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata
         for(uint i = 0; i < _prizeCount; i++){
             prizeAddr[i] = _rankers[i];
         }
-        // Unlock Escrow Prize Token / Fee Token to Escrow contract
+
+        _mintVoteToken(_tournamentId, _rankers);
+        _mintBattlePoint(_tournamentId, _rankers);
         MiracleTournamentEscrow(EscrowAddr).endedTournament(_tournamentId, prizeAddr);
         _tournament.tournamentEnded = true;
 
@@ -152,6 +162,50 @@ contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata
         emit TournamentCanceled(_tournamentId);
     }
 
+    function _mintVoteToken(uint _tournamentId, address[] calldata _rankers) internal {
+        Tournament storage _tournament = tournamentMapping[_tournamentId];
+        address[] memory _entryPlayers = _tournament.players;
+
+        for (uint i = 0; i < _rankers.length; i++) {
+            uint mintAmount = (i < mvpMintAmount.length) ? mvpMintAmount[i] : mvpMintAmount[mvpMintAmount.length - 1];
+            VoteToken.mintTo(_rankers[i], mintAmount);
+        }
+
+        for (uint j = 0; j < _entryPlayers.length; j++) {
+            if (!_isRanker(_entryPlayers[j], _rankers)) {
+                VoteToken.mintTo(_entryPlayers[j], mvpMintAmount[mvpMintAmount.length - 1]);
+            }
+        }
+    }
+
+    function _mintBattlePoint(uint _tournamentId, address[] calldata _rankers) internal {
+        Tournament storage _tournament = tournamentMapping[_tournamentId];
+        address[] memory _entryPlayers = _tournament.players;
+
+        for (uint i = 0; i < _rankers.length; i++) {
+            uint mintAmount = (i < bptMintAmount.length) ? bptMintAmount[i] : bptMintAmount[bptMintAmount.length - 1];
+            VoteToken.mintTo(_rankers[i], mintAmount);
+        }
+
+        for (uint j = 0; j < _entryPlayers.length; j++) {
+            if (!_isRanker(_entryPlayers[j], _rankers)) {
+                uint mintAmount = bptMintAmount[bptMintAmount.length - 1];
+                if (mintAmount>0){
+                    VoteToken.mintTo(_entryPlayers[j], bptMintAmount[bptMintAmount.length - 1]);
+                }
+            }
+        }
+    }
+
+    function _isRanker(address player, address[] memory rankers) internal pure returns (bool) {
+        for (uint i = 0; i < rankers.length; i++) {
+            if (player == rankers[i]) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     function addOnGoingTournament(uint _tournamentId) internal {
         OnGoingTournaments.push(_tournamentId);
     }
@@ -170,6 +224,14 @@ contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata
                 break;
             }
         }
+    }
+
+    function updateMvpMintAmount(uint[] calldata newMvpMintAmount) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        mvpMintAmount = newMvpMintAmount;
+    }
+
+    function updateBptMintAmount(uint[] calldata newBptMintAmount) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        bptMintAmount = newBptMintAmount;
     }
     
     function getAllTournamentCount() external view returns (uint) {

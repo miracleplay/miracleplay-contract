@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.17;
 
-import "./Miracle-Tournament-R7.sol";
+import "./Miracle-Tournament-R7R2.sol";
 import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
 //    _______ _______ ___ ___ _______ ______  ___     ___ ______  _______     ___     _______ _______  _______ 
 //   |   _   |   _   |   Y   |   _   |   _  \|   |   |   |   _  \|   _   |   |   |   |   _   |   _   \|   _   |
@@ -18,6 +18,7 @@ interface IERC20 {
     function balanceOf(address account) external view returns (uint256);
     function allowance(address owner, address spender) external view returns (uint256);
     function transfer(address recipient, uint256 amount) external returns (bool);
+    function mintTo(address to, uint256 amount) external;
 }
 
 contract MiracleTournamentEscrow is ContractMetadata {
@@ -146,12 +147,14 @@ contract MiracleTournamentEscrow is ContractMetadata {
         Tournament storage _tournament = tournamentMapping[_tournamentId];
         require(_tournament.feeToken.allowance(msg.sender, address(this)) >= _tournament.joinFee, "Allowance is not sufficient.");
         require(_tournament.joinFee <= _tournament.feeToken.balanceOf(msg.sender), "Insufficient balance.");
-        require(_tournament.feeToken.transferFrom(msg.sender, address(this), _tournament.joinFee), "Transfer failed.");
         require(_tournament.organizer != msg.sender, "Organizers cannot register.");
 
-        _tournament.feeBalance = _tournament.feeBalance + _tournament.joinFee;
+        if(_tournament.joinFee > 0){
+            require(_tournament.feeToken.transferFrom(msg.sender, address(this), _tournament.joinFee), "Transfer failed.");
+            _tournament.feeBalance = _tournament.feeBalance + _tournament.joinFee;
+            emit LockFeeToken(_tournamentId, _tournament.joinFee);
+        }
         miracletournament.register(_tournamentId, msg.sender);
-        emit LockFeeToken(_tournamentId, _tournament.joinFee);
     }
 
     // Tournament CANCEL unlock PRIZE and entry fee (auto transfer)
@@ -159,11 +162,13 @@ contract MiracleTournamentEscrow is ContractMetadata {
         Tournament storage _tournament = tournamentMapping[_tournamentId];
         // Set tournament status canceled
         _tournament.tournamentCanceled = true;
-        // Transfer entry fee to users
-        for (uint256 i = 0; i < _players.length; i++) {
-            _tournament.feeToken.transfer(_players[i], _tournament.joinFee);
+        if(_tournament.joinFee>0){
+            // Transfer entry fee to users
+            for (uint256 i = 0; i < _players.length; i++) {
+                _tournament.feeToken.transfer(_players[i], _tournament.joinFee);
+            }
+            _tournament.prizeToken.transfer(_tournament.organizer, _tournament.prizeAmount);
         }
-        _tournament.prizeToken.transfer(_tournament.organizer, _tournament.prizeAmount);
         emit CanceledUnlock(_tournamentId);
     }
 
@@ -176,32 +181,31 @@ contract MiracleTournamentEscrow is ContractMetadata {
         uint256[] memory _prizeAmountArray = _tournament.prizeAmountArray;
         require(_winner.length == _prizeAmountArray.length, "Arrays must be the same length.");
         // Transfer prize to winner
-    for (uint256 i = 0; i < _winner.length; i++) {
-        uint256 _prizeAmount = _prizeAmountArray[i];
+        for (uint256 i = 0; i < _winner.length; i++) {
+            uint256 _prizeAmount = _prizeAmountArray[i];
+            if (_prizeAmount > 0) {
+                uint256 _prizeFeeDev = (_prizeAmount * RoyaltyPrizeDev) / 100;
+                uint256 _prizeFeeFlp = (_prizeAmount * RoyaltyPrizeFlp) / 100;
+                uint256 _prizeUser = _prizeAmount - (_prizeFeeDev + _prizeFeeFlp);
+                
+                _tournament.prizeToken.transfer(royaltyAddrDev, _prizeFeeDev);
+                _tournament.prizeToken.transfer(royaltyAddrFlp, _prizeFeeFlp);
+                _tournament.prizeToken.transfer(_winner[i], _prizeUser);
 
-        if (_prizeAmount == 0) {
-            continue;
+                // Transfer entry fee
+                uint256 _feeAmount = _tournament.feeBalance;
+                uint256 _feeFeeDev = (_feeAmount * RoyaltyregfeeDev) / 100;
+                uint256 _feeFeeFlp = (_feeAmount * RoyaltyregfeeFlp) / 100;
+                uint256 _feeOrg = _feeAmount - (_feeFeeDev + _feeFeeFlp);
+                _tournament.feeToken.transfer(royaltyAddrDev, _feeFeeDev);
+                _tournament.feeToken.transfer(royaltyAddrFlp, _feeFeeFlp);
+                _tournament.feeToken.transfer(_tournament.organizer, _feeOrg);
+
+                emit EndedUnlock(_tournamentId, _winner);
+            }
         }
 
-        uint256 _prizeFeeDev = (_prizeAmount * RoyaltyPrizeDev) / 100;
-        uint256 _prizeFeeFlp = (_prizeAmount * RoyaltyPrizeFlp) / 100;
-        uint256 _prizeUser = _prizeAmount - (_prizeFeeDev + _prizeFeeFlp);
-        
-        _tournament.prizeToken.transfer(royaltyAddrDev, _prizeFeeDev);
-        _tournament.prizeToken.transfer(royaltyAddrFlp, _prizeFeeFlp);
-        _tournament.prizeToken.transfer(_winner[i], _prizeUser);
-    }
 
-        // Transfer entry fee
-        uint256 _feeAmount = _tournament.feeBalance;
-        uint256 _feeFeeDev = (_feeAmount * RoyaltyregfeeDev) / 100;
-        uint256 _feeFeeFlp = (_feeAmount * RoyaltyregfeeFlp) / 100;
-        uint256 _feeOrg = _feeAmount - (_feeFeeDev + _feeFeeFlp);
-        _tournament.feeToken.transfer(royaltyAddrDev, _feeFeeDev);
-        _tournament.feeToken.transfer(royaltyAddrFlp, _feeFeeFlp);
-        _tournament.feeToken.transfer(_tournament.organizer, _feeOrg);
-
-        emit EndedUnlock(_tournamentId, _winner);
     }
 
     // Set royalty address
