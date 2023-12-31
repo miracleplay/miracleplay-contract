@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract FundingContract is Ownable {
     IERC20 public fundingToken;
+    address public escrowAddress;
     uint256 public fundingUnit;
     uint256 public fundingGoal;
     uint256 public startTime;
@@ -24,6 +25,7 @@ contract FundingContract is Ownable {
         uint256 _fundingId,
         string memory _fundingContentIPFS,
         address _fundingTokenAddress,
+        address _escrowAddress,
         uint256 _fundingUnit,
         uint256 _fundingGoal,
         uint256 _startTime,
@@ -32,6 +34,7 @@ contract FundingContract is Ownable {
         fundingId = _fundingId;
         fundingContentIPFS = _fundingContentIPFS;
         fundingToken = IERC20(_fundingTokenAddress);
+        escrowAddress = _escrowAddress;
         fundingUnit = _fundingUnit;
         fundingGoal = _fundingGoal;
         startTime = _startTime;
@@ -50,7 +53,7 @@ contract FundingContract is Ownable {
     function endFunding() public onlyOwner {
         require(block.timestamp > endTime, "Funding not ended");
         uint256 totalAmount = fundingToken.balanceOf(address(this));
-        fundingToken.transfer(owner(), totalAmount);
+        fundingToken.transfer(escrowAddress, totalAmount);
         emit FundingEnded(totalAmount);
     }
 
