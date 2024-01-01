@@ -166,7 +166,7 @@ contract MiracleTournamentEscrow is  PermissionsEnumerable, Multicall, ContractM
 
     function canceledTournament(uint _tournamentId, address[] memory _entryPlayers) external onlyRole(TOURNAMENT_ROLE) {
         _CanceledUnlockTransfer(_tournamentId, _entryPlayers);
-        _CanceledUnlockFunding(_tournamentId);
+        _CanceledUnlockFundTransfer(_tournamentId);
     }
 
     // USER entry to the tournament.
@@ -241,7 +241,7 @@ contract MiracleTournamentEscrow is  PermissionsEnumerable, Multicall, ContractM
         }
     }
 
-    function _CanceledUnlockFunding(uint _tournamentId) internal {
+    function _CanceledUnlockFundTransfer(uint _tournamentId) internal {
         Funding storage funding = fundingMapping[_tournamentId];
         funding.fundingActive = false;
         funding.fundingCanceled = true;
@@ -338,5 +338,20 @@ contract MiracleTournamentEscrow is  PermissionsEnumerable, Multicall, ContractM
         }
         uint progress = (funding.totalFunded * 100) / funding.fundingGoal;
         return progress;
+    }
+
+    function getMinFundingRate() public view returns (uint) {
+        return minFundingRate;
+    }
+
+    function getFundingDetails(uint _tournamentId) public view returns (uint256 startTime, uint256 endTime, address fundingToken, uint256 totalFunded, uint256 fundingGoal, bool fundingActive, bool fundingEnded, bool fundingCanceled, address[] memory contributors) {
+        Funding storage funding = fundingMapping[_tournamentId];
+        return (funding.startTime, funding.endTime, address(funding.fundingToken), funding.totalFunded, funding.fundingGoal, funding.fundingActive, funding.fundingEnded, funding.fundingCanceled, funding.contributors);
+    }
+
+    function isFundingSuccess(uint _tournamentId) public view returns (bool) {
+        uint progress = getFundingProgress(_tournamentId);
+        uint minRate = getMinFundingRate();
+        return progress >= minRate;
     }
 }
