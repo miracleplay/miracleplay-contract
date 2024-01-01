@@ -3,6 +3,8 @@
 pragma solidity ^0.8.17;
 
 import "./Miracle-Fund-Tournament-R1.sol";
+import "@thirdweb-dev/contracts/extension/PermissionsEnumerable.sol";
+import "@thirdweb-dev/contracts/extension/Multicall.sol";
 import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
 //    _______ _______ ___ ___ _______ ______  ___     ___ ______  _______     ___     _______ _______  _______ 
 //   |   _   |   _   |   Y   |   _   |   _  \|   |   |   |   _  \|   _   |   |   |   |   _   |   _   \|   _   |
@@ -11,7 +13,7 @@ import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
 //   |:  1   |:  1   |:  1   |:  1   |:  |   |:  1   |:  |:  |   |:  1   |   |:  1   |:  |   |:  1    |:  1   |
 //   |::.. . |::.. . |\:.. ./|::.. . |::.|   |::.. . |::.|::.|   |::.. . |   |::.. . |::.|:. |::.. .  |::.. . |
 //   `-------`-------' `---' `-------`--- ---`-------`---`--- ---`-------'   `-------`--- ---`-------'`-------'
-//   TournamentFundEscrow V0.1                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            .0
+//   MiracleFundingEscrow V0.1                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              .0
                                              
 interface IERC20 {
     function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
@@ -19,19 +21,25 @@ interface IERC20 {
     function allowance(address owner, address spender) external view returns (uint256);
     function transfer(address recipient, uint256 amount) external returns (bool);
     function mintTo(address to, uint256 amount) external;
+    function decimals() external view returns (uint8);
 }
 
-contract MiracleTournamentEscrow is ContractMetadata {
+contract MiracleTournamentEscrow is  PermissionsEnumerable, Multicall, ContractMetadata {
     address public deployer;
     address public admin;
     address payable public tournamentAddr;
-    //Royalty strring
+    // Royalty setting
     uint public RoyaltyPrizeDev;
     uint public RoyaltyregfeeDev;
     uint public RoyaltyPrizeFlp;
     uint public RoyaltyregfeeFlp;
     address public royaltyAddrDev;
     address public royaltyAddrFlp;
+    // Funding setting
+    uint public minFundingRate;
+    // Permissions
+    bytes32 private constant FACTORY_ROLE = keccak256("FACTORY_ROLE");
+    bytes32 private constant TOURNAMENT_ROLE = keccak256("TOURNAMENT_ROLE");
 
     MiracleTournament internal miracletournament;
 
@@ -51,6 +59,18 @@ contract MiracleTournamentEscrow is ContractMetadata {
     }
     mapping(uint => Tournament) public tournamentMapping;
 
+    struct Funding {
+        uint256 startTime;
+        uint256 endTime;
+        IERC20 fundingToken;
+        uint256 totalFunded;
+        uint256 fundingGoal;
+        bool fundingActive;
+        mapping(address => uint256) contributions;
+        address[] contributors;
+    }
+    mapping(uint => Funding) public fundingMapping;
+
     event CreateTournament(uint tournamentId, address organizer, string tournamentURI);
     event LockPrizeToken(uint tournamentId, uint prizeAmount);
     event LockFeeToken(uint tournamentId, uint feeAmount);
@@ -64,7 +84,8 @@ contract MiracleTournamentEscrow is ContractMetadata {
     event EndedUnlock(uint tournamentId, address [] _withdrawAddresses);
 
     constructor(address adminAddr, address _royaltyAddrDev, address _royaltyAddrFlp, string memory _contractURI) {
-        admin = adminAddr;
+        _setupRole(DEFAULT_ADMIN_ROLE, adminAddr);
+        _setupRole(FACTORY_ROLE, adminAddr);
         royaltyAddrDev = _royaltyAddrDev;
         royaltyAddrFlp = _royaltyAddrFlp;
         // Set default dev royalty 
@@ -73,6 +94,8 @@ contract MiracleTournamentEscrow is ContractMetadata {
         // Set default platform royalty 
         RoyaltyPrizeFlp = 5;
         RoyaltyregfeeFlp = 5;
+        // Set default funding setting
+        minFundingRate = 100;
         deployer = adminAddr;
         _setupContractURI(_contractURI);
     }
@@ -98,28 +121,26 @@ contract MiracleTournamentEscrow is ContractMetadata {
     }
 
     function connectTournament(address payable _miracletournament) public onlyAdmin{
-        tournamentAddr = _miracletournament;
+        _setupRole(TOURNAMENT_ROLE, _miracletournament);
         miracletournament = MiracleTournament(_miracletournament);
     }
 
     // Create tournament
-    function createTournamentEscrow(uint _tournamentId, uint8 _tournamentType, address _prizeToken, address _feeToken, uint _prizeAmount, uint _joinFee, uint _registerStartTime, uint _registerEndTime, uint256[] memory _prizeAmountArray, string memory _tournamentURI, uint _playerLimit) external {
-        require(IERC20(_prizeToken).allowance(msg.sender, address(this)) >= _prizeAmount, "Allowance is not sufficient.");
-        require(_prizeAmount <= IERC20(_prizeToken).balanceOf(msg.sender), "Insufficient balance.");
+    function createTournamentEscrow(uint _tournamentId, uint8 _tournamentType, address _prizeToken, address _feeToken, uint _prizeAmount, uint _joinFee, uint256[] memory _regStartEndTime, uint256[] memory _FundStartEndTime, uint256[] memory _prizeAmountArray, string memory _tournamentURI, uint _playerLimit) external {
+        require(_FundStartEndTime[0] < _FundStartEndTime[1], "Invalid funding time range");
+        require(_regStartEndTime[0] < _regStartEndTime[1], "Invalid join tournament time range");
         uint256 totalWithdrawAmount;
         for (uint256 i = 0; i < _prizeAmountArray.length; i++) {
             totalWithdrawAmount += _prizeAmountArray[i];
         }
-        require(totalWithdrawAmount == _prizeAmount, "Total withdraw amount must equal prize amount.");
+        require(totalWithdrawAmount == _prizeAmount, "Total prize amount must equal prize amount.");
 
         Tournament storage newTournament = tournamentMapping[_tournamentId];
         require(newTournament.tournamentCreated == false, "Tournament already created.");
-        require(IERC20(_prizeToken).transferFrom(msg.sender, address(this), _prizeAmount), "Transfer failed.");
 
         newTournament.organizer = msg.sender;
         newTournament.prizeToken = IERC20(_prizeToken);
         newTournament.feeToken = IERC20(_feeToken);
-        newTournament.prizeAmount = _prizeAmount;
         newTournament.joinFee = _joinFee;
         newTournament.feeBalance = 0;
         newTournament.prizeAmountArray = _prizeAmountArray;
@@ -129,9 +150,21 @@ contract MiracleTournamentEscrow is ContractMetadata {
         newTournament.tournamentURI = _tournamentURI;
         newTournament.PlayersLimit = _playerLimit;
         
-        miracletournament.createTournament(_tournamentId, _tournamentType, msg.sender, _registerStartTime, _registerEndTime, _prizeAmountArray.length, _playerLimit);
+        miracletournament.createTournament(_tournamentId, _tournamentType, msg.sender, _regStartEndTime[0], _regStartEndTime[1], _prizeAmountArray.length, _playerLimit);
+        createFunding(_tournamentId, _FundStartEndTime[0], _FundStartEndTime[1], _prizeToken, _prizeAmount);
         emit CreateTournament(_tournamentId, msg.sender, _tournamentURI);
-        emit LockPrizeToken(_tournamentId, _prizeAmount);
+    }
+
+    function createFunding(uint _tournamentId, uint _fundStartTime, uint _fundEndTime, address _fundingToken, uint _fundingGoal) internal {
+        Funding storage funding = fundingMapping[_tournamentId];
+        require(_fundStartTime < _fundEndTime, "Invalid time range");
+        require(_fundingToken != address(0), "Invalid token address");
+
+        funding.startTime = _fundStartTime;
+        funding.endTime = _fundEndTime;
+        funding.fundingToken = IERC20(_fundingToken);
+        funding.fundingGoal = _fundingGoal;
+        funding.fundingActive = true;
     }
 
     function endedTournament(uint _tournamentId, address[] memory _withdrawAddresses) external onlyTournament {
@@ -155,6 +188,12 @@ contract MiracleTournamentEscrow is ContractMetadata {
             emit LockFeeToken(_tournamentId, _tournament.joinFee);
         }
         miracletournament.register(_tournamentId, msg.sender);
+    }
+
+    function _transferToken(IERC20 token, address to, uint256 amount) internal {
+        if (amount > 0) {
+            token.transfer(to, amount);
+        }
     }
 
     // Tournament CANCEL unlock PRIZE and entry fee (auto transfer)
@@ -184,28 +223,58 @@ contract MiracleTournamentEscrow is ContractMetadata {
         for (uint256 i = 0; i < _winner.length; i++) {
             uint256 _prizeAmount = _prizeAmountArray[i];
             if (_prizeAmount > 0) {
-                uint256 _prizeFeeDev = (_prizeAmount * RoyaltyPrizeDev) / 100;
-                uint256 _prizeFeeFlp = (_prizeAmount * RoyaltyPrizeFlp) / 100;
-                uint256 _prizeUser = _prizeAmount - (_prizeFeeDev + _prizeFeeFlp);
-                
-                _tournament.prizeToken.transfer(royaltyAddrDev, _prizeFeeDev);
-                _tournament.prizeToken.transfer(royaltyAddrFlp, _prizeFeeFlp);
-                _tournament.prizeToken.transfer(_winner[i], _prizeUser);
-
-                // Transfer entry fee
-                uint256 _feeAmount = _tournament.feeBalance;
-                uint256 _feeFeeDev = (_feeAmount * RoyaltyregfeeDev) / 100;
-                uint256 _feeFeeFlp = (_feeAmount * RoyaltyregfeeFlp) / 100;
-                uint256 _feeOrg = _feeAmount - (_feeFeeDev + _feeFeeFlp);
-                _tournament.feeToken.transfer(royaltyAddrDev, _feeFeeDev);
-                _tournament.feeToken.transfer(royaltyAddrFlp, _feeFeeFlp);
-                _tournament.feeToken.transfer(_tournament.organizer, _feeOrg);
-
-                emit EndedUnlock(_tournamentId, _winner);
+                // Calculate PRIZE and transfer
+                uint256 _prizeDev = (_prizeAmount * RoyaltyPrizeDev) / 100;
+                uint256 _prizeFlp = (_prizeAmount * RoyaltyPrizeFlp) / 100;
+                uint256 _prizeUser = _prizeAmount - (_prizeDev + _prizeFlp);
+                _transferToken(_tournament.prizeToken, royaltyAddrDev, _prizeDev);
+                _transferToken(_tournament.prizeToken, royaltyAddrFlp, _prizeFlp);
+                _transferToken(_tournament.prizeToken, _winner[i], _prizeUser);
             }
         }
 
+        // Calculate FEE and transfer
+        uint256 _feeAmount = _tournament.feeBalance;
+        uint256 _feeDev = (_feeAmount * RoyaltyregfeeDev) / 100;
+        uint256 _feeFlp = (_feeAmount * RoyaltyregfeeFlp) / 100;
+        uint256 _feeOrg = _feeAmount - (_feeDev + _feeFlp);
+        _transferToken(_tournament.feeToken, royaltyAddrDev, _feeDev);
+        _transferToken(_tournament.feeToken, royaltyAddrFlp, _feeFlp);
+        _transferToken(_tournament.feeToken, _tournament.organizer, _feeOrg);
 
+        emit EndedUnlock(_tournamentId, _winner);
+    }
+
+
+    function fundToTournament(uint _tournamentId, uint256 _amount) external {
+        Funding storage funding = fundingMapping[_tournamentId];
+        require(block.timestamp >= funding.startTime && block.timestamp <= funding.endTime, "Funding not active");
+        require(funding.totalFunded + _amount <= funding.fundingGoal, "Funding amount exceeds goal");
+        require(IERC20(funding.fundingToken).allowance(msg.sender, address(this)) >= _amount, "Allowance is not sufficient.");
+        require(funding.fundingToken.transferFrom(msg.sender, address(this), _amount), "Transfer failed");
+
+        if (funding.contributions[msg.sender] == 0) {
+            funding.contributors.push(msg.sender);
+        }
+        funding.contributions[msg.sender] += _amount;
+        funding.totalFunded += _amount;
+    }
+
+    function endFunding(uint _tournamentId) external onlyAdmin {
+        Funding storage funding = fundingMapping[_tournamentId];
+        require(block.timestamp > funding.endTime, "Funding period not ended");
+        funding.fundingActive = false;
+
+        if (funding.totalFunded < funding.fundingGoal * minFundingRate / 100) {
+            for (uint i = 0; i < funding.contributors.length; i++) {
+                address contributor = funding.contributors[i];
+                uint256 amount = funding.contributions[contributor];
+                funding.fundingToken.transfer(contributor, amount);
+            }
+        } else {
+            Tournament storage tournament = tournamentMapping[_tournamentId];
+            tournament.prizeAmount = funding.totalFunded;
+        }
     }
 
     // Set royalty address
@@ -233,5 +302,11 @@ contract MiracleTournamentEscrow is ContractMetadata {
 
     function setRegfeeRoyaltyFlpRate(uint _royaltyRate) external onlyAdmin{
         RoyaltyregfeeFlp = _royaltyRate;
+    }
+
+    // Set Funding
+    function setMinimumFundingRate(uint _newRate) external onlyAdmin {
+        require(_newRate > 0 && _newRate <= 100, "Invalid rate");
+        minFundingRate = _newRate;
     }
 }
