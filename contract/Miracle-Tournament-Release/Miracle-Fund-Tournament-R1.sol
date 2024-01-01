@@ -125,6 +125,14 @@ contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata
         emit ShuffledPlayers(tournamentId, shuffledArray.length);
     }
 
+    function endFunding(uint _tournamentId) external onlyRole(FACTORY_ROLE) {
+        MiracleTournamentEscrow(EscrowAddr).endFunding(_tournamentId);
+    }
+
+    function cancelFunding(uint _tournamentId) external onlyRole(FACTORY_ROLE) {
+        MiracleTournamentEscrow(EscrowAddr).cancelFunding(_tournamentId);
+    }
+
     function endTournament(uint _tournamentId, address[] calldata _rankers) public onlyRole(FACTORY_ROLE) {
         Tournament storage _tournament = tournamentMapping[_tournamentId];
 
@@ -263,5 +271,10 @@ contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata
     function getPlayers(uint _tournamentId) external view returns(address[] memory){
         Tournament storage _tournament = tournamentMapping[_tournamentId];
         return _tournament.players;
+    }
+
+    // View function
+    function getFundingProgress(uint _tournamentId) public view returns (uint) {
+        return MiracleTournamentEscrow(EscrowAddr).getFundingProgress(_tournamentId);
     }
 }
