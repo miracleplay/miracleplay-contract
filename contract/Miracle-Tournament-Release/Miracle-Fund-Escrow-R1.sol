@@ -24,7 +24,7 @@ interface IERC20 {
     function decimals() external view returns (uint8);
 }
 
-contract MiracleTournamentEscrow is  PermissionsEnumerable, Multicall, ContractMetadata {
+contract MiracleTournamentEscrow is PermissionsEnumerable, Multicall, ContractMetadata {
     address public deployer;
     address public admin;
     address payable public tournamentAddr;
@@ -38,7 +38,6 @@ contract MiracleTournamentEscrow is  PermissionsEnumerable, Multicall, ContractM
     // Funding setting
     uint public minFundingRate;
     // Permissions
-    bytes32 private constant FACTORY_ROLE = keccak256("FACTORY_ROLE");
     bytes32 private constant TOURNAMENT_ROLE = keccak256("TOURNAMENT_ROLE");
 
     MiracleTournament internal miracletournament;
@@ -87,7 +86,6 @@ contract MiracleTournamentEscrow is  PermissionsEnumerable, Multicall, ContractM
 
     constructor(address adminAddr, address _royaltyAddrDev, address _royaltyAddrFlp, string memory _contractURI) {
         _setupRole(DEFAULT_ADMIN_ROLE, adminAddr);
-        _setupRole(FACTORY_ROLE, adminAddr);
         royaltyAddrDev = _royaltyAddrDev;
         royaltyAddrFlp = _royaltyAddrFlp;
         // Set default dev royalty 
@@ -112,7 +110,7 @@ contract MiracleTournamentEscrow is  PermissionsEnumerable, Multicall, ContractM
         _;
     }
 
-    function connectTournament(address payable _miracletournament) public onlyRole(DEFAULT_ADMIN_ROLE){
+    function connectTournament(address payable _miracletournament) external onlyRole(DEFAULT_ADMIN_ROLE){
         _setupRole(TOURNAMENT_ROLE, _miracletournament);
         miracletournament = MiracleTournament(_miracletournament);
     }

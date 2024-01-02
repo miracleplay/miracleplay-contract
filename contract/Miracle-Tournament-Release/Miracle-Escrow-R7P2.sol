@@ -3,6 +3,8 @@
 pragma solidity ^0.8.17;
 
 import "./Miracle-Tournament-R7R2.sol";
+import "@thirdweb-dev/contracts/extension/PermissionsEnumerable.sol";
+import "@thirdweb-dev/contracts/extension/Multicall.sol";
 import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
 //    _______ _______ ___ ___ _______ ______  ___     ___ ______  _______     ___     _______ _______  _______ 
 //   |   _   |   _   |   Y   |   _   |   _  \|   |   |   |   _  \|   _   |   |   |   |   _   |   _   \|   _   |
@@ -11,17 +13,18 @@ import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
 //   |:  1   |:  1   |:  1   |:  1   |:  |   |:  1   |:  |:  |   |:  1   |   |:  1   |:  |   |:  1    |:  1   |
 //   |::.. . |::.. . |\:.. ./|::.. . |::.|   |::.. . |::.|::.|   |::.. . |   |::.. . |::.|:. |::.. .  |::.. . |
 //   `-------`-------' `---' `-------`--- ---`-------`---`--- ---`-------'   `-------`--- ---`-------'`-------'
-//   TournamentEscrow V0.7.2                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              .0
-                                             
+//   TournamentEscrow V0.8
+                  
 interface IERC20 {
     function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
     function balanceOf(address account) external view returns (uint256);
     function allowance(address owner, address spender) external view returns (uint256);
     function transfer(address recipient, uint256 amount) external returns (bool);
     function mintTo(address to, uint256 amount) external;
+    function decimals() external view returns (uint8);
 }
 
-contract MiracleTournamentEscrow is ContractMetadata {
+contract MiracleTournamentEscrow is PermissionsEnumerable, Multicall, ContractMetadata {
     address public deployer;
     address public admin;
     address payable public tournamentAddr;
@@ -32,6 +35,10 @@ contract MiracleTournamentEscrow is ContractMetadata {
     uint public RoyaltyregfeeFlp;
     address public royaltyAddrDev;
     address public royaltyAddrFlp;
+    // Permissions
+    bytes32 private constant TOURNAMENT_ROLE = keccak256("TOURNAMENT_ROLE");
+    // Controller
+    address public controller;
 
     MiracleTournament internal miracletournament;
 
@@ -63,8 +70,9 @@ contract MiracleTournamentEscrow is ContractMetadata {
     event CanceledUnlock(uint tournamentId);
     event EndedUnlock(uint tournamentId, address [] _withdrawAddresses);
 
-    constructor(address adminAddr, address _royaltyAddrDev, address _royaltyAddrFlp, string memory _contractURI) {
-        admin = adminAddr;
+    constructor(address adminAddr, address _controller, address _royaltyAddrDev, address _royaltyAddrFlp, string memory _contractURI) {
+        _setupRole(DEFAULT_ADMIN_ROLE, adminAddr);
+        controller = _controller;
         royaltyAddrDev = _royaltyAddrDev;
         royaltyAddrFlp = _royaltyAddrFlp;
         // Set default dev royalty 
@@ -81,29 +89,19 @@ contract MiracleTournamentEscrow is ContractMetadata {
         return msg.sender == deployer;
     }
 
-    modifier onlyAdmin(){
-        require(msg.sender == admin, "Only admin can call this function");
-        _;
-    }
-
-    modifier onlyTournament(){
-        require(msg.sender == tournamentAddr, "Only tournament contract can call this function");
-        _;
-    }
-
     modifier onlyOrganizer(uint _tournamentId){
         Tournament storage _tournament = tournamentMapping[_tournamentId];
         require(msg.sender == _tournament.organizer, "Only organizer can call this function");
         _;
     }
 
-    function connectTournament(address payable _miracletournament) public onlyAdmin{
-        tournamentAddr = _miracletournament;
+    function connectTournament(address payable _miracletournament) external onlyRole(DEFAULT_ADMIN_ROLE){
+        _setupRole(TOURNAMENT_ROLE, _miracletournament);
         miracletournament = MiracleTournament(_miracletournament);
     }
 
     // Create tournament
-    function createTournamentEscrow(uint _tournamentId, uint8 _tournamentType, address _prizeToken, address _feeToken, uint _prizeAmount, uint _joinFee, uint _registerStartTime, uint _registerEndTime, uint256[] memory _prizeAmountArray, string memory _tournamentURI, uint _playerLimit) external {
+    function createTournamentEscrow(uint _tournamentId, uint8 _tournamentType, address _prizeToken, address _feeToken, uint _prizeAmount, uint _joinFee, uint[] memory _registerStartEndTime, uint256[] memory _prizeAmountArray, string memory _tournamentURI, uint _playerLimit) external {
         require(IERC20(_prizeToken).allowance(msg.sender, address(this)) >= _prizeAmount, "Allowance is not sufficient.");
         require(_prizeAmount <= IERC20(_prizeToken).balanceOf(msg.sender), "Insufficient balance.");
         uint256 totalWithdrawAmount;
@@ -129,16 +127,16 @@ contract MiracleTournamentEscrow is ContractMetadata {
         newTournament.tournamentURI = _tournamentURI;
         newTournament.PlayersLimit = _playerLimit;
         
-        miracletournament.createTournament(_tournamentId, _tournamentType, msg.sender, _registerStartTime, _registerEndTime, _prizeAmountArray.length, _playerLimit);
+        miracletournament.createTournament(_tournamentId, _tournamentType, msg.sender, _registerStartEndTime[0], _registerStartEndTime[1], _prizeAmountArray.length, _playerLimit);
         emit CreateTournament(_tournamentId, msg.sender, _tournamentURI);
         emit LockPrizeToken(_tournamentId, _prizeAmount);
     }
 
-    function endedTournament(uint _tournamentId, address[] memory _withdrawAddresses) external onlyTournament {
+    function endedTournament(uint _tournamentId, address[] memory _withdrawAddresses) external onlyRole(TOURNAMENT_ROLE) {
         _EndedUnlockTransfer(_tournamentId, _withdrawAddresses);
     }
 
-    function canceledTournament(uint _tournamentId, address[] memory _entryPlayers) external onlyTournament{
+    function canceledTournament(uint _tournamentId, address[] memory _entryPlayers) external onlyRole(TOURNAMENT_ROLE){
         _CanceledUnlockTransfer(_tournamentId, _entryPlayers);
     }
 
@@ -152,8 +150,9 @@ contract MiracleTournamentEscrow is ContractMetadata {
         if(_tournament.joinFee > 0){
             require(_tournament.feeToken.transferFrom(msg.sender, address(this), _tournament.joinFee), "Transfer failed.");
             _tournament.feeBalance = _tournament.feeBalance + _tournament.joinFee;
-            emit LockFeeToken(_tournamentId, _tournament.joinFee);
+            
         }
+        emit LockFeeToken(_tournamentId, _tournament.joinFee);
         miracletournament.register(_tournamentId, msg.sender);
     }
 
@@ -162,13 +161,17 @@ contract MiracleTournamentEscrow is ContractMetadata {
         Tournament storage _tournament = tournamentMapping[_tournamentId];
         // Set tournament status canceled
         _tournament.tournamentCanceled = true;
-        if(_tournament.joinFee>0){
+
+        if (_tournament.joinFee > 0) {
             // Transfer entry fee to users
             for (uint256 i = 0; i < _players.length; i++) {
-                _tournament.feeToken.transfer(_players[i], _tournament.joinFee);
+                require(_tournament.feeToken.transfer(_players[i], _tournament.joinFee), "Entry fee transfer failed.");
             }
-            _tournament.prizeToken.transfer(_tournament.organizer, _tournament.prizeAmount);
         }
+        if (_tournament.prizeAmount > 0) {
+            require(_tournament.prizeToken.transfer(_tournament.organizer, _tournament.prizeAmount), "Prize transfer to organizer failed.");
+        }
+        
         emit CanceledUnlock(_tournamentId);
     }
 
@@ -180,6 +183,7 @@ contract MiracleTournamentEscrow is ContractMetadata {
 
         uint256[] memory _prizeAmountArray = _tournament.prizeAmountArray;
         require(_winner.length == _prizeAmountArray.length, "Arrays must be the same length.");
+
         // Transfer prize to winner
         for (uint256 i = 0; i < _winner.length; i++) {
             uint256 _prizeAmount = _prizeAmountArray[i];
@@ -187,51 +191,65 @@ contract MiracleTournamentEscrow is ContractMetadata {
                 uint256 _prizeFeeDev = (_prizeAmount * RoyaltyPrizeDev) / 100;
                 uint256 _prizeFeeFlp = (_prizeAmount * RoyaltyPrizeFlp) / 100;
                 uint256 _prizeUser = _prizeAmount - (_prizeFeeDev + _prizeFeeFlp);
-                
-                _tournament.prizeToken.transfer(royaltyAddrDev, _prizeFeeDev);
-                _tournament.prizeToken.transfer(royaltyAddrFlp, _prizeFeeFlp);
-                _tournament.prizeToken.transfer(_winner[i], _prizeUser);
 
-                // Transfer entry fee
-                uint256 _feeAmount = _tournament.feeBalance;
-                uint256 _feeFeeDev = (_feeAmount * RoyaltyregfeeDev) / 100;
-                uint256 _feeFeeFlp = (_feeAmount * RoyaltyregfeeFlp) / 100;
-                uint256 _feeOrg = _feeAmount - (_feeFeeDev + _feeFeeFlp);
-                _tournament.feeToken.transfer(royaltyAddrDev, _feeFeeDev);
-                _tournament.feeToken.transfer(royaltyAddrFlp, _feeFeeFlp);
-                _tournament.feeToken.transfer(_tournament.organizer, _feeOrg);
-
-                emit EndedUnlock(_tournamentId, _winner);
+                if (_prizeFeeDev > 0) {
+                    require(_tournament.prizeToken.transfer(royaltyAddrDev, _prizeFeeDev), "Prize Fee transfer to Dev failed.");
+                }
+                if (_prizeFeeFlp > 0) {
+                    require(_tournament.prizeToken.transfer(royaltyAddrFlp, _prizeFeeFlp), "Prize Fee transfer to Flp failed.");
+                }
+                if (_prizeUser > 0) {
+                    require(_tournament.prizeToken.transfer(_winner[i], _prizeUser), "Prize transfer to winner failed.");
+                }
             }
         }
 
+        // Transfer entry fee to org
+        uint256 _feeAmount = _tournament.feeBalance;
+        if (_feeAmount > 0) {
+            uint256 _feeFeeDev = (_feeAmount * RoyaltyregfeeDev) / 100;
+            uint256 _feeFeeFlp = (_feeAmount * RoyaltyregfeeFlp) / 100;
+            uint256 _feeOrg = _feeAmount - (_feeFeeDev + _feeFeeFlp);
 
+            if (_feeFeeDev > 0) {
+                require(_tournament.feeToken.transfer(royaltyAddrDev, _feeFeeDev), "Entry Fee transfer to Dev failed.");
+            }
+            if (_feeFeeFlp > 0) {
+                require(_tournament.feeToken.transfer(royaltyAddrFlp, _feeFeeFlp),"Entry Fee transfer to Flp failed.");
+            }
+            if (_feeOrg > 0) {
+                require(_tournament.feeToken.transfer(_tournament.organizer, _feeOrg), "Entry Fee transfer to Organizer failed.");
+            }
+        }
+
+        emit EndedUnlock(_tournamentId, _winner);
     }
 
+
     // Set royalty address
-    function setRoyaltyDevAddress(address _royaltyAddr) external onlyAdmin{
+    function setRoyaltyDevAddress(address _royaltyAddr) external onlyRole(DEFAULT_ADMIN_ROLE){
         royaltyAddrDev = _royaltyAddr;
     }
 
-    function setRoyaltyFlpAddress(address _royaltyAddr) external onlyAdmin{
+    function setRoyaltyFlpAddress(address _royaltyAddr) external onlyRole(DEFAULT_ADMIN_ROLE){
         royaltyAddrFlp = _royaltyAddr;
     }
 
     // Set prize royalty rate
-    function setPrizeRoyaltyDevRate(uint _royaltyRate) external onlyAdmin{
+    function setPrizeRoyaltyDevRate(uint _royaltyRate) external onlyRole(DEFAULT_ADMIN_ROLE){
         RoyaltyPrizeDev = _royaltyRate;
     }
 
-    function setPrizeRoyaltyFlpRate(uint _royaltyRate) external onlyAdmin{
+    function setPrizeRoyaltyFlpRate(uint _royaltyRate) external onlyRole(DEFAULT_ADMIN_ROLE){
         RoyaltyPrizeFlp = _royaltyRate;
     }
 
     // Set regfee royalty rate
-    function setRegfeeRoyaltyDevRate(uint _royaltyRate) external onlyAdmin{
+    function setRegfeeRoyaltyDevRate(uint _royaltyRate) external onlyRole(DEFAULT_ADMIN_ROLE){
         RoyaltyregfeeDev = _royaltyRate;
     }
 
-    function setRegfeeRoyaltyFlpRate(uint _royaltyRate) external onlyAdmin{
+    function setRegfeeRoyaltyFlpRate(uint _royaltyRate) external onlyRole(DEFAULT_ADMIN_ROLE){
         RoyaltyregfeeFlp = _royaltyRate;
     }
 }
