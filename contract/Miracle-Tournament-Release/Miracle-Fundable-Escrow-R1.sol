@@ -6,6 +6,7 @@ import "./Miracle-Fundable-Tournament-R1.sol";
 import "@thirdweb-dev/contracts/extension/PermissionsEnumerable.sol";
 import "@thirdweb-dev/contracts/extension/Multicall.sol";
 import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
+
 //    _______ _______ ___ ___ _______ ______  ___     ___ ______  _______     ___     _______ _______  _______ 
 //   |   _   |   _   |   Y   |   _   |   _  \|   |   |   |   _  \|   _   |   |   |   |   _   |   _   \|   _   |
 //   |   1___|.  1___|.  |   |.  1___|.  |   |.  |   |.  |.  |   |.  1___|   |.  |   |.  1   |.  1   /|   1___|
@@ -77,12 +78,9 @@ contract MiracleTournamentEscrow is PermissionsEnumerable, Multicall, ContractMe
     mapping(uint => Funding) public fundingMapping;
 
     event CreateTournament(uint tournamentId, address organizer, string tournamentURI);
-    event LockPrizeToken(uint tournamentId, uint prizeAmount);
-    event LockFeeToken(uint tournamentId, uint feeAmount);
+    event CreateFunding(uint fundingId, address fundingToken, uint fundingAmount);
     event UnlockPrize(uint tournamentId, uint amount);
     event UnlockFee(uint tournamentId, uint amount);
-    event WithdrawFee(uint tournamentId, uint feeBalance);
-    event PrizePaid(uint tournamentId, address account, uint PrizeAmount);
     event ReturnFee(uint tournamentId, address account, uint feeAmount);
     event ReturnPrize(uint tournamentId, address account, uint PrizeAmount);
     event CanceledUnlock(uint tournamentId);
@@ -147,7 +145,12 @@ contract MiracleTournamentEscrow is PermissionsEnumerable, Multicall, ContractMe
         newTournament.PlayersLimit = _playerLimit;
         
         miracletournament.createTournament(_tournamentId, _isFunding, msg.sender, _regStartEndTime[0], _regStartEndTime[1], _prizeAmountArray.length, _playerLimit);
-        createFunding(_tournamentId, _FundStartEndTime[0], _FundStartEndTime[1], _prizeToken, _prizeAmount);
+        if (_isFunding){
+            createFunding(_tournamentId, _FundStartEndTime[0], _FundStartEndTime[1], _prizeToken, _prizeAmount);
+            emit CreateFunding(_tournamentId, _prizeToken, _prizeAmount);
+        } else {
+            require(IERC20(_prizeToken).transferFrom(msg.sender, address(this), _prizeAmount), "Transfer failed.");
+        }
         emit CreateTournament(_tournamentId, msg.sender, _tournamentURI);
     }
 
@@ -182,7 +185,6 @@ contract MiracleTournamentEscrow is PermissionsEnumerable, Multicall, ContractMe
         if(_tournament.joinFee > 0){
             require(_tournament.feeToken.transferFrom(msg.sender, address(this), _tournament.joinFee), "Transfer failed.");
             _tournament.feeBalance = _tournament.feeBalance + _tournament.joinFee;
-            emit LockFeeToken(_tournamentId, _tournament.joinFee);
         }
         miracletournament.register(_tournamentId, msg.sender);
     }
