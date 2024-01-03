@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.17;    
 
-import "./Miracle-Fund-Escrow-R1.sol";
+import "./Miracle-Fundable-Escrow-R1.sol";
 import "@thirdweb-dev/contracts/extension/PermissionsEnumerable.sol";
 import "@thirdweb-dev/contracts/extension/Multicall.sol";
 import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
@@ -14,7 +14,7 @@ import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
 //   |:  1   |:  1   |:  1   |:  1   |:  |   |:  1   |:  |:  |   |:  1   |   |:  1   |:  |   |:  1    |:  1   |
 //   |::.. . |::.. . |\:.. ./|::.. . |::.|   |::.. . |::.|::.|   |::.. . |   |::.. . |::.|:. |::.. .  |::.. . |
 //   `-------`-------' `---' `-------`--- ---`-------`---`--- ---`-------'   `-------`--- ---`-------'`-------'
-//   MiracleFundingTournament V0.1
+//   MiracleFundableTournament V0.8
 
 contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata {
     address public deployer;
@@ -28,7 +28,7 @@ contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata
 
     struct Tournament {
         bool created;
-        uint8 tournamentType;
+        bool isFunding;
         address [] players;
         mapping(address => bool) playerRegistered;
         address [] ranker;
@@ -82,10 +82,10 @@ contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata
         EscrowAddr = _escrowAddr;
     }
 
-    function createTournament(uint _tournamentId, uint8 _tournamentType, address _organizer, uint _registerStartTime, uint _registerEndTime, uint _prizeCount, uint _playerLimit) public onlyRole(ESCROW_ROLE) {
+    function createTournament(uint _tournamentId, bool _isFunding, address _organizer, uint _registerStartTime, uint _registerEndTime, uint _prizeCount, uint _playerLimit) public onlyRole(ESCROW_ROLE) {
         Tournament storage newTournament = tournamentMapping[_tournamentId];
         newTournament.created = true;
-        newTournament.tournamentType = _tournamentType;
+        newTournament.isFunding = _isFunding;
         newTournament.organizer = _organizer;
         newTournament.registerStartTime = _registerStartTime;
         newTournament.registerEndTime = _registerEndTime;

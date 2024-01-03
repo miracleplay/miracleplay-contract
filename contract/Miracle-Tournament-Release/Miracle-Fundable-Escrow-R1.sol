@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.17;
 
-import "./Miracle-Fund-Tournament-R1.sol";
+import "./Miracle-Fundable-Tournament-R1.sol";
 import "@thirdweb-dev/contracts/extension/PermissionsEnumerable.sol";
 import "@thirdweb-dev/contracts/extension/Multicall.sol";
 import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
@@ -13,7 +13,7 @@ import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
 //   |:  1   |:  1   |:  1   |:  1   |:  |   |:  1   |:  |:  |   |:  1   |   |:  1   |:  |   |:  1    |:  1   |
 //   |::.. . |::.. . |\:.. ./|::.. . |::.|   |::.. . |::.|::.|   |::.. . |   |::.. . |::.|:. |::.. .  |::.. . |
 //   `-------`-------' `---' `-------`--- ---`-------`---`--- ---`-------'   `-------`--- ---`-------'`-------'
-//   MiracleFundingEscrow V0.1                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              .0
+//   MiracleFundEscrow V0.8                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              .0
                                              
 interface IERC20 {
     function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
@@ -37,6 +37,9 @@ contract MiracleTournamentEscrow is PermissionsEnumerable, Multicall, ContractMe
     address public royaltyAddrFlp;
     // Funding setting
     uint public minFundingRate;
+    // Tournament setting
+    uint public minTournamentRate;
+
     // Permissions
     bytes32 private constant TOURNAMENT_ROLE = keccak256("TOURNAMENT_ROLE");
 
@@ -44,6 +47,7 @@ contract MiracleTournamentEscrow is PermissionsEnumerable, Multicall, ContractMe
 
     struct Tournament {
         address organizer;
+        bool isFunding;
         IERC20 prizeToken;
         IERC20 feeToken;
         uint prizeAmount;
@@ -75,8 +79,8 @@ contract MiracleTournamentEscrow is PermissionsEnumerable, Multicall, ContractMe
     event CreateTournament(uint tournamentId, address organizer, string tournamentURI);
     event LockPrizeToken(uint tournamentId, uint prizeAmount);
     event LockFeeToken(uint tournamentId, uint feeAmount);
-    event UnlockPrizeToken(uint tournamentId, uint amount);
-    event UnlockFeeToken(uint tournamentId, uint amount);
+    event UnlockPrize(uint tournamentId, uint amount);
+    event UnlockFee(uint tournamentId, uint amount);
     event WithdrawFee(uint tournamentId, uint feeBalance);
     event PrizePaid(uint tournamentId, address account, uint PrizeAmount);
     event ReturnFee(uint tournamentId, address account, uint feeAmount);
@@ -95,7 +99,8 @@ contract MiracleTournamentEscrow is PermissionsEnumerable, Multicall, ContractMe
         RoyaltyPrizeFlp = 5;
         RoyaltyregfeeFlp = 5;
         // Set default funding setting
-        minFundingRate = 60;
+        minFundingRate = 80;
+        minTournamentRate = 60;
         deployer = adminAddr;
         _setupContractURI(_contractURI);
     }
@@ -116,7 +121,7 @@ contract MiracleTournamentEscrow is PermissionsEnumerable, Multicall, ContractMe
     }
 
     // Create tournament
-    function createTournamentEscrow(uint _tournamentId, uint8 _tournamentType, address _prizeToken, address _feeToken, uint _prizeAmount, uint _joinFee, uint256[] memory _regStartEndTime, uint256[] memory _FundStartEndTime, uint256[] memory _prizeAmountArray, string memory _tournamentURI, uint _playerLimit) external {
+    function createTournamentEscrow(uint _tournamentId, bool _isFunding, address _prizeToken, address _feeToken, uint _prizeAmount, uint _joinFee, uint256[] memory _regStartEndTime, uint256[] memory _FundStartEndTime, uint256[] memory _prizeAmountArray, string memory _tournamentURI, uint _playerLimit) external {
         require(_FundStartEndTime[0] < _FundStartEndTime[1], "Invalid funding time range");
         require(_regStartEndTime[0] < _regStartEndTime[1], "Invalid join tournament time range");
         uint256 totalWithdrawAmount;
@@ -129,6 +134,7 @@ contract MiracleTournamentEscrow is PermissionsEnumerable, Multicall, ContractMe
         require(newTournament.tournamentCreated == false, "Tournament already created.");
 
         newTournament.organizer = msg.sender;
+        newTournament.isFunding = _isFunding;
         newTournament.prizeToken = IERC20(_prizeToken);
         newTournament.feeToken = IERC20(_feeToken);
         newTournament.joinFee = _joinFee;
@@ -140,7 +146,7 @@ contract MiracleTournamentEscrow is PermissionsEnumerable, Multicall, ContractMe
         newTournament.tournamentURI = _tournamentURI;
         newTournament.PlayersLimit = _playerLimit;
         
-        miracletournament.createTournament(_tournamentId, _tournamentType, msg.sender, _regStartEndTime[0], _regStartEndTime[1], _prizeAmountArray.length, _playerLimit);
+        miracletournament.createTournament(_tournamentId, _isFunding, msg.sender, _regStartEndTime[0], _regStartEndTime[1], _prizeAmountArray.length, _playerLimit);
         createFunding(_tournamentId, _FundStartEndTime[0], _FundStartEndTime[1], _prizeToken, _prizeAmount);
         emit CreateTournament(_tournamentId, msg.sender, _tournamentURI);
     }
@@ -158,13 +164,12 @@ contract MiracleTournamentEscrow is PermissionsEnumerable, Multicall, ContractMe
     }
 
     function endedTournament(uint _tournamentId, address[] memory _withdrawAddresses) external onlyRole(TOURNAMENT_ROLE) {
-        _EndedUnlockTransfer(_tournamentId, _withdrawAddresses);
-        _EndedUnlockFunding(_tournamentId);
+        _EndedUnlockFee(_tournamentId);
+        _EndedUnlockPrize(_tournamentId, _withdrawAddresses);
     }
 
     function canceledTournament(uint _tournamentId, address[] memory _entryPlayers) external onlyRole(TOURNAMENT_ROLE) {
         _CanceledUnlockTransfer(_tournamentId, _entryPlayers);
-        _CanceledUnlockFundTransfer(_tournamentId);
     }
 
     // USER entry to the tournament.
@@ -185,6 +190,7 @@ contract MiracleTournamentEscrow is PermissionsEnumerable, Multicall, ContractMe
     function fundTournament(uint _tournamentId, uint256 _amount) external {
         Funding storage funding = fundingMapping[_tournamentId];
         require(block.timestamp >= funding.startTime && block.timestamp <= funding.endTime, "Funding not active");
+        require(funding.fundingActive, "Funding not active");
         require(funding.totalFunded + _amount <= funding.fundingGoal, "Funding amount exceeds goal");
         require(IERC20(funding.fundingToken).allowance(msg.sender, address(this)) >= _amount, "Allowance is not sufficient.");
         require(funding.fundingToken.transferFrom(msg.sender, address(this), _amount), "Transfer failed");
@@ -198,7 +204,7 @@ contract MiracleTournamentEscrow is PermissionsEnumerable, Multicall, ContractMe
 
     function endFunding(uint _tournamentId) external onlyRole(TOURNAMENT_ROLE) {
         Funding storage funding = fundingMapping[_tournamentId];
-        require(block.timestamp > funding.endTime, "Funding period not ended");
+        require(funding.fundingActive, "Funding not active");
         require(funding.totalFunded > funding.fundingGoal * minFundingRate / 100, "Funding did not reach the minimum rate");
         funding.fundingActive = false;
         funding.fundingEnded = true;
@@ -207,9 +213,9 @@ contract MiracleTournamentEscrow is PermissionsEnumerable, Multicall, ContractMe
 
     function cancelFunding(uint _tournamentId) external onlyRole(TOURNAMENT_ROLE) {
         Funding storage funding = fundingMapping[_tournamentId];
-        require(block.timestamp > funding.endTime, "Funding period not ended");
-        funding.fundingCanceled = true;
+        require(funding.fundingActive, "Funding not active");
         funding.fundingActive = false;
+        funding.fundingCanceled = true;
         for (uint i = 0; i < funding.contributors.length; i++) {
             address contributor = funding.contributors[i];
             uint256 amount = funding.contributions[contributor];
@@ -217,56 +223,36 @@ contract MiracleTournamentEscrow is PermissionsEnumerable, Multicall, ContractMe
         }
     }
 
-    function _EndedUnlockFunding(uint _tournamentId) internal {
+    function _EndedUnlockFee(uint _tournamentId) internal {
         Tournament storage _tournament = tournamentMapping[_tournamentId];
-        // Calculate FEE and transfer
+        // Calculate join fee and transfer
         uint256 _feeAmount = _tournament.feeBalance;
         uint256 _feeDev = (_feeAmount * RoyaltyregfeeDev) / 100;
         uint256 _feeFlp = (_feeAmount * RoyaltyregfeeFlp) / 100;
-        uint256 _feeForInvestors = _feeAmount - (_feeDev + _feeFlp);
-
-        _transferToken(_tournament.feeToken, royaltyAddrDev, _feeDev);
-        _transferToken(_tournament.feeToken, royaltyAddrFlp, _feeFlp);
-
-        // Distribute remaining fee to investors
-        Funding storage funding = fundingMapping[_tournamentId];
-        uint256 totalInvested = funding.totalFunded;
-        for (uint i = 0; i < funding.contributors.length; i++) {
-            address investor = funding.contributors[i];
-            uint256 investedAmount = funding.contributions[investor];
-            uint256 investorShare = (_feeForInvestors * investedAmount) / totalInvested;
-            _transferToken(_tournament.feeToken, investor, investorShare);
-        }
-    }
-
-    function _CanceledUnlockFundTransfer(uint _tournamentId) internal {
-        Funding storage funding = fundingMapping[_tournamentId];
-        funding.fundingActive = false;
-        funding.fundingCanceled = true;
-        for (uint i = 0; i < funding.contributors.length; i++) {
-            address contributor = funding.contributors[i];
-            uint256 amount = funding.contributions[contributor];
-            funding.fundingToken.transfer(contributor, amount);
-        }
-    }
-
-    // Tournament CANCEL unlock PRIZE and entry fee (auto transfer)
-    function _CanceledUnlockTransfer(uint _tournamentId, address[] memory _players) internal {
-        Tournament storage _tournament = tournamentMapping[_tournamentId];
-        // Set tournament status canceled
-        _tournament.tournamentCanceled = true;
-        if(_tournament.joinFee>0){
-            // Transfer entry fee to users
-            for (uint256 i = 0; i < _players.length; i++) {
-                _tournament.feeToken.transfer(_players[i], _tournament.joinFee);
+        if(_tournament.isFunding){
+            uint256 _feeForInvestors = _feeAmount - (_feeDev + _feeFlp);
+            _transferToken(_tournament.feeToken, royaltyAddrDev, _feeDev);
+            _transferToken(_tournament.feeToken, royaltyAddrFlp, _feeFlp);
+            // Distribute remaining fee to investors
+            Funding storage funding = fundingMapping[_tournamentId];
+            uint256 totalInvested = funding.totalFunded;
+            for (uint i = 0; i < funding.contributors.length; i++) {
+                address investor = funding.contributors[i];
+                uint256 investedAmount = funding.contributions[investor];
+                uint256 investorShare = (_feeForInvestors * investedAmount) / totalInvested;
+                _transferToken(_tournament.feeToken, investor, investorShare);
             }
-            _tournament.prizeToken.transfer(_tournament.organizer, _tournament.prizeAmount);
+        } else {
+            uint256 _feeOrg = _feeAmount - (_feeDev + _feeFlp);
+            _transferToken(_tournament.feeToken, royaltyAddrDev, _feeDev);
+            _transferToken(_tournament.feeToken, royaltyAddrFlp, _feeFlp);
+            _transferToken(_tournament.feeToken, _tournament.organizer, _feeOrg);
         }
-        emit CanceledUnlock(_tournamentId);
+        emit UnlockFee(_tournamentId, _tournament.feeBalance);
     }
 
-    // Tournament END unlock PRIZE and entry fee (auto transfer)
-    function _EndedUnlockTransfer(uint _tournamentId, address[] memory _winner) internal {
+    // Tournament END unlock PRIZE (auto transfer)
+    function _EndedUnlockPrize(uint _tournamentId, address[] memory _winner) internal {
         Tournament storage _tournament = tournamentMapping[_tournamentId];
         // Set tournament status ended
         _tournament.tournamentEnded = true;
@@ -286,12 +272,42 @@ contract MiracleTournamentEscrow is PermissionsEnumerable, Multicall, ContractMe
                 _transferToken(_tournament.prizeToken, _winner[i], _prizeUser);
             }
         }
-        emit EndedUnlock(_tournamentId, _winner);
+        emit UnlockPrize(_tournamentId, _tournament.prizeAmount);
+    }
+
+    // Tournament CANCEL unlock PRIZE and entry fee (auto transfer)
+    function _CanceledUnlockTransfer(uint _tournamentId, address[] memory _players) internal {
+        Tournament storage _tournament = tournamentMapping[_tournamentId];
+        // Set tournament status canceled
+        _tournament.tournamentCanceled = true;
+        if(_tournament.joinFee > 0){
+            // Transfer entry fee to users
+            for (uint256 i = 0; i < _players.length; i++) {
+                _tournament.feeToken.transfer(_players[i], _tournament.joinFee);
+            }
+        }
+        
+        if(_tournament.isFunding){
+            Funding storage funding = fundingMapping[_tournamentId];
+            funding.fundingActive = false;
+            funding.fundingCanceled = true;
+            for (uint i = 0; i < funding.contributors.length; i++) {
+                address contributor = funding.contributors[i];
+                uint256 amount = funding.contributions[contributor];
+                funding.fundingToken.transfer(contributor, amount);
+            }
+        }else{
+            if(_tournament.prizeAmount > 0){
+                // Transfer prize to org
+                _tournament.prizeToken.transfer(_tournament.organizer, _tournament.prizeAmount);
+            }
+        }
+        emit CanceledUnlock(_tournamentId);
     }
 
     function _transferToken(IERC20 token, address to, uint256 amount) internal {
         if (amount > 0) {
-            token.transfer(to, amount);
+            require(token.transfer(to, amount),"Transfer failed");
         }
     }
 
