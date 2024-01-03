@@ -13,7 +13,7 @@ import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
 //   |:  1   |:  1   |:  1   |:  1   |:  |   |:  1   |:  |:  |   |:  1   |   |:  1   |:  |   |:  1    |:  1   |
 //   |::.. . |::.. . |\:.. ./|::.. . |::.|   |::.. . |::.|::.|   |::.. . |   |::.. . |::.|:. |::.. .  |::.. . |
 //   `-------`-------' `---' `-------`--- ---`-------`---`--- ---`-------'   `-------`--- ---`-------'`-------'
-//   MiracleFundEscrow V0.8                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              .0
+//   MiracleEscrow V0.8 Fundable
                                              
 interface IERC20 {
     function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);

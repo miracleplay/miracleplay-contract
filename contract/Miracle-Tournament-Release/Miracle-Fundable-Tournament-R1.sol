@@ -14,7 +14,7 @@ import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
 //   |:  1   |:  1   |:  1   |:  1   |:  |   |:  1   |:  |:  |   |:  1   |   |:  1   |:  |   |:  1    |:  1   |
 //   |::.. . |::.. . |\:.. ./|::.. . |::.|   |::.. . |::.|::.|   |::.. . |   |::.. . |::.|:. |::.. .  |::.. . |
 //   `-------`-------' `---' `-------`--- ---`-------`---`--- ---`-------'   `-------`--- ---`-------'`-------'
-//   MiracleFundableTournament V0.8
+//   MiracleTournament V0.8 Fundable
 
 contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata {
     address public deployer;
