@@ -7,7 +7,7 @@
 //   |:  1   |:  1   |:  1   |:  1   |:  |   |:  1   |:  |:  |   |:  1   |   |:  1   |:  |   |:  1    |:  1   |
 //   |::.. . |::.. . |\:.. ./|::.. . |::.|   |::.. . |::.|::.|   |::.. . |   |::.. . |::.|:. |::.. .  |::.. . |
 //   `-------`-------' `---' `-------`--- ---`-------`---`--- ---`-------'   `-------`--- ---`-------'`-------'
-//   Miracleplay ERC-20 to ERC-20 staking v0.1
+//   Miracleplay ERC-20 to ERC-20 staking v1.0
 
 pragma solidity ^0.8.0;
 
@@ -56,7 +56,7 @@ contract DualRewardAPRStaking is PermissionsEnumerable, ContractMetadata {
         rewardToken1 = IMintableERC20(_rewardToken1);
         rewardToken2 = IMintableERC20(_rewardToken2);
         reward1APR = (_reward1APR * 1e18 / 100) / 31536000;
-        reward1APR = (_reward2APR * 1e18 / 100) / 31536000;
+        reward2APR = (_reward2APR * 1e18 / 100) / 31536000;
         PausePool = false;
         _setupContractURI(_contractURI);
     }
@@ -106,11 +106,11 @@ contract DualRewardAPRStaking is PermissionsEnumerable, ContractMetadata {
         user.lastUpdateTime = block.timestamp;
     }
 
-    function setRewardRate1(uint256 _rate) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setToken1APR(uint256 _rate) external onlyRole(DEFAULT_ADMIN_ROLE) {
         reward1APR = (_rate * 1e18 / 100) / 31536000;
     }
 
-    function setRewardRate2(uint256 _rate) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setToken2APR(uint256 _rate) external onlyRole(DEFAULT_ADMIN_ROLE) {
         reward2APR = (_rate * 1e18 / 100) / 31536000;
     }
 
@@ -140,7 +140,7 @@ contract DualRewardAPRStaking is PermissionsEnumerable, ContractMetadata {
     }
 
     function getRemindToken2() public view returns (uint256) {
-        return IERC20(rewardToken1).balanceOf(address(this));
+        return IERC20(rewardToken2).balanceOf(address(this));
     }
 
     function calculateRewards(address staker) public view returns (uint256 reward1, uint256 reward2) {
