@@ -20,14 +20,16 @@ interface IMintableERC20 is IERC20 {
     function mintTo(address to, uint256 amount) external;
 }
 
-contract ERC20Staking is PermissionsEnumerable, ContractMetadata {
+contract DualRewardAPRStaking is PermissionsEnumerable, ContractMetadata {
     address public deployer;
     IERC20 public stakingToken;
     IMintableERC20 public rewardToken1;
     IMintableERC20 public rewardToken2;
 
-    uint256 internal reward1APR;
-    uint256 internal reward2APR;
+    uint256 private reward1APR;
+    uint256 private reward2APR;
+
+    uint256 private totalStakedTokens;
 
     bool public PausePool;
 
@@ -65,18 +67,17 @@ contract ERC20Staking is PermissionsEnumerable, ContractMetadata {
 
     function stake(uint256 amount) external {
         updateRewards(msg.sender);
-
         stakers[msg.sender].stakedAmount += amount;
-        stakingToken.transferFrom(msg.sender, address(this), amount);
+        totalStakedTokens += amount;
+        require(stakingToken.transferFrom(msg.sender, address(this), amount));
     }
 
     function withdraw(uint256 amount) external {
         require(stakers[msg.sender].stakedAmount >= amount, "Not enough balance");
-
         updateRewards(msg.sender);
-
         stakers[msg.sender].stakedAmount -= amount;
-        stakingToken.transfer(msg.sender, amount);
+        totalStakedTokens -= amount;
+        require(stakingToken.transfer(msg.sender, amount));
     }
 
     function claimRewards() external {
@@ -134,7 +135,8 @@ contract ERC20Staking is PermissionsEnumerable, ContractMetadata {
     }
 
     function getRemindToken1() public view returns (uint256) {
-        return IERC20(rewardToken1).balanceOf(address(this));
+        uint256 totalBalance = IERC20(rewardToken1).balanceOf(address(this));
+        return totalBalance - totalStakedTokens;
     }
 
     function getRemindToken2() public view returns (uint256) {
@@ -149,11 +151,7 @@ contract ERC20Staking is PermissionsEnumerable, ContractMetadata {
     }
 
     function getTotalStakedBalance() public view returns (uint256) {
-        return IERC20(stakingToken).balanceOf(address(this));
-    }
-
-    function getRewardToken1Balance() public view returns (uint256) {
-        return IERC20(rewardToken1).balanceOf(address(this));
+        return totalStakedTokens;
     }
     
     function emergencyWithdrawRewardToken1() external onlyRole(DEFAULT_ADMIN_ROLE) {
