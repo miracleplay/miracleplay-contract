@@ -26,8 +26,8 @@ contract ERC20Staking is PermissionsEnumerable, ContractMetadata {
     IMintableERC20 public rewardToken1;
     IMintableERC20 public rewardToken2;
 
-    uint256 public reward1APR;
-    uint256 public reward2APR;
+    uint256 internal reward1APR;
+    uint256 internal reward2APR;
 
     bool public PausePool;
 
@@ -115,15 +115,29 @@ contract ERC20Staking is PermissionsEnumerable, ContractMetadata {
 
     function getCurrenToken1APR() public view returns (uint256) {
         uint256 annualReward = reward1APR * 31536000;
-        return (annualReward * 100) / 1e18;
+        uint256 aprWithDecimal = (annualReward * 100) / 1e18;
+        uint256 remainder = (annualReward * 100) % 1e18;
+        if (remainder > 0) {
+            aprWithDecimal += 1;
+        }
+        return aprWithDecimal;
     }
 
     function getCurrentToken2APR() public view returns (uint256) {
         uint256 annualReward = reward2APR * 31536000;
-        return (annualReward * 100) / 1e18;
+        uint256 aprWithDecimal = (annualReward * 100) / 1e18;
+        uint256 remainder = (annualReward * 100) % 1e18;
+        if (remainder > 0) {
+            aprWithDecimal += 1;
+        }
+        return aprWithDecimal;
     }
 
-    function getRemindReward() public view returns (uint256) {
+    function getRemindToken1() public view returns (uint256) {
+        return IERC20(rewardToken1).balanceOf(address(this));
+    }
+
+    function getRemindToken2() public view returns (uint256) {
         return IERC20(rewardToken1).balanceOf(address(this));
     }
 
@@ -141,10 +155,9 @@ contract ERC20Staking is PermissionsEnumerable, ContractMetadata {
     function getRewardToken1Balance() public view returns (uint256) {
         return IERC20(rewardToken1).balanceOf(address(this));
     }
-
+    
     function emergencyWithdrawRewardToken1() external onlyRole(DEFAULT_ADMIN_ROLE) {
         uint amount = IERC20(rewardToken1).balanceOf(address(this));
         IERC20(rewardToken1).transfer(msg.sender, amount);
     }
-
 }
