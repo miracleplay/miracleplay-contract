@@ -155,7 +155,12 @@ contract DualRewardAPRStaking is PermissionsEnumerable, ContractMetadata {
     }
     
     function emergencyWithdrawRewardToken1() external onlyRole(DEFAULT_ADMIN_ROLE) {
-        uint amount = IERC20(rewardToken1).balanceOf(address(this));
+        uint amount = getRemindToken1();
+        IERC20(rewardToken1).transfer(msg.sender, amount);
+    }
+
+    function emergencyWithdrawRewardToken2() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        uint amount = getRemindToken2();
         IERC20(rewardToken1).transfer(msg.sender, amount);
     }
 }
