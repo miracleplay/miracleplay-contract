@@ -114,7 +114,7 @@ contract DualRewardAPRStaking is PermissionsEnumerable, ContractMetadata {
         reward2APR = (_rate * 1e18 / 100) / 31536000;
     }
 
-    function getCurrenToken1APR() public view returns (uint256) {
+    function getCurrentToken1APR() public view returns (uint256) {
         uint256 annualReward = reward1APR * 31536000;
         uint256 aprWithDecimal = (annualReward * 100) / 1e18;
         uint256 remainder = (annualReward * 100) % 1e18;
@@ -146,8 +146,8 @@ contract DualRewardAPRStaking is PermissionsEnumerable, ContractMetadata {
     function calculateRewards(address staker) public view returns (uint256 reward1, uint256 reward2) {
         Staker memory user = stakers[staker];
         uint256 timeElapsed = block.timestamp - user.lastUpdateTime;
-        reward1 = user.reward1Earned + (timeElapsed * reward1APR * user.stakedAmount);
-        reward2 = user.reward2Earned + (timeElapsed * reward2APR * user.stakedAmount);
+        reward1 = user.reward1Earned + ((timeElapsed * reward1APR * user.stakedAmount) / 1e18);
+        reward2 = user.reward2Earned + ((timeElapsed * reward2APR * user.stakedAmount) / 1e18);
     }
 
     function getTotalStakedBalance() public view returns (uint256) {
