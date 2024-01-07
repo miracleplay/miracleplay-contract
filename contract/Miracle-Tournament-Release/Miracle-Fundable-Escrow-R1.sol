@@ -21,7 +21,7 @@ interface IMintableERC20 is IERC20 {
     function mintTo(address to, uint256 amount) external;
 }
 
-contract MiracleTournamentEscrow is PermissionsEnumerable, Multicall, ContractMetadata {
+contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractMetadata {
     address public deployer;
     address public admin;
     address payable public tournamentAddr;
@@ -38,7 +38,7 @@ contract MiracleTournamentEscrow is PermissionsEnumerable, Multicall, ContractMe
     // Permissions
     bytes32 private constant TOURNAMENT_ROLE = keccak256("TOURNAMENT_ROLE");
 
-    MiracleTournament internal miracletournament;
+    FundableTournament internal miracletournament;
 
     struct Tournament {
         address organizer;
@@ -108,7 +108,7 @@ contract MiracleTournamentEscrow is PermissionsEnumerable, Multicall, ContractMe
 
     function connectTournament(address payable _miracletournament) external onlyRole(DEFAULT_ADMIN_ROLE){
         _setupRole(TOURNAMENT_ROLE, _miracletournament);
-        miracletournament = MiracleTournament(_miracletournament);
+        miracletournament = FundableTournament(_miracletournament);
     }
 
     // Create tournament

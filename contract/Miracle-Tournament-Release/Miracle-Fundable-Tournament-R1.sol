@@ -16,7 +16,7 @@ import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
 //   `-------`-------' `---' `-------`--- ---`-------`---`--- ---`-------'   `-------`--- ---`-------'`-------'
 //   MiracleTournament V0.8 Fundable
 
-contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata {
+contract FundableTournament is PermissionsEnumerable, Multicall, ContractMetadata {
     address public deployer;
     address payable public EscrowAddr;
     uint[] private OnGoingTournaments;
@@ -129,11 +129,11 @@ contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata
     }
 
     function endFunding(uint _tournamentId) external onlyRole(FACTORY_ROLE) {
-        MiracleTournamentEscrow(EscrowAddr).endFunding(_tournamentId);
+        FundableTournamentEscrow(EscrowAddr).endFunding(_tournamentId);
     }
 
     function cancelFunding(uint _tournamentId) external onlyRole(FACTORY_ROLE) {
-        MiracleTournamentEscrow(EscrowAddr).cancelFunding(_tournamentId);
+        FundableTournamentEscrow(EscrowAddr).cancelFunding(_tournamentId);
     }
 
     function endTournament(uint _tournamentId, address[] calldata _rankers) public onlyRole(FACTORY_ROLE) {
@@ -149,7 +149,7 @@ contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata
 
         _mintVoteToken(_tournamentId, _rankers);
         _mintBattlePoint(_tournamentId, _rankers);
-        MiracleTournamentEscrow(EscrowAddr).endedTournament(_tournamentId, prizeAddr);
+        FundableTournamentEscrow(EscrowAddr).endedTournament(_tournamentId, prizeAddr);
         _tournament.tournamentEnded = true;
 
         removeOnGoingTournament(_tournamentId);
@@ -164,7 +164,7 @@ contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata
         require(!_tournament.tournamentEnded, "Tournament has already ended");
 
         address[] memory _entryPlayers = _tournament.players;
-        MiracleTournamentEscrow(EscrowAddr).canceledTournament(_tournamentId, _entryPlayers);
+        FundableTournamentEscrow(EscrowAddr).canceledTournament(_tournamentId, _entryPlayers);
         _tournament.tournamentEnded = true;
 
         removeOnGoingTournament(_tournamentId);
@@ -298,6 +298,6 @@ contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata
 
     // View from escrow
     function getFundingProgress(uint _tournamentId) public view returns (uint) {
-        return MiracleTournamentEscrow(EscrowAddr).getFundingProgress(_tournamentId);
+        return FundableTournamentEscrow(EscrowAddr).getFundingProgress(_tournamentId);
     }
 }
