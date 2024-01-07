@@ -3,6 +3,7 @@
 pragma solidity ^0.8.17;
 
 import "./Miracle-Fundable-Tournament-R1.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@thirdweb-dev/contracts/extension/PermissionsEnumerable.sol";
 import "@thirdweb-dev/contracts/extension/Multicall.sol";
 import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
@@ -16,13 +17,8 @@ import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
 //   `-------`-------' `---' `-------`--- ---`-------`---`--- ---`-------'   `-------`--- ---`-------'`-------'
 //   MiracleEscrow V0.8 Fundable
                                              
-interface IERC20 {
-    function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
-    function balanceOf(address account) external view returns (uint256);
-    function allowance(address owner, address spender) external view returns (uint256);
-    function transfer(address recipient, uint256 amount) external returns (bool);
+interface IMintableERC20 is IERC20 {
     function mintTo(address to, uint256 amount) external;
-    function decimals() external view returns (uint8);
 }
 
 contract MiracleTournamentEscrow is PermissionsEnumerable, Multicall, ContractMetadata {

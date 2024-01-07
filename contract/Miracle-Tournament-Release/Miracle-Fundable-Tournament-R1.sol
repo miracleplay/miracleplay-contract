@@ -23,8 +23,8 @@ contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata
     uint[] private EndedTournaments;
     uint[] public mvpMintAmount;
     uint[] public bptMintAmount;
-    IERC20 VoteToken;
-    IERC20 BattlePoint;
+    IMintableERC20 VoteToken;
+    IMintableERC20 BattlePoint;
 
     struct Tournament {
         bool created;
@@ -58,8 +58,8 @@ contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata
     constructor(address adminAddr, address _VoteToken, address _BattlePoint, string memory _contractURI)  {
         _setupRole(DEFAULT_ADMIN_ROLE, adminAddr);
         _setupRole(FACTORY_ROLE, adminAddr);
-        VoteToken = IERC20(_VoteToken);
-        BattlePoint = IERC20(_BattlePoint);
+        VoteToken = IMintableERC20(_VoteToken);
+        BattlePoint = IMintableERC20(_BattlePoint);
         mvpMintAmount = [10000000000000000000,5000000000000000000,3000000000000000000,1000000000000000000]; // Wei
         bptMintAmount = [100000000000000000000,50000000000000000000,10000000000000000000]; // Wei
         deployer = adminAddr;

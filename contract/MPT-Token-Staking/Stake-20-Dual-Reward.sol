@@ -66,6 +66,7 @@ contract DualRewardAPRStaking is PermissionsEnumerable, ContractMetadata {
     }
 
     function stake(uint256 amount) external {
+        require(stakingToken.allowance(msg.sender, address(this)) >= amount, "Allowance is not sufficient.");
         updateRewards(msg.sender);
         stakers[msg.sender].stakedAmount += amount;
         totalStakedTokens += amount;
@@ -88,7 +89,7 @@ contract DualRewardAPRStaking is PermissionsEnumerable, ContractMetadata {
         uint256 reward2 = stakers[msg.sender].reward2Earned;
 
         if (reward1 > 0) {
-            rewardToken1.transfer(msg.sender, reward1);
+            require(rewardToken1.transfer(msg.sender, reward1), "Reward 1 Transfer fail.");
             stakers[msg.sender].reward1Earned = 0;
         }
 
@@ -101,8 +102,8 @@ contract DualRewardAPRStaking is PermissionsEnumerable, ContractMetadata {
     function updateRewards(address staker) internal {
         Staker storage user = stakers[staker];
         uint256 timeElapsed = block.timestamp - user.lastUpdateTime;
-        user.reward1Earned += timeElapsed * reward1APR * user.stakedAmount;
-        user.reward2Earned += timeElapsed * reward2APR * user.stakedAmount;
+        user.reward1Earned += ((timeElapsed * reward1APR * user.stakedAmount) / 1e18);
+        user.reward2Earned += ((timeElapsed * reward2APR * user.stakedAmount) / 1e18);
         user.lastUpdateTime = block.timestamp;
     }
 
