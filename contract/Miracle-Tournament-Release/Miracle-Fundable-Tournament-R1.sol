@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 
-pragma solidity ^0.8.17;    
+pragma solidity ^0.8.22;    
 
 import "./Miracle-Fundable-Escrow-R1.sol";
 import "@thirdweb-dev/contracts/extension/PermissionsEnumerable.sol";
@@ -25,6 +25,8 @@ contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata
     uint[] public bptMintAmount;
     IMintableERC20 VoteToken;
     IMintableERC20 BattlePoint;
+    // Tournament setting
+    uint public minTournamentRate;
 
     struct Tournament {
         bool created;
@@ -60,8 +62,9 @@ contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata
         _setupRole(FACTORY_ROLE, adminAddr);
         VoteToken = IMintableERC20(_VoteToken);
         BattlePoint = IMintableERC20(_BattlePoint);
-        mvpMintAmount = [10000000000000000000,5000000000000000000,3000000000000000000,1000000000000000000]; // Wei
-        bptMintAmount = [100000000000000000000,50000000000000000000,10000000000000000000]; // Wei
+        mvpMintAmount = [10000000000000000000,5000000000000000000,3000000000000000000,1000000000000000000]; // Wei Default 1st:10 2nd:5 3th:3 other:1 
+        bptMintAmount = [500000000000000000000,200000000000000000000,10000000000000000000]; // Wei Default 1st:500 2nd:200 other:10
+        minTournamentRate = 100;
         deployer = adminAddr;
         _setupContractURI(_contractURI);
     }
@@ -241,6 +244,26 @@ contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata
     function updateBptMintAmount(uint[] calldata newBptMintAmount) external onlyRole(DEFAULT_ADMIN_ROLE) {
         bptMintAmount = newBptMintAmount;
     }
+
+    // View function
+    function getRegistProgress(uint _tournamentId) public view returns (uint) {
+        Tournament storage _tournament = tournamentMapping[_tournamentId];
+        if (_tournament.PlayersLimit == 0) {
+            return 0;
+        }
+        uint progress = (_tournament.players.length * 100) / _tournament.PlayersLimit;
+        return progress;
+    }
+
+    function getMinTournamentRate() public view returns (uint) {
+        return minTournamentRate;
+    }
+
+    function isTounamentSuccess(uint _tournamentId) public view returns (bool) {
+        uint progress = getFundingProgress(_tournamentId);
+        uint minRate = getMinTournamentRate();
+        return progress >= minRate;
+    }
     
     function getAllTournamentCount() external view returns (uint) {
         uint count = OnGoingTournaments.length + EndedTournaments.length;
@@ -273,7 +296,7 @@ contract MiracleTournament is PermissionsEnumerable, Multicall, ContractMetadata
         return _tournament.players;
     }
 
-    // View function
+    // View from escrow
     function getFundingProgress(uint _tournamentId) public view returns (uint) {
         return MiracleTournamentEscrow(EscrowAddr).getFundingProgress(_tournamentId);
     }

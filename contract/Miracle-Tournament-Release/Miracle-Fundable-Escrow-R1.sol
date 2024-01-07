@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.22;
 
 import "./Miracle-Fundable-Tournament-R1.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -34,8 +34,6 @@ contract MiracleTournamentEscrow is PermissionsEnumerable, Multicall, ContractMe
     address public royaltyAddrFlp;
     // Funding setting
     uint public minFundingRate;
-    // Tournament setting
-    uint public minTournamentRate;
 
     // Permissions
     bytes32 private constant TOURNAMENT_ROLE = keccak256("TOURNAMENT_ROLE");
@@ -94,7 +92,6 @@ contract MiracleTournamentEscrow is PermissionsEnumerable, Multicall, ContractMe
         RoyaltyregfeeFlp = 5;
         // Set default funding setting
         minFundingRate = 80;
-        minTournamentRate = 60;
         deployer = adminAddr;
         _setupContractURI(_contractURI);
     }
