@@ -7,7 +7,8 @@
 //   |:  1   |:  1   |:  1   |:  1   |:  |   |:  1   |:  |:  |   |:  1   |   |:  1   |:  |   |:  1    |:  1   |
 //   |::.. . |::.. . |\:.. ./|::.. . |::.|   |::.. . |::.|::.|   |::.. . |   |::.. . |::.|:. |::.. .  |::.. . |
 //   `-------`-------' `---' `-------`--- ---`-------`---`--- ---`-------'   `-------`--- ---`-------'`-------'
-//   Miracleplay ERC-20 to ERC-20 staking v1.0
+//   Miracleplay ERC-20 to ERC-20 staking v1.01
+// The APR1 and APR2 supports two decimal places. ex) APR 1035 > 10.35%
 
 pragma solidity ^0.8.0;
 
@@ -55,8 +56,8 @@ contract DualRewardAPRStaking is PermissionsEnumerable, ContractMetadata {
         stakingToken = IERC20(_stakingToken);
         rewardToken1 = IMintableERC20(_rewardToken1);
         rewardToken2 = IMintableERC20(_rewardToken2);
-        reward1APR = (_reward1APR * 1e18 / 100) / 31536000;
-        reward2APR = (_reward2APR * 1e18 / 100) / 31536000;
+        reward1APR = (_reward1APR * 1e18) / 31536000; // The APR1 supports two decimal places. ex) APR1 1035 > 10.35%
+        reward2APR = (_reward2APR * 1e18) / 31536000; // The APR2 supports two decimal places. ex) APR2 3846 > 38.46%
         PausePool = false;
         _setupContractURI(_contractURI);
     }
@@ -102,36 +103,28 @@ contract DualRewardAPRStaking is PermissionsEnumerable, ContractMetadata {
     function updateRewards(address staker) internal {
         Staker storage user = stakers[staker];
         uint256 timeElapsed = block.timestamp - user.lastUpdateTime;
-        user.reward1Earned += ((timeElapsed * reward1APR * user.stakedAmount) / 1e18);
-        user.reward2Earned += ((timeElapsed * reward2APR * user.stakedAmount) / 1e18);
+        user.reward1Earned += ((timeElapsed * reward1APR * user.stakedAmount) / 1e18 / 100);
+        user.reward2Earned += ((timeElapsed * reward2APR * user.stakedAmount) / 1e18 / 100);
         user.lastUpdateTime = block.timestamp;
     }
 
     function setToken1APR(uint256 _rate) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        reward1APR = (_rate * 1e18 / 100) / 31536000;
+        reward1APR = (_rate * 1e18) / 31536000;
     }
 
     function setToken2APR(uint256 _rate) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        reward2APR = (_rate * 1e18 / 100) / 31536000;
+        reward2APR = (_rate * 1e18) / 31536000;
     }
 
     function getCurrentToken1APR() public view returns (uint256) {
         uint256 annualReward = reward1APR * 31536000;
-        uint256 aprWithDecimal = (annualReward * 100) / 1e18;
-        uint256 remainder = (annualReward * 100) % 1e18;
-        if (remainder > 0) {
-            aprWithDecimal += 1;
-        }
+        uint256 aprWithDecimal = annualReward / 1e18 / 100;
         return aprWithDecimal;
     }
 
     function getCurrentToken2APR() public view returns (uint256) {
         uint256 annualReward = reward2APR * 31536000;
-        uint256 aprWithDecimal = (annualReward * 100) / 1e18;
-        uint256 remainder = (annualReward * 100) % 1e18;
-        if (remainder > 0) {
-            aprWithDecimal += 1;
-        }
+        uint256 aprWithDecimal = annualReward / 1e18 / 100;
         return aprWithDecimal;
     }
 
@@ -147,8 +140,8 @@ contract DualRewardAPRStaking is PermissionsEnumerable, ContractMetadata {
     function calculateRewards(address staker) public view returns (uint256 reward1, uint256 reward2) {
         Staker memory user = stakers[staker];
         uint256 timeElapsed = block.timestamp - user.lastUpdateTime;
-        reward1 = user.reward1Earned + ((timeElapsed * reward1APR * user.stakedAmount) / 1e18);
-        reward2 = user.reward2Earned + ((timeElapsed * reward2APR * user.stakedAmount) / 1e18);
+        reward1 = user.reward1Earned + ((timeElapsed * reward1APR * user.stakedAmount) / 1e18 / 100);
+        reward2 = user.reward2Earned + ((timeElapsed * reward2APR * user.stakedAmount) / 1e18 / 100);
     }
 
     function getTotalStakedBalance() public view returns (uint256) {
