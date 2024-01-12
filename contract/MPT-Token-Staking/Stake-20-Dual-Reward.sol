@@ -119,14 +119,25 @@ contract DualRewardAPRStaking is PermissionsEnumerable, ContractMetadata {
     function getCurrentToken1APR() public view returns (uint256) {
         uint256 annualReward = reward1APR * 31536000;
         uint256 aprWithDecimal = annualReward / 1e18;
+        uint256 remainder = (annualReward % 1e18) / 1e16; 
+
+        if (remainder >= 50) {
+            aprWithDecimal += 1;
+        }
         return aprWithDecimal;
     }
 
     function getCurrentToken2APR() public view returns (uint256) {
         uint256 annualReward = reward2APR * 31536000;
         uint256 aprWithDecimal = annualReward / 1e18;
+        uint256 remainder = (annualReward % 1e18) / 1e16; 
+        
+        if (remainder >= 50) {
+            aprWithDecimal += 1;
+        }
         return aprWithDecimal;
     }
+
 
     function getRemindToken1() public view returns (uint256) {
         uint256 totalBalance = IERC20(rewardToken1).balanceOf(address(this));
