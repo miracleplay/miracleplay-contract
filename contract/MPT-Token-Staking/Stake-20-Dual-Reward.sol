@@ -103,8 +103,8 @@ contract DualRewardAPRStaking is PermissionsEnumerable, ContractMetadata {
     function updateRewards(address staker) internal {
         Staker storage user = stakers[staker];
         uint256 timeElapsed = block.timestamp - user.lastUpdateTime;
-        user.reward1Earned += ((timeElapsed * reward1APR * user.stakedAmount) / 1e18 / 100);
-        user.reward2Earned += ((timeElapsed * reward2APR * user.stakedAmount) / 1e18 / 100);
+        user.reward1Earned += ((timeElapsed * reward1APR * user.stakedAmount) / 1e18 / 10000);
+        user.reward2Earned += ((timeElapsed * reward2APR * user.stakedAmount) / 1e18 / 10000);
         user.lastUpdateTime = block.timestamp;
     }
 
@@ -131,7 +131,7 @@ contract DualRewardAPRStaking is PermissionsEnumerable, ContractMetadata {
         uint256 annualReward = reward2APR * 31536000;
         uint256 aprWithDecimal = annualReward / 1e18;
         uint256 remainder = (annualReward % 1e18) / 1e16; 
-        
+
         if (remainder >= 50) {
             aprWithDecimal += 1;
         }
@@ -151,8 +151,8 @@ contract DualRewardAPRStaking is PermissionsEnumerable, ContractMetadata {
     function calculateRewards(address staker) public view returns (uint256 reward1, uint256 reward2) {
         Staker memory user = stakers[staker];
         uint256 timeElapsed = block.timestamp - user.lastUpdateTime;
-        reward1 = user.reward1Earned + ((timeElapsed * reward1APR * user.stakedAmount) / 1e18 / 100);
-        reward2 = user.reward2Earned + ((timeElapsed * reward2APR * user.stakedAmount) / 1e18 / 100);
+        reward1 = user.reward1Earned + ((timeElapsed * reward1APR * user.stakedAmount) / 1e18 / 10000);
+        reward2 = user.reward2Earned + ((timeElapsed * reward2APR * user.stakedAmount) / 1e18 / 10000);
     }
 
     function getTotalStakedBalance() public view returns (uint256) {
