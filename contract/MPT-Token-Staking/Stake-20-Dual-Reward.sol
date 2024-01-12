@@ -118,13 +118,13 @@ contract DualRewardAPRStaking is PermissionsEnumerable, ContractMetadata {
 
     function getCurrentToken1APR() public view returns (uint256) {
         uint256 annualReward = reward1APR * 31536000;
-        uint256 aprWithDecimal = annualReward / 1e18 / 100;
+        uint256 aprWithDecimal = annualReward / 1e18;
         return aprWithDecimal;
     }
 
     function getCurrentToken2APR() public view returns (uint256) {
         uint256 annualReward = reward2APR * 31536000;
-        uint256 aprWithDecimal = annualReward / 1e18 / 100;
+        uint256 aprWithDecimal = annualReward / 1e18;
         return aprWithDecimal;
     }
 
