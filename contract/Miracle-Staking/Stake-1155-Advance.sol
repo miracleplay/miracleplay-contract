@@ -88,6 +88,8 @@ contract ERC1155Staking is ReentrancyGuard, PermissionsEnumerable, ERC1155Holder
         } else {
             // Update the staked amount in the user's staking information.
             info.amount += _amount;
+            // Claim any rewards before stake the tokens.
+            _claimReward(msg.sender, false);
         }
 
         // Record the staked amount, reward, and start time in the user's staking info.
@@ -226,7 +228,7 @@ contract ERC1155Staking is ReentrancyGuard, PermissionsEnumerable, ERC1155Holder
                 erc1155Token.safeTransferFrom(address(this), staker, stakingTokenId, amount, "");
                 // Subtract the staker's reward from the total rewards distributed.
                 totalRewardsDistributed -= stakings[staker].reward;
-                // Claim reward to staker.
+                // Claim any rewards before withdrawing the tokens.
                 _claimReward(staker, false);
                 // Remove the staker from the stakers list.
                 removeStaker(staker);
@@ -279,7 +281,7 @@ contract ERC1155Staking is ReentrancyGuard, PermissionsEnumerable, ERC1155Holder
     }
 
     function getRewardPerSec() public pure returns (uint256) {
-        return (MAX_REWARD / STAKING_PERIOD) / MAX_NFT_STAKED;
+        return ((MAX_REWARD / STAKING_PERIOD) / MAX_NFT_STAKED);
     }
 
 
