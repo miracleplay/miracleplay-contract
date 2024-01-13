@@ -57,6 +57,8 @@ contract ERC1155Staking is ReentrancyGuard, PermissionsEnumerable, ERC1155Holder
     // Total amount of rewards that have been distributed so far.
     uint256 public totalRewardsDistributed;
 
+    bytes32 private constant FACTORY_ROLE = keccak256("FACTORY_ROLE");
+
     constructor(address _erc1155Token, uint256 _stakingTokenId, uint256 _poolStartTime, uint256 _boforeRewardsDistributed, address _erc20Token, address _daoAddress, address _ManagerWallet, uint256 _DAO_FEE_PERCENTAGE, string memory _contractURI) {
         erc1155Token = DropERC1155(_erc1155Token);
         stakingTokenId = _stakingTokenId;
@@ -67,6 +69,7 @@ contract ERC1155Staking is ReentrancyGuard, PermissionsEnumerable, ERC1155Holder
         ManagerWallet = _ManagerWallet;
         DAO_FEE_PERCENTAGE = _DAO_FEE_PERCENTAGE;
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _setupRole(FACTORY_ROLE, msg.sender);
         deployer = msg.sender;
         _setupContractURI(_contractURI);
     }
@@ -158,7 +161,7 @@ contract ERC1155Staking is ReentrancyGuard, PermissionsEnumerable, ERC1155Holder
         _claimReward(msg.sender, false);
     }
 
-    function claimAgentReward(address _user) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function claimAgentReward(address _user) external onlyRole(FACTORY_ROLE) {
         _claimReward(_user, true);
     }
 
@@ -207,14 +210,12 @@ contract ERC1155Staking is ReentrancyGuard, PermissionsEnumerable, ERC1155Holder
         StakingInfo storage info = stakings[_user];
         // Ensure the user has staked tokens before proceeding.
         require(info.amount > 0, "User has no staked tokens");
+        // Claim any rewards before withdrawing the tokens.
+        _claimReward(_user, false);
         // Safely transfer the staked ERC-1155 tokens from this contract back to the user.
         erc1155Token.safeTransferFrom(address(this), _user, stakingTokenId, info.amount, "");
-        // If the user's staked amount is now zero, remove them from the stakers list.
-        if (info.amount == 0) {
-            removeStaker(_user);
-        }
-        // Reset the user's staking information.
-        delete stakings[_user];
+        // Remove the staker from the stakers list.
+        removeStaker(_user);
     }
 
     // Administrative function to unstake all tokens from all users.
@@ -286,7 +287,6 @@ contract ERC1155Staking is ReentrancyGuard, PermissionsEnumerable, ERC1155Holder
     function getRewardPerSec() public pure returns (uint256) {
         return ((MAX_REWARD / STAKING_PERIOD) / MAX_NFT_STAKED);
     }
-
 
     function getRemainingStakingTime() public view returns (uint256) {
         uint256 endTime = poolStartTime + STAKING_PERIOD;
