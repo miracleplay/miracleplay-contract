@@ -98,10 +98,9 @@ contract ERC1155Staking is ReentrancyGuard, PermissionsEnumerable, ERC1155Holder
             // If it's the user's first time staking, add them to the list of stakers.
             stakerIndex[msg.sender] = stakers.length;
             stakers.push(msg.sender);
+            // Record the staked amount, reward, and start time in the user's staking info.
+            stakings[msg.sender] = StakingInfo(_amount, 0, block.timestamp);
         }
-
-        // Record the staked amount, reward, and start time in the user's staking info.
-        stakings[msg.sender] = StakingInfo(_amount, 0, block.timestamp);
     }
 
     // Withdraw function: Allows a user to withdraw staked ERC-1155 tokens.
