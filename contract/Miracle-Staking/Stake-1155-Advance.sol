@@ -221,6 +221,7 @@ contract ERC1155Staking is ReentrancyGuard, PermissionsEnumerable, ERC1155Holder
         if (userReward > 0) {
             rewardsToken.mintTo(_user, userReward);
         }
+        totalRewardsDistributed = totalRewardsDistributed + reward;
         info.updateTime = block.timestamp;
     }
 
