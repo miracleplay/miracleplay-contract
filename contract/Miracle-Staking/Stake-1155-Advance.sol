@@ -56,6 +56,8 @@ contract ERC1155Staking is ReentrancyGuard, PermissionsEnumerable, ERC1155Holder
     uint256 public poolStartTime;
     // Total amount of rewards that have been distributed so far.
     uint256 public totalRewardsDistributed;
+    // Staking pool STATUS
+    bool public POOL_FINISHED;
 
     bytes32 private constant FACTORY_ROLE = keccak256("FACTORY_ROLE");
 
@@ -71,11 +73,14 @@ contract ERC1155Staking is ReentrancyGuard, PermissionsEnumerable, ERC1155Holder
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _setupRole(FACTORY_ROLE, msg.sender);
         deployer = msg.sender;
+        POOL_FINISHED = false;
         _setupContractURI(_contractURI);
     }
 
     // Staking function: Allows a user to stake ERC-1155 tokens.
     function stake(uint256 _amount) external nonReentrant {
+        // Chkck pool status.
+        require(!POOL_FINISHED, "Pool has finished.");
         // Check if the user has enough ERC-1155 tokens to stake.
         require(erc1155Token.balanceOf(msg.sender, stakingTokenId) >= _amount, "Not enough ERC1155 tokens");
         // Access the user's staking information.
@@ -107,8 +112,10 @@ contract ERC1155Staking is ReentrancyGuard, PermissionsEnumerable, ERC1155Holder
         require(info.amount >= _amount, "Insufficient staked amount");
         // The requested amount must be greater than 0.
         require(_amount > 0, "Amount must be greater than 0");
-        // Claim any rewards before withdrawing the tokens.
-        _claimReward(msg.sender, false);
+        if(!POOL_FINISHED){
+            // Claim any rewards before withdrawing the tokens.
+            _claimReward(msg.sender, false);
+        }
         // Update the staked amount in the user's staking information.
         info.amount = info.amount - _amount;
         // Safely transfer the requested amount of ERC-1155 tokens back to the user.
@@ -141,7 +148,7 @@ contract ERC1155Staking is ReentrancyGuard, PermissionsEnumerable, ERC1155Holder
         StakingInfo storage info = stakings[_user];
         // Check if the staking period has ended or the maximum reward has been distributed.
         // If yes, no more rewards are available.
-        if (block.timestamp > poolStartTime + STAKING_PERIOD || totalRewardsDistributed >= MAX_REWARD) {
+        if (block.timestamp > poolStartTime + STAKING_PERIOD || totalRewardsDistributed >= MAX_REWARD || POOL_FINISHED) {
             return 0;
         }
         // Calculate the total time the user's tokens have been staked.
@@ -181,6 +188,7 @@ contract ERC1155Staking is ReentrancyGuard, PermissionsEnumerable, ERC1155Holder
 
     // Internal function to handle reward claiming for a user.
     function _claimReward(address _user, bool isAdmin) internal {
+        require(!POOL_FINISHED, "Pool has finished.");
         // Calculate the current reward for the user.
         uint256 reward = calculateReward(_user);
         // Ensure there is a reward available to claim.
@@ -219,13 +227,14 @@ contract ERC1155Staking is ReentrancyGuard, PermissionsEnumerable, ERC1155Holder
 
     // Admin functions
     // Administrative function to unstake tokens on behalf of a user.
-    function adminUnstakeUser(address _user) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function adminUnstakeUser(address _user) public onlyRole(DEFAULT_ADMIN_ROLE) {
         // Access the staking information of the specified user.
         StakingInfo storage info = stakings[_user];
-        // Ensure the user has staked tokens before proceeding.
-        require(info.amount > 0, "User has no staked tokens");
-        // Claim any rewards before withdrawing the tokens.
-        _claimReward(_user, false);
+        // After the pool is finished, withdrawal is made without paying the reward.
+        if(!POOL_FINISHED){
+            // Claim any rewards before withdrawing the tokens.
+            _claimReward(_user, false);
+        }
         // Safely transfer the staked ERC-1155 tokens from this contract back to the user.
         erc1155Token.safeTransferFrom(address(this), _user, stakingTokenId, info.amount, "");
         // Remove the staker from the stakers list.
@@ -242,14 +251,7 @@ contract ERC1155Staking is ReentrancyGuard, PermissionsEnumerable, ERC1155Holder
             uint256 amount = stakings[staker].amount;
             // Check if the staker has a non-zero staked amount.
             if (amount > 0) {
-                // Safely transfer the staked ERC-1155 tokens from this contract back to the staker.
-                erc1155Token.safeTransferFrom(address(this), staker, stakingTokenId, amount, "");
-                // Subtract the staker's reward from the total rewards distributed.
-                totalRewardsDistributed -= stakings[staker].reward;
-                // Claim any rewards before withdrawing the tokens.
-                _claimReward(staker, false);
-                // Remove the staker from the stakers list.
-                removeStaker(staker);
+                adminUnstakeUser(staker);
             }
         }
     }
@@ -292,6 +294,10 @@ contract ERC1155Staking is ReentrancyGuard, PermissionsEnumerable, ERC1155Holder
 
     function setPoolStartTime(uint256 _poolStartTime) external onlyRole(DEFAULT_ADMIN_ROLE) {
         poolStartTime = _poolStartTime;
+    }
+
+    function setPoolFinished(bool status) external onlyRole(DEFAULT_ADMIN_ROLE){
+        POOL_FINISHED = status;
     }
 
     function getStakersCount() public view returns (uint256) {
