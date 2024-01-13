@@ -9,14 +9,17 @@
 // ERC 1155 Staking Advance v1.0
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
+import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
+import "@thirdweb-dev/contracts/drop/DropERC1155.sol";
+import "@thirdweb-dev/contracts/openzeppelin-presets/utils/ERC1155/ERC1155Holder.sol";
 import "@thirdweb-dev/contracts/token/TokenERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@thirdweb-dev/contracts/extension/PermissionsEnumerable.sol";
 
-contract ERC1155Staking is Ownable , ReentrancyGuard{
+contract ERC1155Staking is ReentrancyGuard, PermissionsEnumerable, ERC1155Holder, ContractMetadata{
+    address public deployer;
     // ERC1155 token interface, representing the stakable NFTs.
-    IERC1155 public immutable erc1155Token;
+    DropERC1155 public immutable erc1155Token;
     // ERC20 token interface, representing the rewards token.
     TokenERC20 public immutable rewardsToken;
     // The specific ID of the ERC1155 token that is eligible for staking.
@@ -24,7 +27,7 @@ contract ERC1155Staking is Ownable , ReentrancyGuard{
     // Address of the DAO (Decentralized Autonomous Organization) for fee distribution.
     address public daoAddress;
     // Wallet address for managing additional fees.
-    address public feeManagerWallet;
+    address public ManagerWallet;
     // Percentage of the reward allocated as a fee to the DAO.
     uint256 public DAO_FEE_PERCENTAGE;
     // Percentage of the reward allocated as a fee to the fee manager.
@@ -54,16 +57,17 @@ contract ERC1155Staking is Ownable , ReentrancyGuard{
     // Total amount of rewards that have been distributed so far.
     uint256 public totalRewardsDistributed;
 
-
-    constructor(IERC1155 _erc1155Token, uint256 _stakingTokenId, uint256 _poolStartTime, uint256 _boforeRewardsDistributed, address _erc20Token, address _daoAddress, address _feeManagerWallet, uint256 _DAO_FEE_PERCENTAGE) {
-        erc1155Token = _erc1155Token;
+    constructor(address _erc1155Token, uint256 _stakingTokenId, uint256 _poolStartTime, uint256 _boforeRewardsDistributed, address _erc20Token, address _daoAddress, address _ManagerWallet, uint256 _DAO_FEE_PERCENTAGE) {
+        erc1155Token = DropERC1155(_erc1155Token);
         stakingTokenId = _stakingTokenId;
         poolStartTime = _poolStartTime;
         totalRewardsDistributed = _boforeRewardsDistributed;
         rewardsToken = TokenERC20(_erc20Token);
         daoAddress = _daoAddress;
-        feeManagerWallet = _feeManagerWallet;
+        ManagerWallet = _ManagerWallet;
         DAO_FEE_PERCENTAGE = _DAO_FEE_PERCENTAGE;
+        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        deployer = msg.sender;
     }
 
     // Staking function: Allows a user to stake ERC-1155 tokens.
@@ -147,7 +151,7 @@ contract ERC1155Staking is Ownable , ReentrancyGuard{
         _claimReward(msg.sender, false);
     }
 
-    function claimAgentReward(address _user) external onlyOwner {
+    function claimAgentReward(address _user) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _claimReward(_user, true);
     }
 
@@ -170,12 +174,12 @@ contract ERC1155Staking is Ownable , ReentrancyGuard{
 
         // Mint the fee manager's fee to the fee manager wallet if applicable.
         if (feeWalletFee > 0) {
-            rewardsToken.mintTo(feeManagerWallet, feeWalletFee);
+            rewardsToken.mintTo(ManagerWallet, feeWalletFee);
         }
 
         // If claimed by an admin, mint the admin fee to the owner's address if applicable.
         if (isAdmin && adminFee > 0) {
-            rewardsToken.mintTo(owner(), adminFee);
+            rewardsToken.mintTo(msg.sender, adminFee);
         }
 
         // Calculate the user's net reward after deducting fees.
@@ -188,7 +192,7 @@ contract ERC1155Staking is Ownable , ReentrancyGuard{
 
     // Admin functions
     // Administrative function to unstake tokens on behalf of a user.
-    function unstakeUser(address _user) external onlyOwner {
+    function unstakeUser(address _user) external onlyRole(DEFAULT_ADMIN_ROLE) {
         // Access the staking information of the specified user.
         StakingInfo storage info = stakings[_user];
         // Ensure the user has staked tokens before proceeding.
@@ -204,7 +208,7 @@ contract ERC1155Staking is Ownable , ReentrancyGuard{
     }
 
     // Administrative function to unstake all tokens from all users.
-    function adminUnstakeAll() external onlyOwner {
+    function adminUnstakeAll() external onlyRole(DEFAULT_ADMIN_ROLE) {
         // Iterate over all stakers in reverse order to avoid index shifting issues.
         for (uint256 i = stakers.length; i > 0; i--) {
             // Retrieve the address of the current staker.
@@ -224,39 +228,42 @@ contract ERC1155Staking is Ownable , ReentrancyGuard{
     }
 
     // Administrative function to confiscate staked ERC-1155 tokens from a specific user.
-    function confiscateERC1155FromUser(address _user) external onlyOwner {
+    function confiscateERC1155FromUser(address _user) external onlyRole(DEFAULT_ADMIN_ROLE) {
         // Access the staking information of the specified user.
         StakingInfo storage info = stakings[_user];
         // Ensure the user has staked tokens before proceeding.
         require(info.amount > 0, "User has no staked tokens");
         // Safely transfer the staked ERC-1155 tokens from this contract to the owner.
-        erc1155Token.safeTransferFrom(address(this), owner(), stakingTokenId, info.amount, "");
+        erc1155Token.safeTransferFrom(address(this), msg.sender, stakingTokenId, info.amount, "");
         // Remove the user from the stakers list and reset their staking information.
         removeStaker(_user);
     }
 
+    function _canSetContractURI() internal view virtual override returns (bool){
+        return msg.sender == deployer;
+    }
 
-    function setDaoAddress(address _daoAddress) external onlyOwner {
+    function setDaoAddress(address _daoAddress) external onlyRole(DEFAULT_ADMIN_ROLE) {
         daoAddress = _daoAddress;
     }
 
-    function setManagerFeeWallet(address _feeManagerWallet) external onlyOwner {
-        feeManagerWallet = _feeManagerWallet;
+    function setManagerFeeWallet(address _ManagerWallet) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        ManagerWallet = _ManagerWallet;
     }
 
-    function setDAOFeePercentage(uint256 _daoFeePercentage) external onlyOwner {
+    function setDAOFeePercentage(uint256 _daoFeePercentage) external onlyRole(DEFAULT_ADMIN_ROLE) {
         DAO_FEE_PERCENTAGE = _daoFeePercentage;
     }
 
-    function setFeeManagerPercentage(uint256 _managerFeePercentage) external onlyOwner {
+    function setFeeManagerPercentage(uint256 _managerFeePercentage) external onlyRole(DEFAULT_ADMIN_ROLE) {
         MANAGER_FEE_PERCENTAGE = _managerFeePercentage;
     }
 
-    function setAgentFeePercentage(uint256 _agentFeePercentage) external onlyOwner {
+    function setAgentFeePercentage(uint256 _agentFeePercentage) external onlyRole(DEFAULT_ADMIN_ROLE) {
         AGENT_FEE_PERCENTAGE = _agentFeePercentage;
     }
 
-    function setPoolStartTime(uint256 _poolStartTime) external onlyOwner {
+    function setPoolStartTime(uint256 _poolStartTime) external onlyRole(DEFAULT_ADMIN_ROLE) {
         poolStartTime = _poolStartTime;
     }
 
