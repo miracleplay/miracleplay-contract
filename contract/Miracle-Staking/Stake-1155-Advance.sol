@@ -81,15 +81,15 @@ contract ERC1155Staking is ReentrancyGuard, PermissionsEnumerable, ERC1155Holder
         erc1155Token.safeTransferFrom(msg.sender, address(this), stakingTokenId, _amount, "");
 
         // Update the user's staking information.
-        // If it's the user's first time staking, add them to the list of stakers.
-        if (info.amount == 0) {
-            stakerIndex[msg.sender] = stakers.length;
-            stakers.push(msg.sender);
-        } else {
+        if (info.amount > 0) {
             // Claim any rewards before stake the tokens.
             _claimReward(msg.sender, false);
             // Update the staked amount in the user's staking information.
-            info.amount += _amount;
+            info.amount = info.amount + _amount;
+        } else {
+            // If it's the user's first time staking, add them to the list of stakers.
+            stakerIndex[msg.sender] = stakers.length;
+            stakers.push(msg.sender);
         }
 
         // Record the staked amount, reward, and start time in the user's staking info.
@@ -107,7 +107,7 @@ contract ERC1155Staking is ReentrancyGuard, PermissionsEnumerable, ERC1155Holder
         // Claim any rewards before withdrawing the tokens.
         _claimReward(msg.sender, false);
         // Update the staked amount in the user's staking information.
-        info.amount -= _amount;
+        info.amount = info.amount - _amount;
         // Safely transfer the requested amount of ERC-1155 tokens back to the user.
         erc1155Token.safeTransferFrom(address(this), msg.sender, stakingTokenId, _amount, "");
         // If the user's staked amount reaches 0, remove them from the stakers list.
