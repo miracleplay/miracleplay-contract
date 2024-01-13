@@ -259,4 +259,14 @@ contract ERC1155Staking is Ownable , ReentrancyGuard{
     function setPoolStartTime(uint256 _poolStartTime) external onlyOwner {
         poolStartTime = _poolStartTime;
     }
+
+    function getRemainingStakingTime() public view returns (uint256) {
+        uint256 endTime = poolStartTime + STAKING_PERIOD;
+        if (block.timestamp >= endTime) {
+            return 0;
+        } else {
+            return endTime - block.timestamp;
+        }
+    }
+
 }
