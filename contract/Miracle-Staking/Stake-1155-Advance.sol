@@ -205,7 +205,7 @@ contract ERC1155Staking is ReentrancyGuard, PermissionsEnumerable, ERC1155Holder
 
     // Admin functions
     // Administrative function to unstake tokens on behalf of a user.
-    function unstakeUser(address _user) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function adminUnstakeUser(address _user) external onlyRole(DEFAULT_ADMIN_ROLE) {
         // Access the staking information of the specified user.
         StakingInfo storage info = stakings[_user];
         // Ensure the user has staked tokens before proceeding.
