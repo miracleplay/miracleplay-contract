@@ -157,11 +157,25 @@ contract ERC1155Staking is ReentrancyGuard, PermissionsEnumerable, ERC1155Holder
         return payableReward;
     }
 
-    function claimReward() external nonReentrant{
+    // External function to calculate the reward for a given user, dao, manager.
+    function calculateRewards(address _user) external view returns (uint256 userReward, uint256 daoFee, uint256 managerFee) {
+        // Calculate the current reward for the user.
+        uint256 reward = calculateReward(_user);
+        // Calculate the DAO fee based on the reward and the DAO fee percentage.
+        daoFee = (reward * DAO_FEE_PERCENTAGE) / 100;
+        // Calculate the fee for the fee manager wallet based on the reward and the manager fee percentage.
+        managerFee = (reward * MANAGER_FEE_PERCENTAGE) / 100;
+        // Calculate the user's net reward after deducting fees.
+        userReward = reward - daoFee - managerFee;
+
+        return (userReward, daoFee, managerFee);
+    }
+
+    function claim() external nonReentrant{
         _claimReward(msg.sender, false);
     }
 
-    function claimAgentReward(address _user) external onlyRole(FACTORY_ROLE) {
+    function claimAgent(address _user) external onlyRole(FACTORY_ROLE) {
         _claimReward(_user, true);
     }
 
@@ -176,7 +190,7 @@ contract ERC1155Staking is ReentrancyGuard, PermissionsEnumerable, ERC1155Holder
         // Calculate the DAO fee based on the reward and the DAO fee percentage.
         uint256 daoFee = (reward * DAO_FEE_PERCENTAGE) / 100;
         // Calculate the fee for the fee manager wallet based on the reward and the manager fee percentage.
-        uint256 feeWalletFee = (reward * MANAGER_FEE_PERCENTAGE) / 100;
+        uint256 managerFee = (reward * MANAGER_FEE_PERCENTAGE) / 100;
         // If the claim is made by an admin, calculate the admin fee.
         uint256 adminFee = isAdmin ? (reward * AGENT_FEE_PERCENTAGE) / 100 : 0;
         // Mint the DAO fee to the DAO address if applicable.
@@ -185,8 +199,8 @@ contract ERC1155Staking is ReentrancyGuard, PermissionsEnumerable, ERC1155Holder
         }
 
         // Mint the fee manager's fee to the fee manager wallet if applicable.
-        if (feeWalletFee > 0) {
-            rewardsToken.mintTo(ManagerWallet, feeWalletFee);
+        if (managerFee > 0) {
+            rewardsToken.mintTo(ManagerWallet, managerFee);
         }
 
         // If claimed by an admin, mint the admin fee to the owner's address if applicable.
@@ -195,7 +209,7 @@ contract ERC1155Staking is ReentrancyGuard, PermissionsEnumerable, ERC1155Holder
         }
 
         // Calculate the user's net reward after deducting fees.
-        uint256 userReward = reward - daoFee - feeWalletFee - adminFee;
+        uint256 userReward = reward - daoFee - managerFee - adminFee;
         // Mint the net reward to the user if applicable.
         if (userReward > 0) {
             rewardsToken.mintTo(_user, userReward);
