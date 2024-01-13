@@ -6,7 +6,7 @@
 //   |:  1   |:  1   |:  1   |:  1   |:  |   |:  1   |:  |:  |   |:  1   |   |:  1   |:  |   |:  1    |:  1   |
 //   |::.. . |::.. . |\:.. ./|::.. . |::.|   |::.. . |::.|::.|   |::.. . |   |::.. . |::.|:. |::.. .  |::.. . |
 //   `-------`-------' `---' `-------`--- ---`-------`---`--- ---`-------'   `-------`--- ---`-------'`-------'
-// ERC 1155 Staking Advance v1.0
+// ERC 1155 Staking Advance v2.0
 pragma solidity ^0.8.0;
 
 import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
@@ -137,9 +137,9 @@ contract ERC1155Staking is ReentrancyGuard, PermissionsEnumerable, ERC1155Holder
         // Calculate the total time the user's tokens have been staked.
         uint256 totalStakingTime = block.timestamp - info.startTime;
         // Determine the reward per minute based on the maximum reward and staking period.
-        uint256 rewardPerMinute = MAX_REWARD / (STAKING_PERIOD / 1 minutes);
+        uint256 rewardPerSecond = MAX_REWARD / STAKING_PERIOD;
         // Calculate the user's reward based on their staked amount and the total staking time.
-        uint256 userReward = (info.amount / MAX_NFT_STAKED) * rewardPerMinute * totalStakingTime;
+        uint256 userReward = (info.amount / MAX_NFT_STAKED) * rewardPerSecond * totalStakingTime;
         // Calculate the payable reward, ensuring it does not exceed the maximum reward limit.
         uint256 payableReward = totalRewardsDistributed + userReward > MAX_REWARD ? 
                                 MAX_REWARD - totalRewardsDistributed : userReward;
@@ -266,6 +266,15 @@ contract ERC1155Staking is ReentrancyGuard, PermissionsEnumerable, ERC1155Holder
     function setPoolStartTime(uint256 _poolStartTime) external onlyRole(DEFAULT_ADMIN_ROLE) {
         poolStartTime = _poolStartTime;
     }
+
+    function getStakersCount() public view returns (uint256) {
+        return stakers.length;
+    }
+
+    function getRewardPerSec() public pure returns (uint256) {
+        return (MAX_REWARD / STAKING_PERIOD);
+    }
+
 
     function getRemainingStakingTime() public view returns (uint256) {
         uint256 endTime = poolStartTime + STAKING_PERIOD;
