@@ -38,7 +38,7 @@ contract ERC1155Staking is ReentrancyGuard, PermissionsEnumerable, ERC1155Holder
     struct StakingInfo {
         uint256 amount;     // Amount of tokens staked by the user.
         uint256 reward;     // Reward accumulated by the user.
-        uint256 startTime;  // Timestamp when the user started staking.
+        uint256 updateTime;  // Timestamp when the user started staking.
     }
     // Mapping from user addresses to their staking information.
     mapping(address => StakingInfo) public stakings;
@@ -86,10 +86,10 @@ contract ERC1155Staking is ReentrancyGuard, PermissionsEnumerable, ERC1155Holder
             stakerIndex[msg.sender] = stakers.length;
             stakers.push(msg.sender);
         } else {
-            // Update the staked amount in the user's staking information.
-            info.amount += _amount;
             // Claim any rewards before stake the tokens.
             _claimReward(msg.sender, false);
+            // Update the staked amount in the user's staking information.
+            info.amount += _amount;
         }
 
         // Record the staked amount, reward, and start time in the user's staking info.
@@ -142,7 +142,7 @@ contract ERC1155Staking is ReentrancyGuard, PermissionsEnumerable, ERC1155Holder
             return 0;
         }
         // Calculate the total time the user's tokens have been staked.
-        uint256 totalStakingTime = block.timestamp - info.startTime;
+        uint256 totalStakingTime = block.timestamp - info.updateTime;
         // Determine the reward per minute based on the maximum reward and staking period.
         uint256 rewardPerSecond = getRewardPerSec();
         // Calculate the user's reward based on their staked amount and the total staking time.
@@ -168,6 +168,8 @@ contract ERC1155Staking is ReentrancyGuard, PermissionsEnumerable, ERC1155Holder
         uint256 reward = calculateReward(_user);
         // Ensure there is a reward available to claim.
         require(reward > 0, "No reward available");
+        // Access the staking information of the user.
+        StakingInfo storage info = stakings[_user];
         // Calculate the DAO fee based on the reward and the DAO fee percentage.
         uint256 daoFee = (reward * DAO_FEE_PERCENTAGE) / 100;
         // Calculate the fee for the fee manager wallet based on the reward and the manager fee percentage.
@@ -195,6 +197,7 @@ contract ERC1155Staking is ReentrancyGuard, PermissionsEnumerable, ERC1155Holder
         if (userReward > 0) {
             rewardsToken.mintTo(_user, userReward);
         }
+        info.updateTime = block.timestamp;
     }
 
     // Admin functions
