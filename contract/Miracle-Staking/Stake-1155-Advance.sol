@@ -57,7 +57,7 @@ contract ERC1155Staking is ReentrancyGuard, PermissionsEnumerable, ERC1155Holder
     // Total amount of rewards that have been distributed so far.
     uint256 public totalRewardsDistributed;
 
-    constructor(address _erc1155Token, uint256 _stakingTokenId, uint256 _poolStartTime, uint256 _boforeRewardsDistributed, address _erc20Token, address _daoAddress, address _ManagerWallet, uint256 _DAO_FEE_PERCENTAGE) {
+    constructor(address _erc1155Token, uint256 _stakingTokenId, uint256 _poolStartTime, uint256 _boforeRewardsDistributed, address _erc20Token, address _daoAddress, address _ManagerWallet, uint256 _DAO_FEE_PERCENTAGE, string memory _contractURI) {
         erc1155Token = DropERC1155(_erc1155Token);
         stakingTokenId = _stakingTokenId;
         poolStartTime = _poolStartTime;
@@ -68,21 +68,26 @@ contract ERC1155Staking is ReentrancyGuard, PermissionsEnumerable, ERC1155Holder
         DAO_FEE_PERCENTAGE = _DAO_FEE_PERCENTAGE;
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         deployer = msg.sender;
+        _setupContractURI(_contractURI);
     }
 
     // Staking function: Allows a user to stake ERC-1155 tokens.
     function stake(uint256 _amount) external nonReentrant {
         // Check if the user has enough ERC-1155 tokens to stake.
         require(erc1155Token.balanceOf(msg.sender, stakingTokenId) >= _amount, "Not enough ERC1155 tokens");
-
+        // Access the user's staking information.
+        StakingInfo storage info = stakings[msg.sender];
         // Safely transfer ERC-1155 tokens from the user to this contract.
         erc1155Token.safeTransferFrom(msg.sender, address(this), stakingTokenId, _amount, "");
 
         // Update the user's staking information.
         // If it's the user's first time staking, add them to the list of stakers.
-        if (stakings[msg.sender].amount == 0) {
+        if (info.amount == 0) {
             stakerIndex[msg.sender] = stakers.length;
             stakers.push(msg.sender);
+        } else {
+            // Update the staked amount in the user's staking information.
+            info.amount += _amount;
         }
 
         // Record the staked amount, reward, and start time in the user's staking info.
@@ -137,9 +142,9 @@ contract ERC1155Staking is ReentrancyGuard, PermissionsEnumerable, ERC1155Holder
         // Calculate the total time the user's tokens have been staked.
         uint256 totalStakingTime = block.timestamp - info.startTime;
         // Determine the reward per minute based on the maximum reward and staking period.
-        uint256 rewardPerSecond = MAX_REWARD / STAKING_PERIOD;
+        uint256 rewardPerSecond = getRewardPerSec();
         // Calculate the user's reward based on their staked amount and the total staking time.
-        uint256 userReward = (info.amount / MAX_NFT_STAKED) * rewardPerSecond * totalStakingTime;
+        uint256 userReward = info.amount * rewardPerSecond * totalStakingTime;
         // Calculate the payable reward, ensuring it does not exceed the maximum reward limit.
         uint256 payableReward = totalRewardsDistributed + userReward > MAX_REWARD ? 
                                 MAX_REWARD - totalRewardsDistributed : userReward;
@@ -221,6 +226,8 @@ contract ERC1155Staking is ReentrancyGuard, PermissionsEnumerable, ERC1155Holder
                 erc1155Token.safeTransferFrom(address(this), staker, stakingTokenId, amount, "");
                 // Subtract the staker's reward from the total rewards distributed.
                 totalRewardsDistributed -= stakings[staker].reward;
+                // Claim reward to staker.
+                _claimReward(staker, false);
                 // Remove the staker from the stakers list.
                 removeStaker(staker);
             }
@@ -272,7 +279,7 @@ contract ERC1155Staking is ReentrancyGuard, PermissionsEnumerable, ERC1155Holder
     }
 
     function getRewardPerSec() public pure returns (uint256) {
-        return (MAX_REWARD / STAKING_PERIOD);
+        return (MAX_REWARD / STAKING_PERIOD) / MAX_NFT_STAKED;
     }
 
 
