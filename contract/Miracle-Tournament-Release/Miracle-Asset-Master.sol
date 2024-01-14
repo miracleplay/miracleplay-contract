@@ -19,6 +19,7 @@ contract AssetMaster {
     mapping(address => bool) private erc721Listed;
     mapping(address => bool) private erc1155Listed;
 
+    address public feeToken;
     uint256 public tournamentCreationFee;
     uint256 public tournamentParticipationFee;
     address public feeRecipient;
@@ -85,6 +86,12 @@ contract AssetMaster {
             }
         }
     }
+
+    // Setter for fee token
+    function setTournamentFeeToken(address _token) public onlyOwner {
+        feeToken = _token;
+    }
+
 
     // Setter for tournament creation fee
     function setTournamentCreationFee(uint256 _fee) public onlyOwner {

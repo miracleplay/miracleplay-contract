@@ -33,6 +33,8 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
     address public royaltyAddrFlp;
     // Funding setting
     uint public minFundingRate;
+    // Get token fee info from asset master
+    AssetMaster public assetMasterAddr;
 
     // Permissions
     bytes32 private constant TOURNAMENT_ROLE = keccak256("TOURNAMENT_ROLE");
@@ -110,6 +112,10 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
         miracletournament = FundableTournament(_miracletournament);
     }
 
+    function connectAssestMaster(address _assetMasterAddr) external onlyRole(DEFAULT_ADMIN_ROLE){
+        assetMasterAddr = AssetMaster(_assetMasterAddr);
+    }
+
     // Create tournament
     function createTournamentEscrow(uint _tournamentId, bool _isFunding, address _prizeToken, address _feeToken, uint _prizeAmount, uint _joinFee, uint256[] memory _regStartEndTime, uint256[] memory _FundStartEndTime, uint256[] memory _prizeAmountArray, string memory _tournamentURI, uint _playerLimit) external {
         require(_FundStartEndTime[0] < _FundStartEndTime[1], "Invalid funding time range");
@@ -143,6 +149,7 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
         } else {
             require(IERC20(_prizeToken).transferFrom(msg.sender, address(this), _prizeAmount), "Transfer failed.");
         }
+        _payFeeCreate();
         emit CreateTournament(_tournamentId, msg.sender, _tournamentURI);
     }
 
@@ -178,6 +185,7 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
             require(_tournament.feeToken.transferFrom(msg.sender, address(this), _tournament.joinFee), "Transfer failed.");
             _tournament.feeBalance = _tournament.feeBalance + _tournament.joinFee;
         }
+        _payFeeRegister();
         miracletournament.register(_tournamentId, msg.sender);
     }
 
@@ -214,6 +222,25 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
             address contributor = funding.contributors[i];
             uint256 amount = funding.contributions[contributor];
             funding.fundingToken.transfer(contributor, amount);
+        }
+    }
+
+    // Function to pay a fee
+    function _payFeeCreate() internal {
+        address feeWallet = assetMasterAddr.feeRecipient();
+        address feeToken = assetMasterAddr.feeToken();
+        uint256 amount = assetMasterAddr.tournamentCreationFee();
+        if(amount > 0){
+            require(IERC20(feeToken).transferFrom(msg.sender, feeWallet, amount), "Asset master token fee transfer failed.");
+        }
+    }
+
+    function _payFeeRegister() internal {
+        address feeWallet = assetMasterAddr.feeRecipient();
+        address feeToken = assetMasterAddr.feeToken();
+        uint256 amount = assetMasterAddr.tournamentParticipationFee();
+        if(amount > 0){
+            require(IERC20(feeToken).transferFrom(msg.sender, feeWallet, amount), "Asset master token fee transfer failed.");
         }
     }
 
