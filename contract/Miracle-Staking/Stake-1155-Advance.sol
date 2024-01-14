@@ -15,8 +15,9 @@ import "@thirdweb-dev/contracts/openzeppelin-presets/utils/ERC1155/ERC1155Holder
 import "@thirdweb-dev/contracts/token/TokenERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@thirdweb-dev/contracts/extension/PermissionsEnumerable.sol";
+import "@thirdweb-dev/contracts/extension/Multicall.sol";
 
-contract ERC1155Staking is ReentrancyGuard, PermissionsEnumerable, ERC1155Holder, ContractMetadata{
+contract ERC1155Staking is ReentrancyGuard, PermissionsEnumerable, ERC1155Holder, ContractMetadata, Multicall{
     address public deployer;
     // ERC1155 token interface, representing the stakable NFTs.
     DropERC1155 public immutable erc1155Token;

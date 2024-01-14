@@ -21,7 +21,7 @@ interface IMintableERC20 is IERC20 {
     function mintTo(address to, uint256 amount) external;
 }
 
-contract DualRewardAPRStaking is PermissionsEnumerable, ContractMetadata {
+contract DualRewardAPRStaking is PermissionsEnumerable, ContractMetadata, Multicall{
     address public deployer;
     IERC20 public stakingToken;
     IMintableERC20 public rewardToken1;
