@@ -235,8 +235,6 @@ contract DualRewardAPRStaking is PermissionsEnumerable, ContractMetadata {
             adminWithdraw(_user, amount);
             adminClaimRewards(_user);
         }
-        // Safely transfer the staked ERC-1155 tokens from this contract back to the user.
-        require(stakingToken.transfer(_user, amount));
     }
 
     // Administrative function to unstake all tokens from all users.
@@ -254,8 +252,8 @@ contract DualRewardAPRStaking is PermissionsEnumerable, ContractMetadata {
         }
     }
 
-    // Administrative function to confiscate staked ERC-1155 tokens from a specific user.
-    function confiscateERC1155FromUser(address _user) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    // Administrative function to confiscate staked ERC-20 tokens from a specific user.
+    function confiscateFromUser(address _user) external onlyRole(DEFAULT_ADMIN_ROLE) {
         // Access the staking information of the specified user.
         Staker storage user = stakings[_user];
         // Ensure the user has staked tokens before proceeding.
