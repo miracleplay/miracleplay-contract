@@ -96,6 +96,17 @@ contract DualRewardAPRStaking is PermissionsEnumerable, ContractMetadata {
         require(stakingToken.transfer(msg.sender, amount));
     }
 
+    function adminWithdraw(address user, uint256 amount) internal {
+        require(stakings[user].stakedAmount >= amount, "Not enough balance");
+        updateRewards(user);
+        stakings[user].stakedAmount -= amount;
+        if(stakings[user].stakedAmount == 0){
+            removeStaker(user);
+        }
+        totalStakedTokens -= amount;
+        require(stakingToken.transfer(user, amount));
+    }
+
     // Private function to remove a staker from the stakers list.
     function removeStaker(address _staker) private {
         // Retrieve the index of the staker in the stakers array.
@@ -126,6 +137,24 @@ contract DualRewardAPRStaking is PermissionsEnumerable, ContractMetadata {
         if (reward2 > 0) {
             rewardToken2.mintTo(msg.sender, reward2);
             stakings[msg.sender].reward2Earned = 0;
+        }
+    }
+
+    function adminClaimRewards(address user) internal {
+        require(!POOL_PAUSE, "Pool is in pause state.");
+        require(!POOL_ENDED, "Pool is ended.");
+
+        uint256 reward1 = stakings[user].reward1Earned;
+        uint256 reward2 = stakings[user].reward2Earned;
+
+        if (reward1 > 0) {
+            require(rewardToken1.transfer(user, reward1), "Reward 1 Transfer fail.");
+            stakings[user].reward1Earned = 0;
+        }
+
+        if (reward2 > 0) {
+            rewardToken2.mintTo(user, reward2);
+            stakings[user].reward2Earned = 0;
         }
     }
 
@@ -167,7 +196,6 @@ contract DualRewardAPRStaking is PermissionsEnumerable, ContractMetadata {
         return aprWithDecimal;
     }
 
-
     function getRemindToken1() public view returns (uint256) {
         uint256 totalBalance = IERC20(rewardToken1).balanceOf(address(this));
         return totalBalance - totalStakedTokens;
@@ -193,8 +221,54 @@ contract DualRewardAPRStaking is PermissionsEnumerable, ContractMetadata {
         IERC20(rewardToken1).transfer(msg.sender, amount);
     }
 
-    function emergencyWithdrawRewardToken2() external onlyRole(DEFAULT_ADMIN_ROLE) {
-        uint amount = getRemindToken2();
-        IERC20(rewardToken1).transfer(msg.sender, amount);
+    function getStakersCount() public view returns (uint256) {
+        return stakers.length;
+    }
+
+    // Admin functions
+    // Administrative function to unstake tokens on behalf of a user.
+    function adminUnstakeUser(address _user) public onlyRole(DEFAULT_ADMIN_ROLE) {
+        // Access the staking information of the specified user.
+        Staker storage user = stakings[_user];
+        uint256 amount = user.stakedAmount;
+        // After the pool is finished, withdrawal is made without paying the reward.
+        if(!POOL_ENDED){
+            // Claim any rewards before withdrawing the tokens.
+            adminWithdraw(_user, amount);
+            adminClaimRewards(_user);
+        }
+        // Safely transfer the staked ERC-1155 tokens from this contract back to the user.
+        require(stakingToken.transfer(_user, amount));
+        // Remove the staker from the stakers list.
+        removeStaker(_user);
+    }
+
+    // Administrative function to unstake all tokens from all users.
+    function adminUnstakeAll() external onlyRole(DEFAULT_ADMIN_ROLE) {
+
+        // Iterate over all stakers in reverse order to avoid index shifting issues.
+        for (uint256 i = stakers.length; i > 0; i--) {
+            // Retrieve the address of the current staker.
+            address user = stakers[i - 1];
+            // Access the staking information of the current staker.
+            uint256 amount = stakings[user].stakedAmount;
+            // Check if the staker has a non-zero staked amount.
+            if (amount > 0) {
+                adminUnstakeUser(user);
+            }
+        }
+    }
+
+    // Administrative function to confiscate staked ERC-1155 tokens from a specific user.
+    function confiscateERC1155FromUser(address _user) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        // Access the staking information of the specified user.
+        Staker storage user = stakings[_user];
+        // Ensure the user has staked tokens before proceeding.
+        require(user.stakedAmount > 0, "User has no staked tokens");
+        // Safely transfer the staked ERC-20 tokens from this contract to the owner.
+        stakingToken.transfer(msg.sender, user.stakedAmount);
+        // Remove the user from the stakers list and reset their staking information.
+        removeStaker(_user);
+        delete stakings[_user];
     }
 }
