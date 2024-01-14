@@ -100,9 +100,7 @@ contract DualRewardAPRStaking is PermissionsEnumerable, ContractMetadata {
         require(stakings[user].stakedAmount >= amount, "Not enough balance");
         updateRewards(user);
         stakings[user].stakedAmount -= amount;
-        if(stakings[user].stakedAmount == 0){
-            removeStaker(user);
-        }
+        removeStaker(user);
         totalStakedTokens -= amount;
         require(stakingToken.transfer(user, amount));
     }
@@ -239,13 +237,10 @@ contract DualRewardAPRStaking is PermissionsEnumerable, ContractMetadata {
         }
         // Safely transfer the staked ERC-1155 tokens from this contract back to the user.
         require(stakingToken.transfer(_user, amount));
-        // Remove the staker from the stakers list.
-        removeStaker(_user);
     }
 
     // Administrative function to unstake all tokens from all users.
     function adminUnstakeAll() external onlyRole(DEFAULT_ADMIN_ROLE) {
-
         // Iterate over all stakers in reverse order to avoid index shifting issues.
         for (uint256 i = stakers.length; i > 0; i--) {
             // Retrieve the address of the current staker.
