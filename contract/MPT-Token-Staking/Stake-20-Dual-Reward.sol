@@ -32,7 +32,8 @@ contract DualRewardAPRStaking is PermissionsEnumerable, ContractMetadata {
 
     uint256 private totalStakedTokens;
 
-    bool public PausePool;
+    bool public POOL_PAUSE;
+    bool public POOL_ENDED;
 
     struct Staker {
         uint256 stakedAmount;
@@ -58,7 +59,8 @@ contract DualRewardAPRStaking is PermissionsEnumerable, ContractMetadata {
         rewardToken2 = IMintableERC20(_rewardToken2);
         reward1APR = (_reward1APR * 1e18) / 31536000; // The APR1 supports two decimal places. ex) APR1 1035 > 10.35%
         reward2APR = (_reward2APR * 1e18) / 31536000; // The APR2 supports two decimal places. ex) APR2 3846 > 38.46%
-        PausePool = false;
+        POOL_PAUSE = false;
+        POOL_ENDED = false;
         _setupContractURI(_contractURI);
     }
 
@@ -83,7 +85,7 @@ contract DualRewardAPRStaking is PermissionsEnumerable, ContractMetadata {
     }
 
     function claimRewards() external {
-        require(!PausePool, "Pool is in pause state.");
+        require(!POOL_PAUSE, "Pool is in pause state.");
         updateRewards(msg.sender);
 
         uint256 reward1 = stakers[msg.sender].reward1Earned;
