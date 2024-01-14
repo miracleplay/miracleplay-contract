@@ -1,13 +1,4 @@
 // SPDX-License-Identifier: UNLICENSED
-
-pragma solidity ^0.8.22;
-
-import "./Miracle-Fundable-Tournament-R1.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@thirdweb-dev/contracts/extension/PermissionsEnumerable.sol";
-import "@thirdweb-dev/contracts/extension/Multicall.sol";
-import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
-
 //    _______ _______ ___ ___ _______ ______  ___     ___ ______  _______     ___     _______ _______  _______ 
 //   |   _   |   _   |   Y   |   _   |   _  \|   |   |   |   _  \|   _   |   |   |   |   _   |   _   \|   _   |
 //   |   1___|.  1___|.  |   |.  1___|.  |   |.  |   |.  |.  |   |.  1___|   |.  |   |.  1   |.  1   /|   1___|
@@ -16,7 +7,15 @@ import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
 //   |::.. . |::.. . |\:.. ./|::.. . |::.|   |::.. . |::.|::.|   |::.. . |   |::.. . |::.|:. |::.. .  |::.. . |
 //   `-------`-------' `---' `-------`--- ---`-------`---`--- ---`-------'   `-------`--- ---`-------'`-------'
 //   MiracleEscrow V0.8 Fundable
-                                             
+pragma solidity ^0.8.22;
+
+import "./Miracle-Asset-Master.sol";
+import "./Miracle-Fundable-Tournament.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@thirdweb-dev/contracts/extension/PermissionsEnumerable.sol";
+import "@thirdweb-dev/contracts/extension/Multicall.sol";
+import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
+              
 interface IMintableERC20 is IERC20 {
     function mintTo(address to, uint256 amount) external;
 }

@@ -1,12 +1,4 @@
 // SPDX-License-Identifier: UNLICENSED
-
-pragma solidity ^0.8.22;    
-
-import "./Miracle-Fundable-Escrow-R1.sol";
-import "@thirdweb-dev/contracts/extension/PermissionsEnumerable.sol";
-import "@thirdweb-dev/contracts/extension/Multicall.sol";
-import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
-
 //    _______ _______ ___ ___ _______ ______  ___     ___ ______  _______     ___     _______ _______  _______ 
 //   |   _   |   _   |   Y   |   _   |   _  \|   |   |   |   _  \|   _   |   |   |   |   _   |   _   \|   _   |
 //   |   1___|.  1___|.  |   |.  1___|.  |   |.  |   |.  |.  |   |.  1___|   |.  |   |.  1   |.  1   /|   1___|
@@ -15,6 +7,12 @@ import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
 //   |::.. . |::.. . |\:.. ./|::.. . |::.|   |::.. . |::.|::.|   |::.. . |   |::.. . |::.|:. |::.. .  |::.. . |
 //   `-------`-------' `---' `-------`--- ---`-------`---`--- ---`-------'   `-------`--- ---`-------'`-------'
 //   MiracleTournament V0.8 Fundable
+pragma solidity ^0.8.22;    
+
+import "./Miracle-Fundable-Escrow.sol";
+import "@thirdweb-dev/contracts/extension/PermissionsEnumerable.sol";
+import "@thirdweb-dev/contracts/extension/Multicall.sol";
+import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
 
 contract FundableTournament is PermissionsEnumerable, Multicall, ContractMetadata {
     address public deployer;

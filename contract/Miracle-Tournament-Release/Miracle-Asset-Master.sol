@@ -1,7 +1,15 @@
 // SPDX-License-Identifier: MIT
+//    _______ _______ ___ ___ _______ ______  ___     ___ ______  _______     ___     _______ _______  _______ 
+//   |   _   |   _   |   Y   |   _   |   _  \|   |   |   |   _  \|   _   |   |   |   |   _   |   _   \|   _   |
+//   |   1___|.  1___|.  |   |.  1___|.  |   |.  |   |.  |.  |   |.  1___|   |.  |   |.  1   |.  1   /|   1___|
+//   |____   |.  __)_|.  |   |.  __)_|.  |   |.  |___|.  |.  |   |.  __)_    |.  |___|.  _   |.  _   \|____   |
+//   |:  1   |:  1   |:  1   |:  1   |:  |   |:  1   |:  |:  |   |:  1   |   |:  1   |:  |   |:  1    |:  1   |
+//   |::.. . |::.. . |\:.. ./|::.. . |::.|   |::.. . |::.|::.|   |::.. . |   |::.. . |::.|:. |::.. .  |::.. . |
+//   `-------`-------' `---' `-------`--- ---`-------`---`--- ---`-------'   `-------`--- ---`-------'`-------'
+//   Miracle Asset Master v1.0
 pragma solidity ^0.8.0;
 
-contract MasterController {
+contract AssetMaster {
     address public owner;
     address[] public erc20Whitelist;
     address[] public erc721Whitelist;
@@ -10,6 +18,10 @@ contract MasterController {
     mapping(address => bool) private erc20Listed;
     mapping(address => bool) private erc721Listed;
     mapping(address => bool) private erc1155Listed;
+
+    uint256 public tournamentCreationFee;
+    uint256 public tournamentParticipationFee;
+    address public feeRecipient;
 
     constructor() {
         owner = msg.sender;
@@ -73,4 +85,20 @@ contract MasterController {
             }
         }
     }
+
+    // Setter for tournament creation fee
+    function setTournamentCreationFee(uint256 _fee) public onlyOwner {
+        tournamentCreationFee = _fee;
+    }
+
+    // Setter for tournament participation fee
+    function setTournamentParticipationFee(uint256 _fee) public onlyOwner {
+        tournamentParticipationFee = _fee;
+    }
+
+    // Setter for fee recipient address
+    function setFeeRecipient(address _address) public onlyOwner {
+        feeRecipient = _address;
+    }
+
 }
