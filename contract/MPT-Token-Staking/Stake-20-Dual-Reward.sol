@@ -7,7 +7,7 @@
 //   |:  1   |:  1   |:  1   |:  1   |:  |   |:  1   |:  |:  |   |:  1   |   |:  1   |:  |   |:  1    |:  1   |
 //   |::.. . |::.. . |\:.. ./|::.. . |::.|   |::.. . |::.|::.|   |::.. . |   |::.. . |::.|:. |::.. .  |::.. . |
 //   `-------`-------' `---' `-------`--- ---`-------`---`--- ---`-------'   `-------`--- ---`-------'`-------'
-//   Miracleplay ERC-20 to ERC-20 staking v1.2
+//   Miracleplay ERC-20 to ERC-20 staking v1.3
 // The APR1 and APR2 supports two decimal places. ex) APR 1035 > 10.35%
 
 pragma solidity ^0.8.0;
@@ -42,7 +42,9 @@ contract DualRewardAPRStaking is PermissionsEnumerable, ContractMetadata {
         uint256 reward2Earned;
     }
 
-    mapping(address => Staker) public stakers;
+    mapping(address => uint256) private stakerIndex;
+    address[] public stakers;
+    mapping(address => Staker) public stakings;
 
     constructor(
         address _adminAddr,
@@ -70,40 +72,65 @@ contract DualRewardAPRStaking is PermissionsEnumerable, ContractMetadata {
 
     function stake(uint256 amount) external {
         require(stakingToken.allowance(msg.sender, address(this)) >= amount, "Allowance is not sufficient.");
+        require(!POOL_ENDED, "Pool is ended.");
         updateRewards(msg.sender);
-        stakers[msg.sender].stakedAmount += amount;
+
+        if(stakings[msg.sender].stakedAmount == 0){
+            stakerIndex[msg.sender] = stakers.length;
+            stakers.push(msg.sender);
+        }
+
+        stakings[msg.sender].stakedAmount += amount;
         totalStakedTokens += amount;
         require(stakingToken.transferFrom(msg.sender, address(this), amount));
     }
 
     function withdraw(uint256 amount) external {
-        require(stakers[msg.sender].stakedAmount >= amount, "Not enough balance");
+        require(stakings[msg.sender].stakedAmount >= amount, "Not enough balance");
         updateRewards(msg.sender);
-        stakers[msg.sender].stakedAmount -= amount;
+        stakings[msg.sender].stakedAmount -= amount;
+        if(stakings[msg.sender].stakedAmount == 0){
+            removeStaker(msg.sender);
+        }
         totalStakedTokens -= amount;
         require(stakingToken.transfer(msg.sender, amount));
     }
 
+    // Private function to remove a staker from the stakers list.
+    function removeStaker(address _staker) private {
+        // Retrieve the index of the staker in the stakers array.
+        uint256 index = stakerIndex[_staker];
+        // Replace the staker to be removed with the last staker in the array.
+        stakers[index] = stakers[stakers.length - 1];
+        // Update the index of the staker that was moved.
+        stakerIndex[stakers[index]] = index;
+        // Remove the last element (now duplicated) from the stakers array.
+        stakers.pop();
+        // Delete the index information of the removed staker.
+        delete stakerIndex[_staker];
+    }
+
     function claimRewards() external {
         require(!POOL_PAUSE, "Pool is in pause state.");
+        require(!POOL_ENDED, "Pool is ended.");
         updateRewards(msg.sender);
 
-        uint256 reward1 = stakers[msg.sender].reward1Earned;
-        uint256 reward2 = stakers[msg.sender].reward2Earned;
+        uint256 reward1 = stakings[msg.sender].reward1Earned;
+        uint256 reward2 = stakings[msg.sender].reward2Earned;
 
         if (reward1 > 0) {
             require(rewardToken1.transfer(msg.sender, reward1), "Reward 1 Transfer fail.");
-            stakers[msg.sender].reward1Earned = 0;
+            stakings[msg.sender].reward1Earned = 0;
         }
 
         if (reward2 > 0) {
             rewardToken2.mintTo(msg.sender, reward2);
-            stakers[msg.sender].reward2Earned = 0;
+            stakings[msg.sender].reward2Earned = 0;
         }
     }
 
     function updateRewards(address staker) internal {
-        Staker storage user = stakers[staker];
+        Staker storage user = stakings[staker];
         uint256 timeElapsed = block.timestamp - user.lastUpdateTime;
         user.reward1Earned += ((timeElapsed * reward1APR * user.stakedAmount) / 1e18 / 10000);
         user.reward2Earned += ((timeElapsed * reward2APR * user.stakedAmount) / 1e18 / 10000);
@@ -151,7 +178,7 @@ contract DualRewardAPRStaking is PermissionsEnumerable, ContractMetadata {
     }
 
     function calculateRewards(address staker) public view returns (uint256 reward1, uint256 reward2) {
-        Staker memory user = stakers[staker];
+        Staker memory user = stakings[staker];
         uint256 timeElapsed = block.timestamp - user.lastUpdateTime;
         reward1 = user.reward1Earned + ((timeElapsed * reward1APR * user.stakedAmount) / 1e18 / 10000);
         reward2 = user.reward2Earned + ((timeElapsed * reward2APR * user.stakedAmount) / 1e18 / 10000);
