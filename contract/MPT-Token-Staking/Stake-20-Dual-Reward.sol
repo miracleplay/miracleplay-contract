@@ -7,7 +7,7 @@
 //   |:  1   |:  1   |:  1   |:  1   |:  |   |:  1   |:  |:  |   |:  1   |   |:  1   |:  |   |:  1    |:  1   |
 //   |::.. . |::.. . |\:.. ./|::.. . |::.|   |::.. . |::.|::.|   |::.. . |   |::.. . |::.|:. |::.. .  |::.. . |
 //   `-------`-------' `---' `-------`--- ---`-------`---`--- ---`-------'   `-------`--- ---`-------'`-------'
-//   Miracleplay ERC-20 to ERC-20 staking v1.3
+//   Miracleplay ERC-20 to ERC-20 staking v1.3.1
 // The APR1 and APR2 supports two decimal places. ex) APR 1035 > 10.35%
 
 pragma solidity ^0.8.0;
@@ -73,6 +73,7 @@ contract DualRewardAPRStaking is PermissionsEnumerable, ContractMetadata, Multic
     function stake(uint256 amount) external {
         require(stakingToken.allowance(msg.sender, address(this)) >= amount, "Allowance is not sufficient.");
         require(!POOL_ENDED, "Pool is ended.");
+        require(!POOL_PAUSE, "Pool is pause.");
         updateRewards(msg.sender);
 
         if(stakings[msg.sender].stakedAmount == 0){
@@ -120,38 +121,51 @@ contract DualRewardAPRStaking is PermissionsEnumerable, ContractMetadata, Multic
     }
 
     function claimRewards() external {
-        require(!POOL_PAUSE, "Pool is in pause state.");
-        require(!POOL_ENDED, "Pool is ended.");
+        require(!POOL_PAUSE, "Pool is pause.");
         updateRewards(msg.sender);
 
         uint256 reward1 = stakings[msg.sender].reward1Earned;
         uint256 reward2 = stakings[msg.sender].reward2Earned;
+        if(!POOL_ENDED){
+            if (reward1 > 0) {
+                uint256 remindToken1 = getRemindToken1();
+                if (remindToken1 < reward1){
+                    reward1 = remindToken1;
+                }
+                require(rewardToken1.transfer(msg.sender, reward1), "Reward 1 Transfer fail.");
+                stakings[msg.sender].reward1Earned = 0;
+            }
 
-        if (reward1 > 0) {
-            require(rewardToken1.transfer(msg.sender, reward1), "Reward 1 Transfer fail.");
+            if (reward2 > 0) {
+                rewardToken2.mintTo(msg.sender, reward2);
+                stakings[msg.sender].reward2Earned = 0;
+            }
+        }else{
             stakings[msg.sender].reward1Earned = 0;
-        }
-
-        if (reward2 > 0) {
-            rewardToken2.mintTo(msg.sender, reward2);
             stakings[msg.sender].reward2Earned = 0;
         }
     }
 
     function adminClaimRewards(address user) internal {
-        require(!POOL_PAUSE, "Pool is in pause state.");
-        require(!POOL_ENDED, "Pool is ended.");
+        require(!POOL_PAUSE, "Pool is pause.");
 
         uint256 reward1 = stakings[user].reward1Earned;
         uint256 reward2 = stakings[user].reward2Earned;
 
-        if (reward1 > 0) {
-            require(rewardToken1.transfer(user, reward1), "Reward 1 Transfer fail.");
-            stakings[user].reward1Earned = 0;
-        }
+        if(!POOL_ENDED){
+            if (reward1 > 0) {
+                if (getRemindToken1() > 0){
+                    require(rewardToken1.transfer(user, reward1), "Reward 1 Transfer fail.");
+                    stakings[user].reward1Earned = 0;
+                }
+            }
 
-        if (reward2 > 0) {
-            rewardToken2.mintTo(user, reward2);
+            if (reward2 > 0) {
+                rewardToken2.mintTo(user, reward2);
+                stakings[user].reward2Earned = 0;
+            }
+        }else{
+            stakings[user].reward1Earned = 0;
             stakings[user].reward2Earned = 0;
         }
     }
