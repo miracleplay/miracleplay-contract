@@ -129,11 +129,10 @@ contract DualRewardAPRStaking is PermissionsEnumerable, ContractMetadata, Multic
         if(!POOL_ENDED){
             if (reward1 > 0) {
                 uint256 remindToken1 = getRemindToken1();
-                if (remindToken1 < reward1){
-                    reward1 = remindToken1;
+                if (remindToken1 > reward1){
+                    require(rewardToken1.transfer(msg.sender, reward1), "Reward 1 Transfer fail.");
+                    stakings[msg.sender].reward1Earned = 0;
                 }
-                require(rewardToken1.transfer(msg.sender, reward1), "Reward 1 Transfer fail.");
-                stakings[msg.sender].reward1Earned = 0;
             }
 
             if (reward2 > 0) {
