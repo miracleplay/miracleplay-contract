@@ -277,4 +277,12 @@ contract DualRewardAPRStaking is PermissionsEnumerable, ContractMetadata, Multic
         removeStaker(_user);
         delete stakings[_user];
     }
+
+    function setPoolEnded(bool _value) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        POOL_ENDED = _value;
+    }
+
+    function setPoolPause(bool _value) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        POOL_PAUSE = _value;
+    }
 }
