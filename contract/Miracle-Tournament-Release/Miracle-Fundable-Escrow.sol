@@ -20,6 +20,11 @@ interface IMintableERC20 is IERC20 {
     function mintTo(address to, uint256 amount) external;
 }
 
+interface IStakingContract {
+    function getUserStakedAmount(address user) external view returns (uint256);
+}
+
+
 contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractMetadata {
     address public deployer;
     address public admin;
@@ -35,6 +40,8 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
     uint public minFundingRate;
     // Get token fee info from asset master
     AssetMaster public assetMasterAddr;
+    // Get NFT Staking info from NFT Staking
+    IStakingContract[] public stakingContracts;
 
     // Permissions
     bytes32 private constant TOURNAMENT_ROLE = keccak256("TOURNAMENT_ROLE");
@@ -114,6 +121,12 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
 
     function connectAssestMaster(address _assetMasterAddr) external onlyRole(DEFAULT_ADMIN_ROLE){
         assetMasterAddr = AssetMaster(_assetMasterAddr);
+    }
+
+    function connectEditionStakings(address[] memory _stakingContractAddresses) external onlyRole(DEFAULT_ADMIN_ROLE){
+        for (uint i = 0; i < _stakingContractAddresses.length; i++) {
+            stakingContracts.push(IStakingContract(_stakingContractAddresses[i]));
+        }
     }
 
     // Create tournament
@@ -388,5 +401,12 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
         uint progress = getFundingProgress(_tournamentId);
         uint minRate = getMinFundingRate();
         return progress >= minRate;
+    }
+
+    function getTotalUserStakedNFTs(address user) public view returns (uint256 totalStaked) {
+        totalStaked = 0;
+        for (uint i = 0; i < stakingContracts.length; i++) {
+            totalStaked += stakingContracts[i].getUserStakedAmount(user);
+        }
     }
 }
