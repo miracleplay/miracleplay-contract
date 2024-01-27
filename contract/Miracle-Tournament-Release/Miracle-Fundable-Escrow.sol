@@ -21,7 +21,7 @@ interface IMintableERC20 is IERC20 {
 }
 
 interface IStakingContract {
-    function getUserStakedAmount(address user) external view returns (uint256);
+    function stakings(address user) external view returns (uint256 amount, uint256 reward, uint256 updateTime);
 }
 
 
@@ -217,8 +217,8 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
         require(_amount >= baseLimit, "Amount is less than the minimum required");
         require(_amount % baseLimit == 0, "Amount must be in multiples of 200");
 
-         // Get staking amount
-        uint256 stakedNFTs = getTotalUserStakedNFTs(msg.sender);
+        // Get staking amount
+        uint256 stakedNFTs = getTotalUserStakedAmount(msg.sender);
         uint256 maxFundingLimit = calculateMaxFundingLimit(stakedNFTs);
 
         uint256 newTotalContribution = funding.contributions[msg.sender] + _amount;
@@ -418,20 +418,26 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
         return progress >= minRate;
     }
 
-    function getTotalUserStakedNFTs(address user) public view returns (uint256 totalStaked) {
-        totalStaked = 0;
+    function getTotalUserStakedAmount(address user) public view returns (uint256 totalAmount) {
+        totalAmount = 0;
+
         for (uint i = 0; i < stakingContracts.length; i++) {
-            totalStaked += stakingContracts[i].getUserStakedAmount(user);
+            (uint256 amount,,) = stakingContracts[i].stakings(user);
+            totalAmount += amount;
         }
     }
 
     function calculateMaxFundingLimit(uint256 stakedNFTs) public view returns (uint256) {
         uint256 maxStakedNFTs = 50; 
 
+        if (stakedNFTs <= 1) {
+            return baseLimit;
+        }   
+
         if (stakedNFTs > maxStakedNFTs) {
             stakedNFTs = maxStakedNFTs;
         }
 
-        return (baseLimit * stakedNFTs) - baseLimit;
+        return baseLimit * stakedNFTs;
     }
 }
