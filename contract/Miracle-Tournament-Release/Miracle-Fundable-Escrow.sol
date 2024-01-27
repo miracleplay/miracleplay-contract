@@ -38,6 +38,7 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
     address public royaltyAddrFlp;
     // Funding setting
     uint public minFundingRate;
+    uint public baseLimit;
     // Get token fee info from asset master
     AssetMaster public assetMasterAddr;
     // Get NFT Staking info from NFT Staking
@@ -100,6 +101,7 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
         RoyaltyregfeeFlp = 5;
         // Set default funding setting
         minFundingRate = 80;
+        baseLimit = 200e6;
         deployer = adminAddr;
         _setupContractURI(_contractURI);
     }
@@ -138,9 +140,10 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
             totalWithdrawAmount += _prizeAmountArray[i];
         }
         require(totalWithdrawAmount == _prizeAmount, "Total prize amount must equal prize amount.");
-
+        
         Tournament storage newTournament = tournamentMapping[_tournamentId];
         require(newTournament.tournamentCreated == false, "Tournament already created.");
+        _payFeeCreate();
 
         newTournament.organizer = msg.sender;
         newTournament.isFunding = _isFunding;
@@ -162,7 +165,7 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
         } else {
             require(IERC20(_prizeToken).transferFrom(msg.sender, address(this), _prizeAmount), "Transfer failed.");
         }
-        _payFeeCreate();
+        
         emit CreateTournament(_tournamentId, msg.sender, _tournamentURI);
     }
 
@@ -193,12 +196,13 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
         require(_tournament.feeToken.allowance(msg.sender, address(this)) >= _tournament.joinFee, "Allowance is not sufficient.");
         require(_tournament.joinFee <= _tournament.feeToken.balanceOf(msg.sender), "Insufficient balance.");
         require(_tournament.organizer != msg.sender, "Organizers cannot register.");
+        _payFeeRegister();
 
         if(_tournament.joinFee > 0){
             require(_tournament.feeToken.transferFrom(msg.sender, address(this), _tournament.joinFee), "Transfer failed.");
             _tournament.feeBalance = _tournament.feeBalance + _tournament.joinFee;
         }
-        _payFeeRegister();
+        
         miracletournament.register(_tournamentId, msg.sender);
     }
 
@@ -210,10 +214,21 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
         require(IERC20(funding.fundingToken).allowance(msg.sender, address(this)) >= _amount, "Allowance is not sufficient.");
         require(funding.fundingToken.transferFrom(msg.sender, address(this), _amount), "Transfer failed");
 
+        require(_amount >= baseLimit, "Amount is less than the minimum required");
+        require(_amount % baseLimit == 0, "Amount must be in multiples of 200");
+
+         // Get staking amount
+        uint256 stakedNFTs = getTotalUserStakedNFTs(msg.sender);
+        uint256 maxFundingLimit = calculateMaxFundingLimit(stakedNFTs);
+
+        uint256 newTotalContribution = funding.contributions[msg.sender] + _amount;
+        require(newTotalContribution <= maxFundingLimit, "Total contribution exceeds maximum funding limit");
+
         if (funding.contributions[msg.sender] == 0) {
+            // New funder
             funding.contributors.push(msg.sender);
         }
-        funding.contributions[msg.sender] += _amount;
+        funding.contributions[msg.sender] = newTotalContribution;
         funding.totalFunded += _amount;
     }
 
@@ -240,7 +255,7 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
 
     // Function to pay a fee
     function _payFeeCreate() internal {
-        address feeWallet = assetMasterAddr.feeRecipient();
+        address feeWallet = assetMasterAddr.feeRecipient(); 
         address feeToken = assetMasterAddr.feeToken();
         uint256 amount = assetMasterAddr.tournamentCreationFee();
         if(amount > 0){
@@ -408,5 +423,15 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
         for (uint i = 0; i < stakingContracts.length; i++) {
             totalStaked += stakingContracts[i].getUserStakedAmount(user);
         }
+    }
+
+    function calculateMaxFundingLimit(uint256 stakedNFTs) public view returns (uint256) {
+        uint256 maxStakedNFTs = 50; 
+
+        if (stakedNFTs > maxStakedNFTs) {
+            stakedNFTs = maxStakedNFTs;
+        }
+
+        return (baseLimit * stakedNFTs) - baseLimit;
     }
 }

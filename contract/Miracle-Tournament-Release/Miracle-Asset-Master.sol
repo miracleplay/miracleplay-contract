@@ -92,7 +92,6 @@ contract AssetMaster {
         feeToken = _token;
     }
 
-
     // Setter for tournament creation fee
     function setTournamentCreationFee(uint256 _fee) public onlyOwner {
         tournamentCreationFee = _fee;
