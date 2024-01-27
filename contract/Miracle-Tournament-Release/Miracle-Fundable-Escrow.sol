@@ -11,7 +11,7 @@ pragma solidity ^0.8.22;
 
 import "./Miracle-Asset-Master.sol";
 import "./Miracle-Fundable-Tournament.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "../Miracle-Edition-Staking/Stake-1155-Advance.sol";
 import "@thirdweb-dev/contracts/extension/PermissionsEnumerable.sol";
 import "@thirdweb-dev/contracts/extension/Multicall.sol";
 import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
@@ -19,11 +19,6 @@ import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
 interface IMintableERC20 is IERC20 {
     function mintTo(address to, uint256 amount) external;
 }
-
-interface IStakingContract {
-    function stakings(address user) external view returns (uint256 amount, uint256 reward, uint256 updateTime);
-}
-
 
 contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractMetadata {
     address public deployer;
@@ -42,7 +37,7 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
     // Get token fee info from asset master
     AssetMaster public assetMasterAddr;
     // Get NFT Staking info from NFT Staking
-    IStakingContract[] public stakingContracts;
+    ERC1155Staking[] public stakingContracts;
 
     // Permissions
     bytes32 private constant TOURNAMENT_ROLE = keccak256("TOURNAMENT_ROLE");
@@ -126,8 +121,11 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
     }
 
     function connectEditionStakings(address[] memory _stakingContractAddresses) external onlyRole(DEFAULT_ADMIN_ROLE){
+        // Clear the existing array
+        delete stakingContracts;
+            
         for (uint i = 0; i < _stakingContractAddresses.length; i++) {
-            stakingContracts.push(IStakingContract(_stakingContractAddresses[i]));
+            stakingContracts.push(ERC1155Staking(_stakingContractAddresses[i]));
         }
     }
 
