@@ -199,6 +199,11 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
         require(_tournament.feeToken.allowance(msg.sender, address(this)) >= _tournament.joinFee, "Allowance is not sufficient.");
         require(_tournament.joinFee <= _tournament.feeToken.balanceOf(msg.sender), "Insufficient balance.");
         require(_tournament.organizer != msg.sender, "Organizers cannot register.");
+        if (_tournament.isFunding){
+            Funding storage funding = fundingMapping[_tournamentId];
+            require(funding.fundingEnded, "Funding is not ended.");
+        }
+
         _payFeeRegister();
 
         if(_tournament.joinFee > 0){
