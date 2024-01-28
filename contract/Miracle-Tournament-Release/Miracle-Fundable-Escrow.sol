@@ -153,6 +153,7 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
         newTournament.feeToken = IERC20(_feeToken);
         newTournament.joinFee = _joinFee;
         newTournament.feeBalance = 0;
+        newTournament.prizeAmount = _prizeAmount;
         newTournament.prizeAmountArray = _prizeAmountArray;
         newTournament.tournamentCreated = true;
         newTournament.tournamentEnded = false;
