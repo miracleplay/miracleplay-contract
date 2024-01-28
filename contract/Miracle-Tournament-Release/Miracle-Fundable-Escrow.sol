@@ -11,7 +11,7 @@ pragma solidity ^0.8.22;
 
 import "./Miracle-Asset-Master.sol";
 import "./Miracle-Fundable-Tournament.sol";
-import "../Miracle-Edition-Staking/Stake-1155-Advance.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@thirdweb-dev/contracts/extension/PermissionsEnumerable.sol";
 import "@thirdweb-dev/contracts/extension/Multicall.sol";
 import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
@@ -20,10 +20,14 @@ interface IMintableERC20 is IERC20 {
     function mintTo(address to, uint256 amount) external;
 }
 
+interface IStakingContract {
+    function stakings(address user) external view returns (uint256, uint256, uint256);
+}
+
+
 contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractMetadata {
     address public deployer;
     address public admin;
-    address payable public tournamentAddr;
     // Royalty setting
     uint public RoyaltyPrizeDev;
     uint public RoyaltyregfeeDev;
@@ -37,12 +41,12 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
     // Get token fee info from asset master
     AssetMaster public assetMasterAddr;
     // Get NFT Staking info from NFT Staking
-    ERC1155Staking[] public stakingContracts;
+    IStakingContract[] public stakingContracts;
 
     // Permissions
     bytes32 private constant TOURNAMENT_ROLE = keccak256("TOURNAMENT_ROLE");
 
-    FundableTournament internal miracletournament;
+    FundableTournament public miracletournament;
 
     struct Tournament {
         address organizer;
@@ -125,7 +129,7 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
         delete stakingContracts;
             
         for (uint i = 0; i < _stakingContractAddresses.length; i++) {
-            stakingContracts.push(ERC1155Staking(_stakingContractAddresses[i]));
+            stakingContracts.push(IStakingContract(_stakingContractAddresses[i]));
         }
     }
 
@@ -419,10 +423,11 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
     function getTotalUserStakedAmount(address user) public view returns (uint256 totalAmount) {
         totalAmount = 0;
 
-        for (uint i = 0; i < stakingContracts.length; i++) {
-            (uint256 amount,,) = stakingContracts[i].stakings(user);
-            totalAmount += amount;
-        }
+        //for (uint i = 0; i < stakingContracts.length; i++) {
+        //    (uint256 amount,,) = stakingContracts[i].stakings(user);
+        //    totalAmount += amount;
+        //}
+        (totalAmount,,) = stakingContracts[0].stakings(user);
     }
 
     function calculateMaxFundingLimit(uint256 stakedNFTs) public view returns (uint256) {
