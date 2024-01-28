@@ -193,14 +193,14 @@ contract FundableTournament is PermissionsEnumerable, Multicall, ContractMetadat
 
         for (uint i = 0; i < _rankers.length; i++) {
             uint mintAmount = (i < bptMintAmount.length) ? bptMintAmount[i] : bptMintAmount[bptMintAmount.length - 1];
-            VoteToken.mintTo(_rankers[i], mintAmount);
+            BattlePoint.mintTo(_rankers[i], mintAmount);
         }
 
         for (uint j = 0; j < _entryPlayers.length; j++) {
             if (!_isRanker(_entryPlayers[j], _rankers)) {
                 uint mintAmount = bptMintAmount[bptMintAmount.length - 1];
                 if (mintAmount>0){
-                    VoteToken.mintTo(_entryPlayers[j], bptMintAmount[bptMintAmount.length - 1]);
+                    BattlePoint.mintTo(_entryPlayers[j], bptMintAmount[bptMintAmount.length - 1]);
                 }
             }
         }
