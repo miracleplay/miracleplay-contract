@@ -423,11 +423,10 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
     function getTotalUserStakedAmount(address user) public view returns (uint256 totalAmount) {
         totalAmount = 0;
 
-        //for (uint i = 0; i < stakingContracts.length; i++) {
-        //    (uint256 amount,,) = stakingContracts[i].stakings(user);
-        //    totalAmount += amount;
-        //}
-        (totalAmount,,) = stakingContracts[0].stakings(user);
+        for (uint i = 0; i < stakingContracts.length; i++) {
+            (uint256 amount,,) = stakingContracts[i].stakings(user);
+            totalAmount += amount;
+        }
     }
 
     function calculateMaxFundingLimit(uint256 stakedNFTs) public view returns (uint256) {
