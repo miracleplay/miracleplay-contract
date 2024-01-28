@@ -262,6 +262,10 @@ contract FundableTournament is PermissionsEnumerable, Multicall, ContractMetadat
         uint minRate = getMinTournamentRate();
         return progress >= minRate;
     }
+
+    function isFundingSuccess(uint _tournamentId) public view returns (bool) {
+        return FundableTournamentEscrow(EscrowAddr).isFundingSuccess(_tournamentId);
+    }
     
     function getAllTournamentCount() external view returns (uint) {
         uint count = OnGoingTournaments.length + EndedTournaments.length;
