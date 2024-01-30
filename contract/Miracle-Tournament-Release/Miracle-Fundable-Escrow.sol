@@ -105,6 +105,12 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
         _setupContractURI(_contractURI);
     }
 
+    event TournamentEscrowCreated(uint tournamentId);
+    event TournamentRegistration(uint tournamentId, address user);
+    event TournamentFunded(uint tournamentId, address fundingUser, uint256 fundingAmount);
+    event TournamentEnded(uint tournamentId);
+    event TournamentCanceled(uint tournamentId);
+
     function _canSetContractURI() internal view virtual override returns (bool){
         return msg.sender == deployer;
     }
@@ -187,10 +193,12 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
     function endedTournament(uint _tournamentId, address[] memory _withdrawAddresses) external onlyRole(TOURNAMENT_ROLE) {
         _EndedUnlockFee(_tournamentId);
         _EndedUnlockPrize(_tournamentId, _withdrawAddresses);
+        emit TournamentEnded(_tournamentId);
     }
 
     function canceledTournament(uint _tournamentId, address[] memory _entryPlayers) external onlyRole(TOURNAMENT_ROLE) {
         _CanceledUnlockTransfer(_tournamentId, _entryPlayers);
+        emit TournamentCanceled(_tournamentId);
     }
 
     // USER entry to the tournament.
@@ -212,6 +220,7 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
         }
         
         miracletournament.register(_tournamentId, msg.sender);
+        emit TournamentRegistration(_tournamentId, msg.sender);
     }
 
     function fundTournament(uint _tournamentId, uint256 _amount) external {
@@ -238,6 +247,7 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
         }
         funding.contributions[msg.sender] = newTotalContribution;
         funding.totalFunded += _amount;
+        emit TournamentFunded(_tournamentId, msg.sender, _amount);
     }
 
     function endFunding(uint _tournamentId) external onlyRole(TOURNAMENT_ROLE) {

@@ -61,7 +61,7 @@ contract FundableTournament is PermissionsEnumerable, Multicall, ContractMetadat
         VoteToken = IMintableERC20(_VoteToken);
         BattlePoint = IMintableERC20(_BattlePoint);
         mvpMintAmount = [10000000000000000000,5000000000000000000,3000000000000000000,1000000000000000000]; // Wei Default 1st:10 2nd:5 3th:3 other:1 
-        bptMintAmount = [500000000000000000000,200000000000000000000,10000000000000000000]; // Wei Default 1st:500 2nd:200 other:10
+        bptMintAmount = [100000000000000000000,50000000000000000000,10000000000000000000]; // Wei Default 1st:100 2nd:50 other:10
         minTournamentRate = 100;
         deployer = adminAddr;
         _setupContractURI(_contractURI);
