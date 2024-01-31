@@ -24,7 +24,6 @@ interface IStakingContract {
     function stakings(address user) external view returns (uint256, uint256, uint256);
 }
 
-
 contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractMetadata {
     address public deployer;
     address public admin;
@@ -79,14 +78,8 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
     }
     mapping(uint => Funding) public fundingMapping;
 
-    event CreateTournament(uint tournamentId, address organizer, string tournamentURI);
-    event CreateFunding(uint fundingId, address fundingToken, uint fundingAmount);
     event UnlockPrize(uint tournamentId, uint amount);
     event UnlockFee(uint tournamentId, uint amount);
-    event ReturnFee(uint tournamentId, address account, uint feeAmount);
-    event ReturnPrize(uint tournamentId, address account, uint PrizeAmount);
-    event CanceledUnlock(uint tournamentId);
-    event EndedUnlock(uint tournamentId, address [] _withdrawAddresses);
 
     constructor(address adminAddr, address _royaltyAddrDev, address _royaltyAddrFlp, string memory _contractURI) {
         _setupRole(DEFAULT_ADMIN_ROLE, adminAddr);
@@ -99,7 +92,7 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
         RoyaltyPrizeFlp = 5;
         RoyaltyregfeeFlp = 5;
         // Set default funding setting
-        minFundingRate = 80;
+        minFundingRate = 100;
         baseLimit = 200e6;
         deployer = adminAddr;
         _setupContractURI(_contractURI);
@@ -170,12 +163,11 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
         miracletournament.createTournament(_tournamentId, _isFunding, msg.sender, _regStartEndTime[0], _regStartEndTime[1], _prizeAmountArray.length, _playerLimit);
         if (_isFunding){
             createFunding(_tournamentId, _FundStartEndTime[0], _FundStartEndTime[1], _prizeToken, _prizeAmount);
-            emit CreateFunding(_tournamentId, _prizeToken, _prizeAmount);
         } else {
             require(IERC20(_prizeToken).transferFrom(msg.sender, address(this), _prizeAmount), "Transfer failed.");
         }
         
-        emit CreateTournament(_tournamentId, msg.sender, _tournamentURI);
+        emit TournamentEscrowCreated(_tournamentId);
     }
 
     function createFunding(uint _tournamentId, uint _fundStartTime, uint _fundEndTime, address _fundingToken, uint _fundingGoal) internal {
@@ -369,7 +361,6 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
                 _tournament.prizeToken.transfer(_tournament.organizer, _tournament.prizeAmount);
             }
         }
-        emit CanceledUnlock(_tournamentId);
     }
 
     function _transferToken(IERC20 token, address to, uint256 amount) internal {
