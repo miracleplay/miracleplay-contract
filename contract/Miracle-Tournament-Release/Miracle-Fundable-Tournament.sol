@@ -44,12 +44,8 @@ contract FundableTournament is PermissionsEnumerable, Multicall, ContractMetadat
     address admin;
     mapping(uint => Tournament) public tournamentMapping;
 
-    event CreateTournament(uint tournamentId);
-    event Registered(uint tournamentId, address account);
     event NewPersonalRecord(uint tournamentId, address account, uint score);
     event ScoreUpdated(uint tournamentId, string uri);
-    event TournamentEnded(uint tournamentId); 
-    event TournamentCanceled(uint tournamentId);
     event ShuffledPlayers(uint tournamentId, uint playersCount);
 
     bytes32 private constant FACTORY_ROLE = keccak256("FACTORY_ROLE");
@@ -95,7 +91,6 @@ contract FundableTournament is PermissionsEnumerable, Multicall, ContractMetadat
         newTournament.tournamentEnded = false;
         
         addOnGoingTournament(_tournamentId);
-        emit CreateTournament(_tournamentId);
     }
     
     function register(uint _tournamentId, address _player) public payable registrationOpen(_tournamentId) onlyRole(ESCROW_ROLE){
@@ -105,7 +100,6 @@ contract FundableTournament is PermissionsEnumerable, Multicall, ContractMetadat
         require(tournamentMapping[_tournamentId].players.length < tournamentMapping[_tournamentId].PlayersLimit, "Tournament is full.");
         tournamentMapping[_tournamentId].playerRegistered[_player] = true;
         tournamentMapping[_tournamentId].players.push(_player);
-        emit Registered(_tournamentId, _player);
     }
 
     function updateScore(uint tournamentId, string calldata _uri) external onlyRole(FACTORY_ROLE) {
@@ -152,8 +146,6 @@ contract FundableTournament is PermissionsEnumerable, Multicall, ContractMetadat
 
         removeOnGoingTournament(_tournamentId);
         addEndedTournament(_tournamentId);
-
-        emit TournamentEnded(_tournamentId);
     }
 
 
@@ -167,8 +159,6 @@ contract FundableTournament is PermissionsEnumerable, Multicall, ContractMetadat
 
         removeOnGoingTournament(_tournamentId);
         addEndedTournament(_tournamentId);
-
-        emit TournamentCanceled(_tournamentId);
     }
 
     function _mintVoteToken(uint _tournamentId, address[] calldata _rankers) internal {

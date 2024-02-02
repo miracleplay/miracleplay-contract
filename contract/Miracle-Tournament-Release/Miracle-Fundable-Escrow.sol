@@ -98,9 +98,11 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
         _setupContractURI(_contractURI);
     }
 
-    event TournamentEscrowCreated(uint tournamentId);
+    event TournamentEscrowCreated(uint tournamentId, address organizer);
     event TournamentRegistration(uint tournamentId, address user);
-    event TournamentFunded(uint tournamentId, address fundingUser, uint256 fundingAmount);
+    event Fund(uint tournamentId, address fundingUser, uint256 fundingAmount);
+    event FundEnded(uint tournamentId);
+    event FundCanceled(uint tournamentId);
     event TournamentEnded(uint tournamentId);
     event TournamentCanceled(uint tournamentId);
 
@@ -167,7 +169,7 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
             require(IERC20(_prizeToken).transferFrom(msg.sender, address(this), _prizeAmount), "Transfer failed.");
         }
         
-        emit TournamentEscrowCreated(_tournamentId);
+        emit TournamentEscrowCreated(_tournamentId, msg.sender);
     }
 
     function createFunding(uint _tournamentId, uint _fundStartTime, uint _fundEndTime, address _fundingToken, uint _fundingGoal) internal {
@@ -239,7 +241,7 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
         }
         funding.contributions[msg.sender] = newTotalContribution;
         funding.totalFunded += _amount;
-        emit TournamentFunded(_tournamentId, msg.sender, _amount);
+        emit Fund(_tournamentId, msg.sender, _amount);
     }
 
     function endFunding(uint _tournamentId) external onlyRole(TOURNAMENT_ROLE) {
@@ -249,6 +251,8 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
         funding.fundingActive = false;
         funding.fundingEnded = true;
         tournamentMapping[_tournamentId].prizeAmount = funding.totalFunded;
+
+        emit FundEnded(_tournamentId);
     }
 
     function cancelFunding(uint _tournamentId) external onlyRole(TOURNAMENT_ROLE) {
@@ -261,6 +265,7 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
             uint256 amount = funding.contributions[contributor];
             funding.fundingToken.transfer(contributor, amount);
         }
+        emit FundCanceled(_tournamentId);
     }
 
     // Function to pay a fee
