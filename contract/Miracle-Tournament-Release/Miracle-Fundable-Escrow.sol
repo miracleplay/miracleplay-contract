@@ -247,7 +247,7 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
     function endFunding(uint _tournamentId) external onlyRole(TOURNAMENT_ROLE) {
         Funding storage funding = fundingMapping[_tournamentId];
         require(funding.fundingActive, "Funding not active");
-        require(funding.totalFunded > funding.fundingGoal * minFundingRate / 100, "Funding did not reach the minimum rate");
+        require(funding.totalFunded >= funding.fundingGoal * minFundingRate / 100, "Funding did not reach the minimum rate");
         funding.fundingActive = false;
         funding.fundingEnded = true;
         tournamentMapping[_tournamentId].prizeAmount = funding.totalFunded;
