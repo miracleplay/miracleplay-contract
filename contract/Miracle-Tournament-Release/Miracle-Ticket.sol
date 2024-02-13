@@ -16,7 +16,7 @@ contract TournamentTicketNFT is ERC721Enumerable, Ownable {
     mapping(uint256 => TicketDetails) public ticketDetails;
     mapping(bytes32 => uint256) public ticketPrices; // 게임ID, 티켓 등급, 토큰 주소 => 가격
 
-    constructor() ERC721("MiracleTournamentTicket", "MTTK") {}
+    constructor() ERC721("TournamentTicket", "TTK") {}
 
     function setTicketPrice(uint256 gameId, uint256 tier, address tokenAddress, uint256 price) public onlyOwner {
         bytes32 key = keccak256(abi.encodePacked(gameId, tier, tokenAddress));
@@ -35,20 +35,6 @@ contract TournamentTicketNFT is ERC721Enumerable, Ownable {
         uint256 tokenId = nextTokenId++;
         _mint(to, tokenId);
         ticketDetails[tokenId] = TicketDetails(tier, block.timestamp, gameId);
-    }
-
-    function getOwnedTickets(address owner) public view returns (uint256[] memory) {
-        uint256 ownerTokenCount = balanceOf(owner);
-        if (ownerTokenCount == 0) {
-            // 소유한 티켓이 없는 경우 빈 배열 반환
-            return new uint256[](0);
-        } else {
-            uint256[] memory ownedTokenIds = new uint256[](ownerTokenCount);
-            for (uint256 i = 0; i < ownerTokenCount; i++) {
-                ownedTokenIds[i] = tokenOfOwnerByIndex(owner, i);
-            }
-            return ownedTokenIds;
-        }
     }
 
     function getValidOwnedTicketsByGame(address owner, uint256 gameId) public view returns (uint256[] memory) {
@@ -71,6 +57,17 @@ contract TournamentTicketNFT is ERC721Enumerable, Ownable {
         }
 
         return validOwnedTokenIds;
+    }
+
+    function getOwnedTickets(address owner) public view returns (uint256[] memory) {
+        uint256 ownerTokenCount = balanceOf(owner);
+        uint256[] memory ownedTokenIds = new uint256[](ownerTokenCount);
+
+        for (uint256 i = 0; i < ownerTokenCount; i++) {
+            ownedTokenIds[i] = tokenOfOwnerByIndex(owner, i);
+        }
+
+        return ownedTokenIds;
     }
 
     function isTicketValid(uint256 tokenId) public view returns (bool) {
