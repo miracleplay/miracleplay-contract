@@ -24,6 +24,11 @@ interface IStakingContract {
     function stakings(address user) external view returns (uint256, uint256, uint256);
 }
 
+interface iMiraclePass {
+    function hasValidPremiumPass(address user) external view returns (bool);
+    function hasValidPlatinumPass(address user) external view returns (bool);
+}
+
 contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractMetadata {
     address public deployer;
     address public admin;
@@ -41,6 +46,8 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
     AssetMaster public assetMasterAddr;
     // Get NFT Staking info from NFT Staking
     IStakingContract[] public stakingContracts;
+    // Miracle Pass
+    iMiraclePass public miraclePass;
 
     // Permissions
     bytes32 private constant TOURNAMENT_ROLE = keccak256("TOURNAMENT_ROLE");
@@ -50,6 +57,7 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
     struct Tournament {
         address organizer;
         bool isFunding;
+        uint tier;
         IERC20 prizeToken;
         IERC20 feeToken;
         uint prizeAmount;
@@ -81,10 +89,14 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
     event UnlockPrize(uint tournamentId, uint amount);
     event UnlockFee(uint tournamentId, uint amount);
 
-    constructor(address adminAddr, address _royaltyAddrDev, address _royaltyAddrFlp, string memory _contractURI) {
+    constructor(address adminAddr, address _royaltyAddrDev, address _royaltyAddrFlp, address[] memory _stakingContractAddresses, address _assetMasterAddr, address _miracletournament, address _miraclePass, string memory _contractURI) {
         _setupRole(DEFAULT_ADMIN_ROLE, adminAddr);
         royaltyAddrDev = _royaltyAddrDev;
         royaltyAddrFlp = _royaltyAddrFlp;
+        // Set staking contract
+        for (uint i = 0; i < _stakingContractAddresses.length; i++) {
+            stakingContracts.push(IStakingContract(_stakingContractAddresses[i]));
+        }
         // Set default dev royalty 
         RoyaltyPrizeDev = 5;
         RoyaltyregfeeDev = 5;
@@ -95,6 +107,13 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
         minFundingRate = 100;
         baseLimit = 200e6;
         deployer = adminAddr;
+        // Set asset master contract
+        assetMasterAddr = AssetMaster(_assetMasterAddr);
+        // Set tournament contract
+        _setupRole(TOURNAMENT_ROLE, _miracletournament);
+        miracletournament = FundableTournament(_miracletournament);
+        // Set miracle pass contract
+        miraclePass = iMiraclePass(_miraclePass);
         _setupContractURI(_contractURI);
     }
 
@@ -116,15 +135,6 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
         _;
     }
 
-    function connectTournament(address payable _miracletournament) external onlyRole(DEFAULT_ADMIN_ROLE){
-        _setupRole(TOURNAMENT_ROLE, _miracletournament);
-        miracletournament = FundableTournament(_miracletournament);
-    }
-
-    function connectAssestMaster(address _assetMasterAddr) external onlyRole(DEFAULT_ADMIN_ROLE){
-        assetMasterAddr = AssetMaster(_assetMasterAddr);
-    }
-
     function connectEditionStakings(address[] memory _stakingContractAddresses) external onlyRole(DEFAULT_ADMIN_ROLE){
         // Clear the existing array
         delete stakingContracts;
@@ -134,8 +144,17 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
         }
     }
 
+    function connectTournament(address _miracletournament) external onlyRole(DEFAULT_ADMIN_ROLE){
+        _setupRole(TOURNAMENT_ROLE, _miracletournament);
+        miracletournament = FundableTournament(_miracletournament);
+    }
+
+    function connectAssestMaster(address _assetMasterAddr) external onlyRole(DEFAULT_ADMIN_ROLE){
+        assetMasterAddr = AssetMaster(_assetMasterAddr);
+    }
+
     // Create tournament
-    function createTournamentEscrow(uint _tournamentId, bool _isFunding, address _prizeToken, address _feeToken, uint _prizeAmount, uint _joinFee, uint256[] memory _regStartEndTime, uint256[] memory _FundStartEndTime, uint256[] memory _prizeAmountArray, string memory _tournamentURI, uint _playerLimit) external {
+    function createTournamentEscrow(uint _tournamentId, bool _isFunding, uint _tier, address _prizeToken, address _feeToken, uint _prizeAmount, uint _joinFee, uint256[] memory _regStartEndTime, uint256[] memory _FundStartEndTime, uint256[] memory _prizeAmountArray, string memory _tournamentURI, uint _playerLimit) external {
         require(_FundStartEndTime[0] < _FundStartEndTime[1], "Invalid funding time range");
         require(_regStartEndTime[0] < _regStartEndTime[1], "Invalid join tournament time range");
         uint256 totalWithdrawAmount;
@@ -150,6 +169,7 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
 
         newTournament.organizer = msg.sender;
         newTournament.isFunding = _isFunding;
+        newTournament.tier = _tier;
         newTournament.prizeToken = IERC20(_prizeToken);
         newTournament.feeToken = IERC20(_feeToken);
         newTournament.joinFee = _joinFee;
@@ -201,6 +221,10 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
         require(_tournament.feeToken.allowance(msg.sender, address(this)) >= _tournament.joinFee, "Allowance is not sufficient.");
         require(_tournament.joinFee <= _tournament.feeToken.balanceOf(msg.sender), "Insufficient balance.");
         require(_tournament.organizer != msg.sender, "Organizers cannot register.");
+        require(_tierValify(_tournament.tier, msg.sender), "There are no required passes for the tournament.");
+
+        // 사용자 티어 확인 로직 필요
+
         if (_tournament.isFunding){
             Funding storage funding = fundingMapping[_tournamentId];
             require(funding.fundingEnded, "Funding is not ended.");
@@ -266,6 +290,17 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
             funding.fundingToken.transfer(contributor, amount);
         }
         emit FundCanceled(_tournamentId);
+    }
+
+    // Check tier pass
+    function _tierValify(uint _gameTier, address user) public view returns (bool) {
+        if(_gameTier == 1){
+            return miraclePass.hasValidPremiumPass(user);
+        }else if(_gameTier == 2){
+            return miraclePass.hasValidPlatinumPass(user);
+        }else{
+            return true;
+        }
     }
 
     // Function to pay a fee
