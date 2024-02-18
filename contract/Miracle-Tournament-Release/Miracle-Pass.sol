@@ -15,7 +15,7 @@ interface IERC20 {
 }
 // Pass Info 
 // 0 = Premium / 1 = Platinum
-contract TournamentAccessControl {
+contract MiraclePassControl {
     struct Pass {
         bool hasPlatinum;
         bool hasPremium;
