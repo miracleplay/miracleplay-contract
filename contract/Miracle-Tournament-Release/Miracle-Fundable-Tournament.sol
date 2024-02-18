@@ -6,7 +6,7 @@
 //   |:  1   |:  1   |:  1   |:  1   |:  |   |:  1   |:  |:  |   |:  1   |   |:  1   |:  |   |:  1    |:  1   |
 //   |::.. . |::.. . |\:.. ./|::.. . |::.|   |::.. . |::.|::.|   |::.. . |   |::.. . |::.|:. |::.. .  |::.. . |
 //   `-------`-------' `---' `-------`--- ---`-------`---`--- ---`-------'   `-------`--- ---`-------'`-------'
-//   MiracleTournament V0.8 Fundable
+//   MiracleTournament V0.8.1 Fundable
 pragma solidity ^0.8.22;    
 
 import "./Miracle-Fundable-Escrow.sol";
@@ -51,15 +51,15 @@ contract FundableTournament is PermissionsEnumerable, Multicall, ContractMetadat
     bytes32 private constant FACTORY_ROLE = keccak256("FACTORY_ROLE");
     bytes32 private constant ESCROW_ROLE = keccak256("ESCROW_ROLE");
 
-    constructor(address adminAddr, address _VoteToken, address _BattlePoint, string memory _contractURI)  {
-        _setupRole(DEFAULT_ADMIN_ROLE, adminAddr);
-        _setupRole(FACTORY_ROLE, adminAddr);
+    constructor(address _VoteToken, address _BattlePoint, string memory _contractURI)  {
+        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _setupRole(FACTORY_ROLE, msg.sender);
         VoteToken = IMintableERC20(_VoteToken);
         BattlePoint = IMintableERC20(_BattlePoint);
         mvpMintAmount = [10000000000000000000,5000000000000000000,3000000000000000000,1000000000000000000]; // Wei Default 1st:10 2nd:5 3th:3 other:1 
         bptMintAmount = [100000000000000000000,50000000000000000000,10000000000000000000]; // Wei Default 1st:100 2nd:50 other:10
         minTournamentRate = 100;
-        deployer = adminAddr;
+        deployer = msg.sender;
         _setupContractURI(_contractURI);
     }
 
@@ -93,13 +93,27 @@ contract FundableTournament is PermissionsEnumerable, Multicall, ContractMetadat
         addOnGoingTournament(_tournamentId);
     }
     
-    function register(uint _tournamentId, address _player) public payable registrationOpen(_tournamentId) onlyRole(ESCROW_ROLE){
+    function register(uint _tournamentId, address _player) public registrationOpen(_tournamentId) onlyRole(ESCROW_ROLE){
         require(block.timestamp > tournamentMapping[_tournamentId].registerStartTime, "Registration has not started yet");
         require(block.timestamp < tournamentMapping[_tournamentId].registerEndTime, "Registration deadline passed");
         require(!tournamentMapping[_tournamentId].playerRegistered[_player], "Address already registered");
         require(tournamentMapping[_tournamentId].players.length < tournamentMapping[_tournamentId].PlayersLimit, "Tournament is full.");
         tournamentMapping[_tournamentId].playerRegistered[_player] = true;
         tournamentMapping[_tournamentId].players.push(_player);
+    }
+
+    function kickPlayer(uint _tournamentId, address _player) public {
+        require(tournamentMapping[_tournamentId].playerRegistered[_player] == true, "Player not registered");
+        uint length = tournamentMapping[_tournamentId].players.length;
+        
+        for (uint i = 0; i < length; i++) {
+            if (tournamentMapping[_tournamentId].players[i] == _player) {
+                tournamentMapping[_tournamentId].players[i] = tournamentMapping[_tournamentId].players[length - 1];
+                tournamentMapping[_tournamentId].players.pop();
+                break;
+            }
+        }
+        tournamentMapping[_tournamentId].playerRegistered[_player] = false;
     }
 
     function updateScore(uint tournamentId, string calldata _uri) external onlyRole(FACTORY_ROLE) {
