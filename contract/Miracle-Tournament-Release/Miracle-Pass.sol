@@ -43,12 +43,12 @@ contract MiraclePassControl {
         passPrices[tokenAddress][passType] = price;
     }
 
-    function getPassPrice(uint256 passType, address tokenAddress) public view returns (uint256) {
+    // Platinum Pass
+    function getPlatinumPassPrice(address tokenAddress) public view returns (uint256) {
         require(supportedTokens[tokenAddress], "Token not supported");
-        return passPrices[tokenAddress][passType];
+        return passPrices[tokenAddress][1];
     }
 
-    // Buy Platinum Pass
     function buyPlatinumPass(address _tokenAddress) public {
         require(!hasValidPlatinumPass(msg.sender), "Already owns a valid Platinum pass");
         require(supportedTokens[_tokenAddress], "Token not supported");
@@ -60,7 +60,29 @@ contract MiraclePassControl {
         _issuePlatinumPass(msg.sender);
     }
 
-    // Buy Premium Pass
+    function _issuePlatinumPass(address user) internal {
+        passInfo[user].hasPlatinum = true;
+        passInfo[user].platinumExpiryDate = block.timestamp + DURATION;
+    }
+
+    function hasValidPlatinumPass(address user) public view returns (bool) {
+        return passInfo[user].hasPlatinum && block.timestamp <= passInfo[user].platinumExpiryDate;
+    }
+
+    function getRemainingPlatinumPass(address user) public view returns (uint256) {
+        if (passInfo[user].hasPlatinum && passInfo[user].platinumExpiryDate > block.timestamp) {
+            return passInfo[user].platinumExpiryDate - block.timestamp;
+        } else {
+            return 0;
+        }
+    }
+
+    // Premium Pass
+    function getPremiumPassPrice(address tokenAddress) public view returns (uint256) {
+        require(supportedTokens[tokenAddress], "Token not supported");
+        return passPrices[tokenAddress][0];
+    }
+
     function buyPremiumPass(address _tokenAddress) public {
         require(!hasValidPlatinumPass(msg.sender), "Already owns a valid Platinum pass");
         require(supportedTokens[_tokenAddress], "Token not supported");
@@ -72,22 +94,21 @@ contract MiraclePassControl {
         _issuePremiumPass(msg.sender);
     }
 
-    function _issuePlatinumPass(address user) internal {
-        passInfo[user].hasPlatinum = true;
-        passInfo[user].platinumExpiryDate = block.timestamp + DURATION;
-    }
-
     function _issuePremiumPass(address user) internal {
         passInfo[user].hasPremium = true;
         passInfo[user].premiumExpiryDate = block.timestamp + DURATION;
     }
 
-    function hasValidPlatinumPass(address user) public view returns (bool) {
-        return passInfo[user].hasPlatinum && block.timestamp <= passInfo[user].platinumExpiryDate;
-    }
-
     function hasValidPremiumPass(address user) public view returns (bool) {
         return passInfo[user].hasPremium && block.timestamp <= passInfo[user].premiumExpiryDate;
+    }
+
+    function getRemainingPremiumPass(address user) public view returns (uint256) {
+        if (passInfo[user].hasPremium && passInfo[user].premiumExpiryDate > block.timestamp) {
+            return passInfo[user].premiumExpiryDate - block.timestamp;
+        } else {
+            return 0;
+        }
     }
 
     function checkBothPasses(address user) public view returns (bool[] memory) {
