@@ -155,9 +155,9 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
     }
 
     // Create tournament
-    function createTournamentEscrow(uint256 _tournamentId, uint8 _tournamentTier, bool _isFunding, address[] memory _prizeFeeToken, uint256[] memory _prizeFeeAmount, uint256[] memory _regStartEndTime, uint256[] memory _FundStartEndTime, uint256[] memory _prizeAmountArray, string memory _tournamentURI, uint _playerLimit) external {
+    function createTournamentEscrow(uint256[] memory _tournamentInfo, bool _isFunding, address[] memory _prizeFeeToken, uint256[] memory _prizeFeeAmount, uint256[] memory _regStartEndTime, uint256[] memory _FundStartEndTime, uint256[] memory _prizeAmountArray, string memory _tournamentURI, uint _playerLimit) external {
         // Create Tournament Pamameter
-        // _tournamentInfo 0-TournamentId, 1-TournamentTier, 2-PlayerLimit
+        // _tournamentInfo 0-TournamentId, 1-TournamentTier
         // Escrow -> Tournament
         require(_FundStartEndTime[0] < _FundStartEndTime[1], "Invalid funding time range");
         require(_regStartEndTime[0] < _regStartEndTime[1], "Invalid join tournament time range");
@@ -167,13 +167,13 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
         }
         require(totalWithdrawAmount == _prizeFeeAmount[0], "Total prize amount must equal prize amount.");
         
-        Tournament storage newTournament = tournamentMapping[_tournamentId];
+        Tournament storage newTournament = tournamentMapping[_tournamentInfo[0]];
         require(newTournament.tournamentCreated == false, "Tournament already created.");
         _payFeeCreate();
 
         newTournament.organizer = msg.sender;
         newTournament.isFunding = _isFunding;
-        newTournament.tier = _tournamentTier;
+        newTournament.tier = _tournamentInfo[1];
         newTournament.prizeToken = IERC20(_prizeFeeToken[0]);
         newTournament.feeToken = IERC20(_prizeFeeToken[1]);
         newTournament.joinFee = _prizeFeeAmount[1];
@@ -186,14 +186,14 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
         newTournament.tournamentURI = _tournamentURI;
         newTournament.PlayersLimit = _playerLimit;
         // createTournament(uint _tournamentId, bool _isFunding, address _organizer, uint _registerStartTime, uint _registerEndTime, uint _prizeCount, uint _playerLimit)
-        miracletournament.createTournament(_tournamentId, _isFunding, msg.sender, _regStartEndTime[0], _regStartEndTime[1], _prizeAmountArray.length, _playerLimit);
+        miracletournament.createTournament(_tournamentInfo[0], _isFunding, msg.sender, _regStartEndTime[0], _regStartEndTime[1], _prizeAmountArray.length, _playerLimit);
         if (_isFunding){
-            createFunding(_tournamentId, _FundStartEndTime[0], _FundStartEndTime[1], _prizeFeeToken[0], _prizeFeeAmount[0]);
+            createFunding(_tournamentInfo[0], _FundStartEndTime[0], _FundStartEndTime[1], _prizeFeeToken[0], _prizeFeeAmount[0]);
         } else {
             require(IERC20(_prizeFeeToken[0]).transferFrom(msg.sender, address(this), _prizeFeeAmount[0]), "Transfer failed.");
         }
         
-        emit EscrowCreated(_tournamentId, msg.sender);
+        emit EscrowCreated(_tournamentInfo[0], msg.sender);
     }
 
     function createFunding(uint _tournamentId, uint _fundStartTime, uint _fundEndTime, address _fundingToken, uint _fundingGoal) internal {
