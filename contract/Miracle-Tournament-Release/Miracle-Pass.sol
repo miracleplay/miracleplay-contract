@@ -14,7 +14,7 @@ interface IERC20 {
     function balanceOf(address account) external view returns (uint256);
 }
 // Pass Info 
-// 0 = Premium / 1 = Platinum
+// 1 = Premium / 2 = Platinum
 contract MiraclePassControl {
     struct Pass {
         bool hasPlatinum;
