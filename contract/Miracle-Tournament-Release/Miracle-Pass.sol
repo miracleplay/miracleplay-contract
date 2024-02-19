@@ -6,8 +6,11 @@
 //   |:  1   |:  1   |:  1   |:  1   |:  |   |:  1   |:  |:  |   |:  1   |   |:  1   |:  |   |:  1    |:  1   |
 //   |::.. . |::.. . |\:.. ./|::.. . |::.|   |::.. . |::.|::.|   |::.. . |   |::.. . |::.|:. |::.. .  |::.. . |
 //   `-------`-------' `---' `-------`--- ---`-------`---`--- ---`-------'   `-------`--- ---`-------'`-------'
-//   MiraclePass V1.0 Fundable
+//   MiraclePass V1.0
 pragma solidity ^0.8.0;
+
+import "@thirdweb-dev/contracts/extension/PermissionsEnumerable.sol";
+import "@thirdweb-dev/contracts/extension/Multicall.sol";
 
 interface IERC20 {
     function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
@@ -15,7 +18,7 @@ interface IERC20 {
 }
 // Pass Info 
 // 1 = Premium / 2 = Platinum
-contract MiraclePassControl {
+contract MiraclePassControl is PermissionsEnumerable, Multicall{
     struct Pass {
         bool hasPlatinum;
         bool hasPremium;
@@ -30,15 +33,11 @@ contract MiraclePassControl {
     uint256 public constant DURATION = 30 days;
 
     constructor() {
-        admin = msg.sender;
+        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
-    modifier onlyAdmin() {
-        require(msg.sender == admin, "Not an admin");
-        _;
-    }
 
-    function setPassPrice(uint256 passType, address tokenAddress, uint256 price) public onlyAdmin{
+    function setPassPrice(uint256 passType, address tokenAddress, uint256 price) public onlyRole(DEFAULT_ADMIN_ROLE){
         supportedTokens[tokenAddress] = true;
         passPrices[tokenAddress][passType] = price;
     }
@@ -118,11 +117,11 @@ contract MiraclePassControl {
         return passesStatus;
     }
 
-    function revokePlatinumPass(address user) public onlyAdmin {
+    function revokePlatinumPass(address user) public onlyRole(DEFAULT_ADMIN_ROLE) {
         passInfo[user].hasPlatinum = false;
     }
 
-    function revokePremiumPass(address user) public onlyAdmin {
+    function revokePremiumPass(address user) public onlyRole(DEFAULT_ADMIN_ROLE) {
         passInfo[user].hasPremium = false;
     }
 }
