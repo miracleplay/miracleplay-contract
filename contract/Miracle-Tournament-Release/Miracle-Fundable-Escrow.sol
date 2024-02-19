@@ -228,7 +228,7 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
         require(_tournament.feeToken.allowance(msg.sender, address(this)) >= _tournament.joinFee, "Allowance is not sufficient.");
         require(_tournament.joinFee <= _tournament.feeToken.balanceOf(msg.sender), "Insufficient balance.");
         require(_tournament.organizer != msg.sender, "Organizers cannot register.");
-        require(_tierValify(_tournament.tier, msg.sender), "There are no required passes for the tournament.");
+        require(tierValify(_tournament.tier, msg.sender), "There are no required passes for the tournament.");
 
         // 사용자 티어 확인 로직 필요
 
@@ -312,7 +312,7 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
     }
 
     // Check tier pass
-    function _tierValify(uint _gameTier, address user) public view returns (bool) {
+    function tierValify(uint _gameTier, address user) public view returns (bool) {
         if(_gameTier == 0){
             return miraclePass.hasValidPremiumPass(user);
         }else if(_gameTier == 1){
