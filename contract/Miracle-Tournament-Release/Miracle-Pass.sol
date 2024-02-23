@@ -15,7 +15,9 @@ import "@thirdweb-dev/contracts/extension/Multicall.sol";
 interface IERC20 {
     function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
     function balanceOf(address account) external view returns (uint256);
+    function transfer(address recipient, uint256 amount) external returns (bool);
 }
+
 // Pass Info 
 // 1 = Premium / 2 = Platinum
 contract MiraclePassControl is PermissionsEnumerable, Multicall{
@@ -41,6 +43,13 @@ contract MiraclePassControl is PermissionsEnumerable, Multicall{
         supportedTokens[tokenAddress] = true;
         passPrices[tokenAddress][passType] = price;
     }
+
+    function withdrawToken(address tokenAddress) public onlyRole(DEFAULT_ADMIN_ROLE){
+        IERC20 token = IERC20(tokenAddress);
+        uint256 balance = token.balanceOf(address(this));
+        require(balance > 0, "No tokens to withdraw");
+        require(token.transfer(msg.sender, balance), "Transfer failed");
+    } 
 
     // Platinum Pass
     function getPlatinumPassPrice(address tokenAddress) public view returns (uint256) {
