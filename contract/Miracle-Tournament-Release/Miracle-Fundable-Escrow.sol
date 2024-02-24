@@ -154,6 +154,10 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
         assetMasterAddr = AssetMaster(_assetMasterAddr);
     }
 
+    function connectMiraclePass(address _miraclePassAddr) external onlyRole(DEFAULT_ADMIN_ROLE){
+        miraclePass = iMiraclePass(_miraclePassAddr);
+    }
+
     // Create tournament
     function createTournamentEscrow(uint256[] memory _tournamentInfo, bool _isFunding, address[] memory _prizeFeeToken, uint256[] memory _prizeFeeAmount, uint256[] memory _regStartEndTime, uint256[] memory _FundStartEndTime, uint256[] memory _prizeAmountArray, string memory _tournamentURI, uint _playerLimit) external {
         // Create Tournament Pamameter

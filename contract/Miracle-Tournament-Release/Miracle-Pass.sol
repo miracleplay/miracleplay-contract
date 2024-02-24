@@ -54,13 +54,13 @@ contract MiraclePassControl is PermissionsEnumerable, Multicall{
     // Platinum Pass
     function getPlatinumPassPrice(address tokenAddress) public view returns (uint256) {
         require(supportedTokens[tokenAddress], "Token not supported");
-        return passPrices[tokenAddress][1];
+        return passPrices[tokenAddress][2];
     }
 
     function buyPlatinumPass(address _tokenAddress) public {
         require(!hasValidPlatinumPass(msg.sender), "Already owns a valid Platinum pass");
         require(supportedTokens[_tokenAddress], "Token not supported");
-        uint256 price = passPrices[_tokenAddress][1];
+        uint256 price = passPrices[_tokenAddress][2];
 
         IERC20 token = IERC20(_tokenAddress);
         require(token.transferFrom(msg.sender, address(this), price), "Token Transfer failed");
@@ -88,13 +88,13 @@ contract MiraclePassControl is PermissionsEnumerable, Multicall{
     // Premium Pass
     function getPremiumPassPrice(address tokenAddress) public view returns (uint256) {
         require(supportedTokens[tokenAddress], "Token not supported");
-        return passPrices[tokenAddress][0];
+        return passPrices[tokenAddress][1];
     }
 
     function buyPremiumPass(address _tokenAddress) public {
         require(!hasValidPlatinumPass(msg.sender), "Already owns a valid Platinum pass");
         require(supportedTokens[_tokenAddress], "Token not supported");
-        uint256 price = passPrices[_tokenAddress][0];
+        uint256 price = passPrices[_tokenAddress][1];
 
         IERC20 token = IERC20(_tokenAddress);
         require(token.transferFrom(msg.sender, address(this), price), "Token Transfer failed");
