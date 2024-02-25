@@ -317,9 +317,9 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
 
     // Check tier pass
     function tierValify(uint _gameTier, address user) public view returns (bool) {
-        if(_gameTier == 0){
+        if(_gameTier == 1){
             return miraclePass.hasValidPremiumPass(user);
-        }else if(_gameTier == 1){
+        }else if(_gameTier == 2){
             return miraclePass.hasValidPlatinumPass(user);
         }else{
             return true;
