@@ -102,7 +102,7 @@ contract FundableTournament is PermissionsEnumerable, Multicall, ContractMetadat
         tournamentMapping[_tournamentId].players.push(_player);
     }
 
-    function kickPlayer(uint _tournamentId, address _player) public {
+    function kickPlayer(uint _tournamentId, address _player) public onlyRole(FACTORY_ROLE){
         require(tournamentMapping[_tournamentId].playerRegistered[_player] == true, "Player not registered");
         uint length = tournamentMapping[_tournamentId].players.length;
         
