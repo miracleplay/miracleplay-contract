@@ -92,7 +92,7 @@ contract MiraclePassControl is PermissionsEnumerable, Multicall{
     }
 
     function buyPremiumPass(address _tokenAddress) public {
-        require(!hasValidPlatinumPass(msg.sender), "Already owns a valid Platinum pass");
+        require(!hasValidPremiumPass(msg.sender), "Already owns a valid dPremium pass");
         require(supportedTokens[_tokenAddress], "Token not supported");
         uint256 price = passPrices[_tokenAddress][1];
 
