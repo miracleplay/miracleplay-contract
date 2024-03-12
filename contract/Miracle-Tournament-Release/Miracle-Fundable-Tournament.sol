@@ -116,6 +116,25 @@ contract FundableTournament is PermissionsEnumerable, Multicall, ContractMetadat
         tournamentMapping[_tournamentId].playerRegistered[_player] = false;
     }
 
+    function kickPlayerBatch(uint _tournamentId, address[] memory _players) external onlyRole(FACTORY_ROLE) {
+        require(_players.length > 0, "No players to kick");
+        
+        for (uint j = 0; j < _players.length; j++) {
+            if (tournamentMapping[_tournamentId].playerRegistered[_players[j]]) {
+                uint length = tournamentMapping[_tournamentId].players.length;
+                for (uint i = 0; i < length; i++) {
+                    if (tournamentMapping[_tournamentId].players[i] == _players[j]) {
+                        tournamentMapping[_tournamentId].players[i] = tournamentMapping[_tournamentId].players[length - 1];
+                        tournamentMapping[_tournamentId].players.pop();
+                        break;
+                    }
+                }
+                tournamentMapping[_tournamentId].playerRegistered[_players[j]] = false;
+            }
+        }
+    }
+
+
     function updateScore(uint tournamentId, string calldata _uri) external onlyRole(FACTORY_ROLE) {
         tournamentMapping[tournamentId].scoreURI = _uri;
     }
