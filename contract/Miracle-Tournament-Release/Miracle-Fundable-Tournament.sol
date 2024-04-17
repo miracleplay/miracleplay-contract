@@ -6,7 +6,7 @@
 //   |:  1   |:  1   |:  1   |:  1   |:  |   |:  1   |:  |:  |   |:  1   |   |:  1   |:  |   |:  1    |:  1   |
 //   |::.. . |::.. . |\:.. ./|::.. . |::.|   |::.. . |::.|::.|   |::.. . |   |::.. . |::.|:. |::.. .  |::.. . |
 //   `-------`-------' `---' `-------`--- ---`-------`---`--- ---`-------'   `-------`--- ---`-------'`-------'
-//   MiracleTournament V0.8.2 Fundable
+//   MiracleTournament V0.8.3 Fundable
 pragma solidity ^0.8.22;    
 
 import "./Miracle-Fundable-Escrow.sol";
@@ -29,6 +29,7 @@ contract FundableTournament is PermissionsEnumerable, Multicall, ContractMetadat
     struct Tournament {
         bool created;
         bool isFunding;
+        bool isAdminTournament;
         address [] players;
         mapping(address => bool) playerRegistered;
         address [] ranker;
@@ -48,8 +49,8 @@ contract FundableTournament is PermissionsEnumerable, Multicall, ContractMetadat
     event ScoreUpdated(uint tournamentId, string uri);
     event ShuffledPlayers(uint tournamentId, uint playersCount);
 
-    bytes32 private constant FACTORY_ROLE = keccak256("FACTORY_ROLE");
-    bytes32 private constant ESCROW_ROLE = keccak256("ESCROW_ROLE");
+    bytes32 public constant ESCROW_ROLE = keccak256("ESCROW_ROLE");
+    bytes32 public constant FACTORY_ROLE = keccak256("FACTORY_ROLE");
 
     constructor(address _VoteToken, address _BattlePoint, string memory _contractURI)  {
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
@@ -79,9 +80,10 @@ contract FundableTournament is PermissionsEnumerable, Multicall, ContractMetadat
         EscrowAddr = _escrowAddr;
     }
 
-    function createTournament(uint _tournamentId, bool _isFunding, address _organizer, uint _registerStartTime, uint _registerEndTime, uint _prizeCount, uint _playerLimit) public onlyRole(ESCROW_ROLE) {
+    function createTournament(uint _tournamentId, bool _isFunding, bool _isAdminTournament, address _organizer, uint _registerStartTime, uint _registerEndTime, uint _prizeCount, uint _playerLimit) public onlyRole(ESCROW_ROLE) {
         Tournament storage newTournament = tournamentMapping[_tournamentId];
         newTournament.created = true;
+        newTournament.isAdminTournament = _isAdminTournament;
         newTournament.isFunding = _isFunding;
         newTournament.organizer = _organizer;
         newTournament.registerStartTime = _registerStartTime;

@@ -6,11 +6,11 @@
 //   |:  1   |:  1   |:  1   |:  1   |:  |   |:  1   |:  |:  |   |:  1   |   |:  1   |:  |   |:  1    |:  1   |
 //   |::.. . |::.. . |\:.. ./|::.. . |::.|   |::.. . |::.|::.|   |::.. . |   |::.. . |::.|:. |::.. .  |::.. . |
 //   `-------`-------' `---' `-------`--- ---`-------`---`--- ---`-------'   `-------`--- ---`-------'`-------'
-//   MiracleEscrow V0.8.3 Fundable
+//   MiracleEscrow V0.8.2 Fundable
 pragma solidity ^0.8.22;
 
 import "./Miracle-Asset-Master.sol";
-import "./Miracle-Fundable-Tournament.sol";
+import "./Miracle-Fundable-Tournament-082.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@thirdweb-dev/contracts/extension/PermissionsEnumerable.sol";
 import "@thirdweb-dev/contracts/extension/Multicall.sol";
@@ -50,8 +50,7 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
     iMiraclePass public miraclePass;
 
     // Permissions
-    bytes32 public constant TOURNAMENT_ROLE = keccak256("TOURNAMENT_ROLE");
-    bytes32 public constant FACTORY_ROLE = keccak256("FACTORY_ROLE");
+    bytes32 private constant TOURNAMENT_ROLE = keccak256("TOURNAMENT_ROLE");
 
     FundableTournament public miracletournament;
 
@@ -174,6 +173,7 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
         
         Tournament storage newTournament = tournamentMapping[_tournamentInfo[0]];
         require(newTournament.tournamentCreated == false, "Tournament already created.");
+        _payFeeCreate();
 
         newTournament.organizer = msg.sender;
         newTournament.isFunding = _isFunding;
@@ -190,10 +190,7 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
         newTournament.tournamentURI = _tournamentURI;
         newTournament.PlayersLimit = _playerLimit;
         // createTournament(uint _tournamentId, bool _isFunding, address _organizer, uint _registerStartTime, uint _registerEndTime, uint _prizeCount, uint _playerLimit)
-        miracletournament.createTournament(_tournamentInfo[0], _isFunding, isFactory(msg.sender), msg.sender, _regStartEndTime[0], _regStartEndTime[1], _prizeAmountArray.length, _playerLimit);
-
-        _payFeeCreate();
-
+        miracletournament.createTournament(_tournamentInfo[0], _isFunding, msg.sender, _regStartEndTime[0], _regStartEndTime[1], _prizeAmountArray.length, _playerLimit);
         if (_isFunding){
             createFunding(_tournamentInfo[0], _FundStartEndTime[0], _FundStartEndTime[1], _prizeFeeToken[0], _prizeFeeAmount[0]);
         } else {
@@ -500,10 +497,6 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
             (uint256 amount,,) = stakingContracts[i].stakings(user);
             totalAmount += amount;
         }
-    }
-
-    function isFactory(address user) public view returns (bool isFactory_role) {
-        return hasRole(FACTORY_ROLE, user);
     }
 
     function calculateMaxFundingLimit(uint256 stakedNFTs) public view returns (uint256) {
