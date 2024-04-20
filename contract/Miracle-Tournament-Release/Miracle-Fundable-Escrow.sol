@@ -98,7 +98,7 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
         for (uint i = 0; i < _stakingContractAddresses.length; i++) {
             stakingContracts.push(IStakingContract(_stakingContractAddresses[i]));
         }
-        // Set default dev royalty 
+        // Set default dev royalty d
         RoyaltyPrizeDev = 5;
         RoyaltyregfeeDev = 5;
         // Set default platform royalty 
@@ -175,6 +175,13 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
         Tournament storage newTournament = tournamentMapping[_tournamentInfo[0]];
         require(newTournament.tournamentCreated == false, "Tournament already created.");
 
+        bool _isSponsor = isSponsor(msg.sender);
+        if(!_isSponsor){
+            if(_isFunding){
+                revert('Funding tournaments can only be created by sponsors.');
+            }
+        }
+
         newTournament.organizer = msg.sender;
         newTournament.isFunding = _isFunding;
         newTournament.tier = _tournamentInfo[1];
@@ -190,7 +197,7 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
         newTournament.tournamentURI = _tournamentURI;
         newTournament.PlayersLimit = _playerLimit;
         // createTournament(uint _tournamentId, bool _isFunding, address _organizer, uint _registerStartTime, uint _registerEndTime, uint _prizeCount, uint _playerLimit)
-        miracletournament.createTournament(_tournamentInfo[0], _isFunding, isFactory(msg.sender), msg.sender, _regStartEndTime[0], _regStartEndTime[1], _prizeAmountArray.length, _playerLimit);
+        miracletournament.createTournament(_tournamentInfo[0], _isFunding, _isSponsor, msg.sender, _regStartEndTime[0], _regStartEndTime[1], _prizeAmountArray.length, _playerLimit);
 
         _payFeeCreate();
 
@@ -502,7 +509,7 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
         }
     }
 
-    function isFactory(address user) public view returns (bool isFactory_role) {
+    function isSponsor(address user) public view returns (bool isSponsorRole) {
         return hasRole(FACTORY_ROLE, user);
     }
 
