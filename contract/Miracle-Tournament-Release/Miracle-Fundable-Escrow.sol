@@ -178,7 +178,7 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
         bool _isSponsor = isSponsor(msg.sender);
         if(!_isSponsor){
             if(_isFunding){
-                revert('Funding tournaments can only be created by sponsors.');
+                revert("Funding tournaments can only be created by sponsors.");
             }
         }
 
