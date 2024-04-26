@@ -29,7 +29,7 @@ contract FundableTournament is PermissionsEnumerable, Multicall, ContractMetadat
     struct Tournament {
         bool created;
         bool isFunding;
-        bool isAdminTournament;
+        bool isSponsorTournament;
         address [] players;
         mapping(address => bool) playerRegistered;
         address [] ranker;
@@ -80,10 +80,10 @@ contract FundableTournament is PermissionsEnumerable, Multicall, ContractMetadat
         EscrowAddr = _escrowAddr;
     }
 
-    function createTournament(uint _tournamentId, bool _isFunding, bool _isAdminTournament, address _organizer, uint _registerStartTime, uint _registerEndTime, uint _prizeCount, uint _playerLimit) public onlyRole(ESCROW_ROLE) {
+    function createTournament(uint _tournamentId, bool _isFunding, bool _isSponsorTournament, address _organizer, uint _registerStartTime, uint _registerEndTime, uint _prizeCount, uint _playerLimit) public onlyRole(ESCROW_ROLE) {
         Tournament storage newTournament = tournamentMapping[_tournamentId];
         newTournament.created = true;
-        newTournament.isAdminTournament = _isAdminTournament;
+        newTournament.isSponsorTournament = _isSponsorTournament;
         newTournament.isFunding = _isFunding;
         newTournament.organizer = _organizer;
         newTournament.registerStartTime = _registerStartTime;
@@ -174,8 +174,11 @@ contract FundableTournament is PermissionsEnumerable, Multicall, ContractMetadat
             prizeAddr[i] = _rankers[i];
         }
 
-        _mintVoteToken(_tournamentId, _rankers);
-        _mintBattlePoint(_tournamentId, _rankers);
+        if(_tournament.isSponsorTournament){
+            _mintVoteToken(_tournamentId, _rankers);
+            _mintBattlePoint(_tournamentId, _rankers);
+        }
+
         FundableTournamentEscrow(EscrowAddr).endedTournament(_tournamentId, prizeAddr);
         _tournament.tournamentEnded = true;
 

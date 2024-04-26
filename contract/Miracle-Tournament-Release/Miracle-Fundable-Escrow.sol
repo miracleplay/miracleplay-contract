@@ -37,6 +37,8 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
     uint public RoyaltyregfeeDev;
     uint public RoyaltyPrizeFlp;
     uint public RoyaltyregfeeFlp;
+    uint public RoyaltyPrizeCustom;
+    uint public RoyaltyregfeeCustom;
     address public royaltyAddrDev;
     address public royaltyAddrFlp;
     // Funding setting
@@ -58,6 +60,7 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
     struct Tournament {
         address organizer;
         bool isFunding;
+        bool isSponsored;
         uint tier;
         IERC20 prizeToken;
         IERC20 feeToken;
@@ -98,12 +101,15 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
         for (uint i = 0; i < _stakingContractAddresses.length; i++) {
             stakingContracts.push(IStakingContract(_stakingContractAddresses[i]));
         }
-        // Set default dev royalty d
+        // Set default dev royalty
         RoyaltyPrizeDev = 5;
         RoyaltyregfeeDev = 5;
         // Set default platform royalty 
         RoyaltyPrizeFlp = 5;
         RoyaltyregfeeFlp = 5;
+        // Set custom user royalty
+        RoyaltyPrizeCustom = 5;
+        RoyaltyregfeeCustom = 0;
         // Set default funding setting
         minFundingRate = 100;
         baseLimit = 200e6;
@@ -160,7 +166,7 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
     }
 
     // Create tournament
-    function createTournamentEscrow(uint256[] memory _tournamentInfo, bool _isFunding, address[] memory _prizeFeeToken, uint256[] memory _prizeFeeAmount, uint256[] memory _regStartEndTime, uint256[] memory _FundStartEndTime, uint256[] memory _prizeAmountArray, string memory _tournamentURI, uint _playerLimit) external {
+    function createTournamentEscrow(uint256[] memory _tournamentInfo, bool _isFunding, address[] memory _prizeFeeToken, uint256[] memory _prizeFeeAmount, uint256[] memory _regStartEndTime, uint256[] memory _FundStartEndTime, uint256[] memory _prizeAmountArray, string memory _tournamentURI, uint _playerLimit, address[] memory feeUsers) external {
         // Create Tournament Pamameter
         // _tournamentInfo 0-TournamentId, 1-TournamentTier
         // Escrow -> Tournament
@@ -180,10 +186,12 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
             if(_isFunding){
                 revert("Funding tournaments can only be created by sponsors.");
             }
+        }else{
         }
 
         newTournament.organizer = msg.sender;
         newTournament.isFunding = _isFunding;
+        newTournament.isSponsored = _isSponsor;
         newTournament.tier = _tournamentInfo[1];
         newTournament.prizeToken = IERC20(_prizeFeeToken[0]);
         newTournament.feeToken = IERC20(_prizeFeeToken[1]);
@@ -196,7 +204,6 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
         newTournament.tournamentCanceled = false;
         newTournament.tournamentURI = _tournamentURI;
         newTournament.PlayersLimit = _playerLimit;
-        // createTournament(uint _tournamentId, bool _isFunding, address _organizer, uint _registerStartTime, uint _registerEndTime, uint _prizeCount, uint _playerLimit)
         miracletournament.createTournament(_tournamentInfo[0], _isFunding, _isSponsor, msg.sender, _regStartEndTime[0], _regStartEndTime[1], _prizeAmountArray.length, _playerLimit);
 
         _payFeeCreate();
