@@ -42,7 +42,6 @@ contract FundableTournament is PermissionsEnumerable, Multicall, ContractMetadat
         string scoreURI;
     }
 
-    address admin;
     mapping(uint => Tournament) public tournamentMapping;
 
     event NewPersonalRecord(uint tournamentId, address account, uint score);
