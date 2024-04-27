@@ -6,7 +6,7 @@
 //   |:  1   |:  1   |:  1   |:  1   |:  |   |:  1   |:  |:  |   |:  1   |   |:  1   |:  |   |:  1    |:  1   |
 //   |::.. . |::.. . |\:.. ./|::.. . |::.|   |::.. . |::.|::.|   |::.. . |   |::.. . |::.|:. |::.. .  |::.. . |
 //   `-------`-------' `---' `-------`--- ---`-------`---`--- ---`-------'   `-------`--- ---`-------'`-------'
-//   MiracleEscrow V0.8.3 Fundable
+//   MiracleEscrow V0.8.3 Fundable Tournament / Sponsored Tournament
 pragma solidity ^0.8.22;
 
 import "./Miracle-Asset-Master.sol";
@@ -34,11 +34,11 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
     address public admin;
     // Royalty setting
     uint public RoyaltyPrizeDev;
-    uint public RoyaltyregfeeDev;
+    uint public RoyaltyRegfeeDev;
     uint public RoyaltyPrizeFlp;
-    uint public RoyaltyregfeeFlp;
-    uint public RoyaltyPrizeCustom;
-    uint public RoyaltyregfeeCustom;
+    uint public RoyaltyRegfeeFlp;
+    uint public RoyaltyPrizeReferee;
+    uint public RoyaltyRegfeeReferee;
     address public royaltyAddrDev;
     address public royaltyAddrFlp;
     // Funding setting
@@ -72,6 +72,7 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
         bool tournamentEnded;
         bool tournamentCanceled;
         string tournamentURI;
+        address[] Referees;
         uint PlayersLimit;
     }
     mapping(uint => Tournament) public tournamentMapping;
@@ -103,13 +104,13 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
         }
         // Set default dev royalty
         RoyaltyPrizeDev = 5;
-        RoyaltyregfeeDev = 5;
+        RoyaltyRegfeeDev = 5;
         // Set default platform royalty 
         RoyaltyPrizeFlp = 5;
-        RoyaltyregfeeFlp = 5;
-        // Set custom user royalty
-        RoyaltyPrizeCustom = 5;
-        RoyaltyregfeeCustom = 0;
+        RoyaltyRegfeeFlp = 5;
+        // Set Referee user royalty
+        RoyaltyPrizeReferee = 5;
+        RoyaltyRegfeeReferee = 0;
         // Set default funding setting
         minFundingRate = 100;
         baseLimit = 200e6;
@@ -166,10 +167,10 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
     }
 
     // Create tournament
-    function createTournamentEscrow(uint256[] memory _tournamentInfo, bool _isFunding, address[] memory _prizeFeeToken, uint256[] memory _prizeFeeAmount, uint256[] memory _regStartEndTime, uint256[] memory _FundStartEndTime, uint256[] memory _prizeAmountArray, string memory _tournamentURI, uint _playerLimit, address[] memory feeUsers) external {
+    function createTournamentEscrow(uint256[] memory _tournamentInfo, bool _isFunding, address[] memory _prizeFeeToken, uint256[] memory _prizeFeeAmount, uint256[] memory _regStartEndTime, uint256[] memory _FundStartEndTime, uint256[] memory _prizeAmountArray, string memory _tournamentURI, uint _playerLimit, address[] memory Referees) external {
+        // Escrow -> Tournament
         // Create Tournament Pamameter
         // _tournamentInfo 0-TournamentId, 1-TournamentTier
-        // Escrow -> Tournament
         require(_FundStartEndTime[0] < _FundStartEndTime[1], "Invalid funding time range");
         require(_regStartEndTime[0] < _regStartEndTime[1], "Invalid join tournament time range");
         uint256 totalWithdrawAmount;
@@ -182,11 +183,12 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
         require(newTournament.tournamentCreated == false, "Tournament already created.");
 
         bool _isSponsor = isSponsor(msg.sender);
-        if(!_isSponsor){
+        if(_isSponsor){
+            newTournament.Referees = Referees;
+        }else{
             if(_isFunding){
                 revert("Funding tournaments can only be created by sponsors.");
             }
-        }else{
         }
 
         newTournament.organizer = msg.sender;
@@ -250,8 +252,6 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
         require(_tournament.joinFee <= _tournament.feeToken.balanceOf(msg.sender), "Insufficient balance.");
         require(_tournament.organizer != msg.sender, "Organizers cannot register.");
         require(tierValify(_tournament.tier, msg.sender), "There are no required passes for the tournament.");
-
-        // 사용자 티어 확인 로직 필요
 
         if (_tournament.isFunding){
             Funding storage funding = fundingMapping[_tournamentId];
@@ -366,8 +366,8 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
         Tournament storage _tournament = tournamentMapping[_tournamentId];
         // Calculate join fee and transfer
         uint256 _feeAmount = _tournament.feeBalance;
-        uint256 _feeDev = (_feeAmount * RoyaltyregfeeDev) / 100;
-        uint256 _feeFlp = (_feeAmount * RoyaltyregfeeFlp) / 100;
+        uint256 _feeDev = (_feeAmount * RoyaltyRegfeeDev) / 100;
+        uint256 _feeFlp = (_feeAmount * RoyaltyRegfeeFlp) / 100;
         if(_tournament.isFunding){
             uint256 _feeForInvestors = _feeAmount - (_feeDev + _feeFlp);
             _transferToken(_tournament.feeToken, royaltyAddrDev, _feeDev);
@@ -406,6 +406,16 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
                 uint256 _prizeDev = (_prizeAmount * RoyaltyPrizeDev) / 100;
                 uint256 _prizeFlp = (_prizeAmount * RoyaltyPrizeFlp) / 100;
                 uint256 _prizeUser = _prizeAmount - (_prizeDev + _prizeFlp);
+
+                if (_tournament.Referees.length > 0 && _tournament.Referees[0] != address(0)) {
+                    uint256 _totalRefereePrize = (_prizeAmount * RoyaltyPrizeReferee) / 100; // 00% of prize amount for Referees
+                    uint256 _prizePerReferee = _totalRefereePrize / _tournament.Referees.length;
+                    // Transfer prize to each Referee
+                    for (uint256 j = 0; j < _tournament.Referees.length; j++) {
+                        _transferToken(_tournament.prizeToken, _tournament.Referees[j], _prizePerReferee);
+                    }
+                    _prizeUser -= _totalRefereePrize; // Adjust user prize after Referees' distribution
+                }
                 _transferToken(_tournament.prizeToken, royaltyAddrDev, _prizeDev);
                 _transferToken(_tournament.prizeToken, royaltyAddrFlp, _prizeFlp);
                 _transferToken(_tournament.prizeToken, _winner[i], _prizeUser);
@@ -467,13 +477,21 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
         RoyaltyPrizeFlp = _royaltyRate;
     }
 
+    function setPrizeRoyaltyAbtRate(uint _royaltyRate) external onlyRole(DEFAULT_ADMIN_ROLE){
+        RoyaltyPrizeReferee = _royaltyRate;
+    }
+
     // Set regfee royalty rate
     function setRegfeeRoyaltyDevRate(uint _royaltyRate) external onlyRole(DEFAULT_ADMIN_ROLE){
-        RoyaltyregfeeDev = _royaltyRate;
+        RoyaltyRegfeeDev = _royaltyRate;
     }
 
     function setRegfeeRoyaltyFlpRate(uint _royaltyRate) external onlyRole(DEFAULT_ADMIN_ROLE){
-        RoyaltyregfeeFlp = _royaltyRate;
+        RoyaltyRegfeeFlp = _royaltyRate;
+    }
+
+    function setRegfeeRoyaltyAbtRate(uint _royaltyRate) external onlyRole(DEFAULT_ADMIN_ROLE){
+        RoyaltyRegfeeReferee = _royaltyRate;
     }
 
     // Set Funding

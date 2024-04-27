@@ -6,7 +6,7 @@
 //   |:  1   |:  1   |:  1   |:  1   |:  |   |:  1   |:  |:  |   |:  1   |   |:  1   |:  |   |:  1    |:  1   |
 //   |::.. . |::.. . |\:.. ./|::.. . |::.|   |::.. . |::.|::.|   |::.. . |   |::.. . |::.|:. |::.. .  |::.. . |
 //   `-------`-------' `---' `-------`--- ---`-------`---`--- ---`-------'   `-------`--- ---`-------'`-------'
-//   MiracleTournament V0.8.3 Fundable
+//   MiracleEscrow V0.8.3 Fundable Tournament / Sponsored Tournament
 pragma solidity ^0.8.22;    
 
 import "./Miracle-Fundable-Escrow.sol";
