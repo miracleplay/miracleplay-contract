@@ -183,12 +183,8 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
         require(newTournament.tournamentCreated == false, "Tournament already created.");
 
         bool _isSponsor = isSponsor(msg.sender);
-        if(_isSponsor){
-            newTournament.Referees = Referees;
-        }else{
-            if(_isFunding){
-                revert("Funding tournaments can only be created by sponsors.");
-            }
+        if(!_isSponsor){
+            revert("Funding tournaments can only be created by sponsors.");
         }
 
         newTournament.organizer = msg.sender;
@@ -206,6 +202,7 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
         newTournament.tournamentCanceled = false;
         newTournament.tournamentURI = _tournamentURI;
         newTournament.PlayersLimit = _playerLimit;
+        newTournament.Referees = Referees;
         miracletournament.createTournament(_tournamentInfo[0], _isFunding, _isSponsor, msg.sender, _regStartEndTime[0], _regStartEndTime[1], _prizeAmountArray.length, _playerLimit);
 
         _payFeeCreate();
@@ -477,7 +474,7 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
         RoyaltyPrizeFlp = _royaltyRate;
     }
 
-    function setPrizeRoyaltyAbtRate(uint _royaltyRate) external onlyRole(DEFAULT_ADMIN_ROLE){
+    function setPrizeRoyaltyRefRate(uint _royaltyRate) external onlyRole(DEFAULT_ADMIN_ROLE){
         RoyaltyPrizeReferee = _royaltyRate;
     }
 
@@ -490,7 +487,7 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
         RoyaltyRegfeeFlp = _royaltyRate;
     }
 
-    function setRegfeeRoyaltyAbtRate(uint _royaltyRate) external onlyRole(DEFAULT_ADMIN_ROLE){
+    function setRegfeeRoyaltyRefRate(uint _royaltyRate) external onlyRole(DEFAULT_ADMIN_ROLE){
         RoyaltyRegfeeReferee = _royaltyRate;
     }
 
