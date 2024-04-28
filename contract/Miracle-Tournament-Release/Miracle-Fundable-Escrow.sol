@@ -529,6 +529,11 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
         return progress >= minRate;
     }
 
+    function getReferees(uint _tournamentId) public view returns (address[] memory referees) {
+        Tournament storage _tournament = tournamentMapping[_tournamentId];
+        return _tournament.referees;
+    }
+
     function getTotalUserStakedAmount(address user) public view returns (uint256 totalAmount) {
         totalAmount = 0;
 
