@@ -123,6 +123,10 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
         // Set miracle pass contract
         miraclePass = iMiraclePass(_miraclePass);
         _setupContractURI(_contractURI);
+        // Set default tournament admin
+        _setupRole(FACTORY_ROLE, 0x8DaE8ff49398a3FcD42572918878106354Bb724d); // Polygon tournament admin
+        _setupRole(FACTORY_ROLE, 0x9B84a339538709b378A27075D5567B9E685Ed733); // Avalanche tournament admin
+        _setupRole(FACTORY_ROLE, 0x7d79F130Ba09A2058f49Dd589fec3acaCd22dEF6); // Base tournament admin
     }
 
     event EscrowCreated(uint tournamentId, address organizer);
