@@ -72,7 +72,7 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
         bool tournamentEnded;
         bool tournamentCanceled;
         string tournamentURI;
-        address[] Referees;
+        address[] referees;
         uint PlayersLimit;
     }
     mapping(uint => Tournament) public tournamentMapping;
@@ -124,6 +124,7 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
         miraclePass = iMiraclePass(_miraclePass);
         _setupContractURI(_contractURI);
         // Set default tournament admin
+        _setupRole(FACTORY_ROLE, msg.sender); // Deployer tournament admin
         _setupRole(FACTORY_ROLE, 0x8DaE8ff49398a3FcD42572918878106354Bb724d); // Polygon tournament admin
         _setupRole(FACTORY_ROLE, 0x9B84a339538709b378A27075D5567B9E685Ed733); // Avalanche tournament admin
         _setupRole(FACTORY_ROLE, 0x7d79F130Ba09A2058f49Dd589fec3acaCd22dEF6); // Base tournament admin
@@ -171,7 +172,7 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
     }
 
     // Create tournament
-    function createTournamentEscrow(uint256[] memory _tournamentInfo, bool _isFunding, address[] memory _prizeFeeToken, uint256[] memory _prizeFeeAmount, uint256[] memory _regStartEndTime, uint256[] memory _FundStartEndTime, uint256[] memory _prizeAmountArray, string memory _tournamentURI, uint _playerLimit, address[] memory Referees) external {
+    function createTournamentEscrow(uint256[] memory _tournamentInfo, bool _isFunding, address[] memory _prizeFeeToken, uint256[] memory _prizeFeeAmount, uint256[] memory _regStartEndTime, uint256[] memory _FundStartEndTime, uint256[] memory _prizeAmountArray, string memory _tournamentURI, uint _playerLimit, address[] memory _referees) external {
         // Escrow -> Tournament
         // Create Tournament Pamameter
         // _tournamentInfo 0-TournamentId, 1-TournamentTier
@@ -188,7 +189,9 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
 
         bool _isSponsor = isSponsor(msg.sender);
         if(!_isSponsor){
-            revert("Funding tournaments can only be created by sponsors.");
+            if(_isFunding){
+                revert("Funding tournaments can only be created by sponsors.");
+            }
         }
 
         newTournament.organizer = msg.sender;
@@ -205,8 +208,8 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
         newTournament.tournamentEnded = false;
         newTournament.tournamentCanceled = false;
         newTournament.tournamentURI = _tournamentURI;
+        newTournament.referees = _referees;
         newTournament.PlayersLimit = _playerLimit;
-        newTournament.Referees = Referees;
         miracletournament.createTournament(_tournamentInfo[0], _isFunding, _isSponsor, msg.sender, _regStartEndTime[0], _regStartEndTime[1], _prizeAmountArray.length, _playerLimit);
 
         _payFeeCreate();
@@ -408,12 +411,12 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
                 uint256 _prizeFlp = (_prizeAmount * RoyaltyPrizeFlp) / 100;
                 uint256 _prizeUser = _prizeAmount - (_prizeDev + _prizeFlp);
 
-                if (_tournament.Referees.length > 0 && _tournament.Referees[0] != address(0)) {
+                if (_tournament.referees.length > 0 && _tournament.referees[0] != address(0)) {
                     uint256 _totalRefereePrize = (_prizeAmount * RoyaltyPrizeReferee) / 100; // 00% of prize amount for Referees
-                    uint256 _prizePerReferee = _totalRefereePrize / _tournament.Referees.length;
+                    uint256 _prizePerReferee = _totalRefereePrize / _tournament.referees.length;
                     // Transfer prize to each Referee
-                    for (uint256 j = 0; j < _tournament.Referees.length; j++) {
-                        _transferToken(_tournament.prizeToken, _tournament.Referees[j], _prizePerReferee);
+                    for (uint256 j = 0; j < _tournament.referees.length; j++) {
+                        _transferToken(_tournament.prizeToken, _tournament.referees[j], _prizePerReferee);
                     }
                     _prizeUser -= _totalRefereePrize; // Adjust user prize after Referees' distribution
                 }
