@@ -10,7 +10,7 @@
 pragma solidity ^0.8.22;
 
 import "./Miracle-Asset-Master.sol";
-import "./Miracle-Fundable-Tournament-082.sol";
+import "./Miracle-Fundable-Tournament.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@thirdweb-dev/contracts/extension/PermissionsEnumerable.sol";
 import "@thirdweb-dev/contracts/extension/Multicall.sol";

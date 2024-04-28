@@ -9,7 +9,7 @@
 //   MiracleTournament V0.8.2 Fundable
 pragma solidity ^0.8.22;    
 
-import "./Miracle-Fundable-Escrow-082.sol";
+import "./Miracle-Fundable-Escrow.sol";
 import "@thirdweb-dev/contracts/extension/PermissionsEnumerable.sol";
 import "@thirdweb-dev/contracts/extension/Multicall.sol";
 import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
