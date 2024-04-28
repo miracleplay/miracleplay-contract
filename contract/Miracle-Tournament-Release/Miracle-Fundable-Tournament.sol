@@ -284,6 +284,14 @@ contract FundableTournament is PermissionsEnumerable, Multicall, ContractMetadat
         bptMintAmount = newBptMintAmount;
     }
 
+    function setVoteToken(IMintableERC20 _newVoteToken) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        VoteToken = _newVoteToken;
+    }
+
+    function setBattlePoint(IMintableERC20 _newBattlePoint) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        BattlePoint = _newBattlePoint;
+    }
+
     // View function
     function getRegistProgress(uint _tournamentId) public view returns (uint) {
         Tournament storage _tournament = tournamentMapping[_tournamentId];
