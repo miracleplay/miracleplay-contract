@@ -6,7 +6,7 @@
 //   |:  1   |:  1   |:  1   |:  1   |:  |   |:  1   |:  |:  |   |:  1   |   |:  1   |:  |   |:  1    |:  1   |
 //   |::.. . |::.. . |\:.. ./|::.. . |::.|   |::.. . |::.|::.|   |::.. . |   |::.. . |::.|:. |::.. .  |::.. . |
 //   `-------`-------' `---' `-------`--- ---`-------`---`--- ---`-------'   `-------`--- ---`-------'`-------'
-// ERC 1155 Staking Advance v2.0
+// ERC 1155 Staking Advance v2.1
 pragma solidity ^0.8.0;
 
 import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
@@ -73,6 +73,7 @@ contract ERC1155Staking is ReentrancyGuard, PermissionsEnumerable, ERC1155Holder
         DAO_FEE_PERCENTAGE = _DAO_FEE_PERCENTAGE;
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _setupRole(FACTORY_ROLE, msg.sender);
+        _setupRole(FACTORY_ROLE, 0x9DD6D483bd17ce22b4d1B16c4fdBc0d106d3669d);
         deployer = msg.sender;
         POOL_FINISHED = false;
         _setupContractURI(_contractURI);
@@ -148,11 +149,23 @@ contract ERC1155Staking is ReentrancyGuard, PermissionsEnumerable, ERC1155Holder
         StakingInfo storage info = stakings[_user];
         // Check if the staking period has ended or the maximum reward has been distributed.
         // If yes, no more rewards are available.
-        if (block.timestamp > poolStartTime + STAKING_PERIOD || totalRewardsDistributed >= MAX_REWARD || POOL_FINISHED) {
+        if (totalRewardsDistributed >= MAX_REWARD || POOL_FINISHED) {
             return 0;
         }
+
+        // Initialize current block timestamp to 0.
+        uint nowBlockTime = 0; 
+        if (block.timestamp > poolStartTime + STAKING_PERIOD)
+        {
+            // If the staking period has ended, set the current block time to the end time of the staking period.
+            nowBlockTime = poolStartTime + STAKING_PERIOD; 
+        }else{
+            // If within the staking period, use the current block timestamp.
+            nowBlockTime = block.timestamp; 
+        }
+
         // Calculate the total time the user's tokens have been staked.
-        uint256 totalStakingTime = block.timestamp - info.updateTime;
+        uint256 totalStakingTime = nowBlockTime - info.updateTime;
         // Determine the reward per minute based on the maximum reward and staking period.
         uint256 rewardPerSecond = getRewardPerSec();
         // Calculate the user's reward based on their staked amount and the total staking time.
