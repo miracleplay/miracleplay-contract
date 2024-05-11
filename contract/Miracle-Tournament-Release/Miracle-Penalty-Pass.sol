@@ -52,13 +52,13 @@ contract MiraclePenaltyPassControl is PermissionsEnumerable, Multicall{
     // Penalty Pass
     function getPenaltyPassPrice(address tokenAddress) public view returns (uint256) {
         require(supportedTokens[tokenAddress], "Token not supported");
-        return passPrices[tokenAddress][2];
+        return passPrices[tokenAddress][1];
     }
 
     function buyPenaltyPass(address _tokenAddress) public {
         require(!hasValidPenaltyPass(msg.sender), "Already owns a valid Penalty Pass");
         require(supportedTokens[_tokenAddress], "Token not supported");
-        uint256 price = passPrices[_tokenAddress][2];
+        uint256 price = passPrices[_tokenAddress][1];
 
         IERC20 token = IERC20(_tokenAddress);
         require(token.transferFrom(msg.sender, address(this), price), "Token Transfer failed");
