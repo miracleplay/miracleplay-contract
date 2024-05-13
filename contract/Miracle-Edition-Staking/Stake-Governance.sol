@@ -13,6 +13,10 @@ contract VotingContract is PermissionsEnumerable, Multicall, ContractMetadata {
     address public deployer;
     IStakingContract[] public stakingContracts;
     uint256 public currentRound = 1;
+    uint256 public currentStakeReward = 10;
+    
+    uint256 optionStart = 1;
+    uint256 optionEnd = 15;
     
     mapping(uint256 => uint256) public votes; // voteOption => totalPower
     mapping(address => uint256) public voterVotes; // voter => power
@@ -21,6 +25,7 @@ contract VotingContract is PermissionsEnumerable, Multicall, ContractMetadata {
     event VoteCasted(uint256 indexed round, address indexed voter, uint256 option, uint256 power);
     event VoteRetracted(uint256 indexed round, address indexed voter, uint256 option, uint256 power);
     event RoundEnded(uint256 round, uint256[] voteTotals);
+    event FinalResult(uint256 round, uint256 stakeRewardRate);
 
     constructor(address[] memory _stakingContractAddresses, string memory _contractURI) {
         deployer = msg.sender;
@@ -56,7 +61,7 @@ contract VotingContract is PermissionsEnumerable, Multicall, ContractMetadata {
     }
 
     function vote(uint256 option) public {
-        require(option >= 0 && option <= 15, "Invalid vote option");
+        require(option >= optionStart && option <= optionEnd, "Invalid vote option");
         require(voterVotes[msg.sender] == 0, "Already voted");
 
         uint256 power = getVotePower(msg.sender);
@@ -83,7 +88,7 @@ contract VotingContract is PermissionsEnumerable, Multicall, ContractMetadata {
 
     function endRound() external onlyRole(DEFAULT_ADMIN_ROLE) {
         uint256[] memory totals = new uint256[](16);
-        for (uint256 i = 0; i <= 15; i++) {
+        for (uint256 i = optionStart; i <= optionEnd; i++) {
             totals[i] = votes[i];
             votes[i] = 0; // Reset votes for the next round
         }
@@ -92,18 +97,31 @@ contract VotingContract is PermissionsEnumerable, Multicall, ContractMetadata {
         emit RoundEnded(currentRound - 1, totals);
     }
 
+    function uploadFinalResult(uint256 stakeRewardRate) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        currentStakeReward = stakeRewardRate;
+        emit FinalResult(currentRound, stakeRewardRate);
+    }
+
+    function getCurrentRound() public view returns (uint256 round) {
+        return currentRound;
+    }
+
+    function getStakeRewardRate() public view returns (uint256 stakeRewardRate) {
+        return currentStakeReward;
+    }
+
     function getVoterDetails(address voter) public view returns (uint256 option, uint256 power) {
         return (voterOptions[voter], voterVotes[voter]);
     }
 
     function getVoteCountForOption(uint256 option) public view returns (uint256) {
-        require(option >= 0 && option <= 15, "Invalid vote option");
+        require(option >= optionStart && option <= optionEnd, "Invalid vote option");
         return votes[option];
     }
 
     function getAllVoteCounts() public view returns (uint256[] memory) {
         uint256[] memory totals = new uint256[](16);
-        for (uint256 i = 0; i <= 15; i++) {
+        for (uint256 i = optionStart; i <= optionEnd; i++) {
             totals[i] = votes[i];
         }
         return totals;
