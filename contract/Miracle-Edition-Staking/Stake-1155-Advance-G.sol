@@ -149,8 +149,12 @@ contract ERC1155StakingG is ReentrancyGuard, PermissionsEnumerable, ERC1155Holde
         delete stakerIndex[_staker];
     }
 
+    function setGovernanceContracts(address _GovernanceContracts) external {
+        GovernanceContracts = IGovernanceContract(_GovernanceContracts);
+    }
+
     function getRewardRate() public view returns (uint256){
-        return GovernanceContracts.getStakeRewardRate();
+        return GovernanceContracts.getStakeRewardRate() * 10;
     }
 
     // Public function to calculate the reward for a given user.
@@ -174,13 +178,13 @@ contract ERC1155StakingG is ReentrancyGuard, PermissionsEnumerable, ERC1155Holde
             nowBlockTime = block.timestamp; 
         }
 
-        uint256 stakingRewardRate = getRewardRate() / 100;
+        uint256 stakingRewardRate = getRewardRate();
         // Calculate the total time the user's tokens have been staked.
         uint256 totalStakingTime = nowBlockTime - info.updateTime;
         // Determine the reward per minute based on the maximum reward and staking period.
         uint256 rewardPerSecond = getRewardPerSec();
         // Calculate the user's reward based on their staked amount and the total staking time.
-        uint256 userReward = info.amount * rewardPerSecond * totalStakingTime * stakingRewardRate;
+        uint256 userReward = (info.amount * rewardPerSecond * totalStakingTime * stakingRewardRate) / 100;
         // Calculate the payable reward, ensuring it does not exceed the maximum reward limit.
         uint256 payableReward = totalRewardsDistributed + userReward > MAX_REWARD ? 
                                 MAX_REWARD - totalRewardsDistributed : userReward;
