@@ -21,7 +21,7 @@ interface IGovernanceContract {
     function getStakeRewardRate() external view returns (uint256 stakeRewardRate);
 }
 
-contract ERC1155Staking is ReentrancyGuard, PermissionsEnumerable, ERC1155Holder, ContractMetadata, Multicall{
+contract ERC1155StakingG is ReentrancyGuard, PermissionsEnumerable, ERC1155Holder, ContractMetadata, Multicall{
     address public deployer;
     // ERC1155 token interface, representing the stakable NFTs.
     DropERC1155 public immutable erc1155Token;
