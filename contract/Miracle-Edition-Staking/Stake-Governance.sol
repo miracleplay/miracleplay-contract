@@ -17,7 +17,7 @@ interface IStakingContract {
     function stakings(address user) external view returns (uint256, uint256, uint256);
 }
 
-contract VotingContract is PermissionsEnumerable, Multicall, ContractMetadata {
+contract StakingGovernance is PermissionsEnumerable, Multicall, ContractMetadata {
     address public deployer;
     IStakingContract[] public stakingContracts;
     uint256 public currentRound = 1;
