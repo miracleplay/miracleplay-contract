@@ -35,13 +35,14 @@ contract VotingContract is PermissionsEnumerable, Multicall, ContractMetadata {
     event RoundEnded(uint256 round, uint256[] voteTotals);
     event FinalResult(uint256 round, uint256 stakeRewardRate);
 
-    constructor(address[] memory _stakingContractAddresses, string memory _contractURI) {
+    bytes32 public constant FACTORY_ROLE = keccak256("FACTORY_ROLE");
+
+    constructor(string memory _contractURI) {
         deployer = msg.sender;
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _setupRole(FACTORY_ROLE, msg.sender);
+        _setupRole(FACTORY_ROLE, 0x9DD6D483bd17ce22b4d1B16c4fdBc0d106d3669d);
         _setupContractURI(_contractURI);
-        for (uint i = 0; i < _stakingContractAddresses.length; i++) {
-            stakingContracts.push(IStakingContract(_stakingContractAddresses[i]));
-        }
     }
 
     function _canSetContractURI() internal view virtual override returns (bool){
@@ -94,7 +95,7 @@ contract VotingContract is PermissionsEnumerable, Multicall, ContractMetadata {
         emit VoteRetracted(currentRound, msg.sender, option, votedPower);
     }
 
-    function endRound() external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function endRound() external onlyRole(FACTORY_ROLE) {
         uint256[] memory totals = new uint256[](16);
         for (uint256 i = optionStart; i <= optionEnd; i++) {
             totals[i] = votes[i];
@@ -105,7 +106,7 @@ contract VotingContract is PermissionsEnumerable, Multicall, ContractMetadata {
         emit RoundEnded(currentRound - 1, totals);
     }
 
-    function uploadFinalResult(uint256 stakeRewardRate) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function uploadFinalResult(uint256 stakeRewardRate) external onlyRole(FACTORY_ROLE) {
         currentStakeReward = stakeRewardRate;
         emit FinalResult(currentRound, stakeRewardRate);
     }
