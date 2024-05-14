@@ -174,12 +174,13 @@ contract ERC1155Staking is ReentrancyGuard, PermissionsEnumerable, ERC1155Holder
             nowBlockTime = block.timestamp; 
         }
 
+        uint256 stakingRewardRate = getRewardRate() / 100;
         // Calculate the total time the user's tokens have been staked.
         uint256 totalStakingTime = nowBlockTime - info.updateTime;
         // Determine the reward per minute based on the maximum reward and staking period.
         uint256 rewardPerSecond = getRewardPerSec();
         // Calculate the user's reward based on their staked amount and the total staking time.
-        uint256 userReward = info.amount * rewardPerSecond * totalStakingTime;
+        uint256 userReward = info.amount * rewardPerSecond * totalStakingTime * stakingRewardRate;
         // Calculate the payable reward, ensuring it does not exceed the maximum reward limit.
         uint256 payableReward = totalRewardsDistributed + userReward > MAX_REWARD ? 
                                 MAX_REWARD - totalRewardsDistributed : userReward;
