@@ -1,4 +1,12 @@
 // SPDX-License-Identifier: MIT
+//    _______ _______ ___ ___ _______ ______  ___     ___ ______  _______     ___     _______ _______  _______ 
+//   |   _   |   _   |   Y   |   _   |   _  \|   |   |   |   _  \|   _   |   |   |   |   _   |   _   \|   _   |
+//   |   1___|.  1___|.  |   |.  1___|.  |   |.  |   |.  |.  |   |.  1___|   |.  |   |.  1   |.  1   /|   1___|
+//   |____   |.  __)_|.  |   |.  __)_|.  |   |.  |___|.  |.  |   |.  __)_    |.  |___|.  _   |.  _   \|____   |
+//   |:  1   |:  1   |:  1   |:  1   |:  |   |:  1   |:  |:  |   |:  1   |   |:  1   |:  |   |:  1    |:  1   |
+//   |::.. . |::.. . |\:.. ./|::.. . |::.|   |::.. . |::.|::.|   |::.. . |   |::.. . |::.|:. |::.. .  |::.. . |
+//   `-------`-------' `---' `-------`--- ---`-------`---`--- ---`-------'   `-------`--- ---`-------'`-------'
+// ERC 1155 Governance v1.0
 pragma solidity ^0.8.22;
 
 import "@thirdweb-dev/contracts/extension/PermissionsEnumerable.sol";
@@ -6,7 +14,7 @@ import "@thirdweb-dev/contracts/extension/Multicall.sol";
 import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
 
 interface IStakingContract {
-    function stakings(address user) external view returns (uint256 amount, uint256, uint256);
+    function stakings(address user) external view returns (uint256, uint256, uint256);
 }
 
 contract VotingContract is PermissionsEnumerable, Multicall, ContractMetadata {

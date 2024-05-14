@@ -179,7 +179,7 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
     function connectEditionStakings(address[] memory _stakingContractAddresses) external onlyRole(DEFAULT_ADMIN_ROLE){
         // Clear the existing array
         delete stakingContracts;
-            
+        
         for (uint i = 0; i < _stakingContractAddresses.length; i++) {
             stakingContracts.push(IStakingContract(_stakingContractAddresses[i]));
         }

@@ -17,18 +17,24 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@thirdweb-dev/contracts/extension/PermissionsEnumerable.sol";
 import "@thirdweb-dev/contracts/extension/Multicall.sol";
 
+interface IGovernanceContract {
+    function getStakeRewardRate() external view returns (uint256 stakeRewardRate);
+}
+
 contract ERC1155Staking is ReentrancyGuard, PermissionsEnumerable, ERC1155Holder, ContractMetadata, Multicall{
     address public deployer;
     // ERC1155 token interface, representing the stakable NFTs.
     DropERC1155 public immutable erc1155Token;
     // ERC20 token interface, representing the rewards token.
     TokenERC20 public immutable rewardsToken;
+    // Get NFT Staking info from NFT Staking
+    IGovernanceContract public GovernanceContracts;
     // The specific ID of the ERC1155 token that is eligible for staking.
     uint256 public stakingTokenId;
     // Address of the DAO (Decentralized Autonomous Organization) for fee distribution.
     address public daoAddress;
     // Wallet address for managing additional fees.
-    address public ManagerWallet;
+    address public ManagerWallet = 0xAf70641d93e3E7fA3790ec75eFaECAE1bC0f7696;
     // Percentage of the reward allocated as a fee to the DAO.
     uint256 public DAO_FEE_PERCENTAGE;
     // Percentage of the reward allocated as a fee to the fee manager.
@@ -62,14 +68,14 @@ contract ERC1155Staking is ReentrancyGuard, PermissionsEnumerable, ERC1155Holder
 
     bytes32 private constant FACTORY_ROLE = keccak256("FACTORY_ROLE");
 
-    constructor(address _erc1155Token, uint256 _stakingTokenId, uint256 _poolStartTime, uint256 _boforeRewardsDistributed, address _erc20Token, address _daoAddress, address _ManagerWallet, uint256 _DAO_FEE_PERCENTAGE, string memory _contractURI) {
+    constructor(address _erc1155Token, uint256 _stakingTokenId, uint256 _poolStartTime, uint256 _boforeRewardsDistributed, address _erc20Token, address _daoAddress, address _GovernanceContracts, uint256 _DAO_FEE_PERCENTAGE, string memory _contractURI) {
         erc1155Token = DropERC1155(_erc1155Token);
         stakingTokenId = _stakingTokenId;
         poolStartTime = _poolStartTime;
         totalRewardsDistributed = _boforeRewardsDistributed;
         rewardsToken = TokenERC20(_erc20Token);
         daoAddress = _daoAddress;
-        ManagerWallet = _ManagerWallet;
+        GovernanceContracts = IGovernanceContract(_GovernanceContracts);
         DAO_FEE_PERCENTAGE = _DAO_FEE_PERCENTAGE;
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _setupRole(FACTORY_ROLE, msg.sender);
@@ -141,6 +147,10 @@ contract ERC1155Staking is ReentrancyGuard, PermissionsEnumerable, ERC1155Holder
         delete stakings[_staker];
         // Delete the index information of the removed staker.
         delete stakerIndex[_staker];
+    }
+
+    function getRewardRate() public view returns (uint256){
+        return GovernanceContracts.getStakeRewardRate();
     }
 
     // Public function to calculate the reward for a given user.
