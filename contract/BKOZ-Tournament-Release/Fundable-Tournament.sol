@@ -11,7 +11,6 @@ contract FundableTournament is PermissionsEnumerable, Multicall, ContractMetadat
     address payable public EscrowAddr;
     uint[] private OnGoingTournaments;
     uint[] private EndedTournaments;
-    uint[] public mvpMintAmount;
     uint[] public bptMintAmount;
     IMintableERC20 VoteToken;
     IMintableERC20 BattlePoint;
@@ -62,7 +61,6 @@ contract FundableTournament is PermissionsEnumerable, Multicall, ContractMetadat
 
         VoteToken = IMintableERC20(_VoteToken);
         BattlePoint = IMintableERC20(_BattlePoint);
-        mvpMintAmount = [10000000000000000000,5000000000000000000,3000000000000000000,1000000000000000000]; // Wei Default 1st:10 2nd:5 3th:3 other:1 
         bptMintAmount = [100000000000000000000,50000000000000000000,10000000000000000000]; // Wei Default 1st:100 2nd:50 other:10
         minTournamentRate = 100;
         deployer = msg.sender;
@@ -180,7 +178,6 @@ contract FundableTournament is PermissionsEnumerable, Multicall, ContractMetadat
         }
 
         if(_tournament.isSponsorTournament){
-            _mintVoteToken(_tournamentId, _rankers);
             _mintBattlePoint(_tournamentId, _rankers);
         }
 
@@ -202,22 +199,6 @@ contract FundableTournament is PermissionsEnumerable, Multicall, ContractMetadat
 
         removeOnGoingTournament(_tournamentId);
         addEndedTournament(_tournamentId);
-    }
-
-    function _mintVoteToken(uint _tournamentId, address[] calldata _rankers) internal {
-        Tournament storage _tournament = tournamentMapping[_tournamentId];
-        address[] memory _entryPlayers = _tournament.players;
-
-        for (uint i = 0; i < _rankers.length; i++) {
-            uint mintAmount = (i < mvpMintAmount.length) ? mvpMintAmount[i] : mvpMintAmount[mvpMintAmount.length - 1];
-            VoteToken.mintTo(_rankers[i], mintAmount);
-        }
-
-        for (uint j = 0; j < _entryPlayers.length; j++) {
-            if (!_isRanker(_entryPlayers[j], _rankers)) {
-                VoteToken.mintTo(_entryPlayers[j], mvpMintAmount[mvpMintAmount.length - 1]);
-            }
-        }
     }
 
     function _mintBattlePoint(uint _tournamentId, address[] calldata _rankers) internal {
@@ -266,10 +247,6 @@ contract FundableTournament is PermissionsEnumerable, Multicall, ContractMetadat
                 break;
             }
         }
-    }
-
-    function updateMvpMintAmount(uint[] calldata newMvpMintAmount) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        mvpMintAmount = newMvpMintAmount;
     }
 
     function updateBptMintAmount(uint[] calldata newBptMintAmount) external onlyRole(DEFAULT_ADMIN_ROLE) {

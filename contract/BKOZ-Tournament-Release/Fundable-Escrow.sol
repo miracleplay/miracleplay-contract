@@ -30,7 +30,6 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
     uint public RoyaltyPrizeFlp;
     uint public RoyaltyRegfeeFlp;
     uint public RoyaltyPrizeReferee;
-    uint public RoyaltyRegfeeReferee;
     address public royaltyAddrFlp;
     ReferralSystem private referralSystem;
     // Funding setting
@@ -100,7 +99,6 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
         RoyaltyRegfeeFlp = 5;
         // Set Referee user royalty
         RoyaltyPrizeReferee = 5;
-        RoyaltyRegfeeReferee = 0;
         // Set default funding setting
         minFundingRate = 100;
         baseLimit = 200e6;
@@ -498,10 +496,6 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
         RoyaltyRegfeeFlp = _royaltyRate;
     }
 
-    function setRegfeeRoyaltyRefRate(uint _royaltyRate) external onlyRole(DEFAULT_ADMIN_ROLE){
-        RoyaltyRegfeeReferee = _royaltyRate;
-    }
-
     // Set Funding
     function setMinimumFundingRate(uint _newRate) external onlyRole(DEFAULT_ADMIN_ROLE) {
         require(_newRate > 0 && _newRate <= 100, "Invalid rate");
@@ -561,11 +555,9 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
         if (stakedNFTs <= 1) {
             return baseLimit;
         }   
-
         if (stakedNFTs > maxStakedNFTs) {
             stakedNFTs = maxStakedNFTs;
         }
-
         return baseLimit * stakedNFTs;
     }
 }

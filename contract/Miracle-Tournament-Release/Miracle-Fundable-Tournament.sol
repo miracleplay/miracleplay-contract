@@ -9,7 +9,7 @@
 //   MiracleEscrow V0.8.3 Fundable Tournament / Sponsored Tournament
 pragma solidity ^0.8.22;    
 
-import "./Fundable-Escrow.sol";
+import "./Miracle-Fundable-Escrow.sol";
 import "@thirdweb-dev/contracts/extension/PermissionsEnumerable.sol";
 import "@thirdweb-dev/contracts/extension/Multicall.sol";
 import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
@@ -67,6 +67,13 @@ contract FundableTournament is PermissionsEnumerable, Multicall, ContractMetadat
         _setupRole(FACTORY_ROLE, 0x2D328292CDfA09e4Aa247F45753A13e546cEB29B);
         _setupRole(FACTORY_ROLE, 0x8914b41C3D0491E751d4eA3EbfC04c42D7275A75);
         _setupRole(FACTORY_ROLE, 0xe818aa4d851645aB525da5C11Ac231e2fAEDA322);
+        _setupRole(FACTORY_ROLE, 0x116CAceb39AEA14BC93EF7f67f9176A32470F073);
+        _setupRole(FACTORY_ROLE, 0xC498f5e9cba0637De9A3d59FBc113286230E7EB2);
+        _setupRole(FACTORY_ROLE, 0x7a43acBA2D4C5ECe3A3114b48d22e6aedce72890);
+        _setupRole(FACTORY_ROLE, 0x0ea564b0119555B14e96327A9ea8463bCCC39291);
+        _setupRole(FACTORY_ROLE, 0x2ABc2dB509B7519b018FCf3194906a89c0aa127e);
+        _setupRole(FACTORY_ROLE, 0x6C5d470a4777A81655Cb220dC5C8c6B38D2DF257);
+        _setupRole(FACTORY_ROLE, 0xA49DF5b16422cc2afee9eeEe3f161e1e035C3C91);
 
         VoteToken = IMintableERC20(_VoteToken);
         BattlePoint = IMintableERC20(_BattlePoint);
