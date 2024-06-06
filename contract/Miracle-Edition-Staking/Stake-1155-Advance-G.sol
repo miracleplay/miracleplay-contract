@@ -6,7 +6,7 @@
 //   |:  1   |:  1   |:  1   |:  1   |:  |   |:  1   |:  |:  |   |:  1   |   |:  1   |:  |   |:  1    |:  1   |
 //   |::.. . |::.. . |\:.. ./|::.. . |::.|   |::.. . |::.|::.|   |::.. . |   |::.. . |::.|:. |::.. .  |::.. . |
 //   `-------`-------' `---' `-------`--- ---`-------`---`--- ---`-------'   `-------`--- ---`-------'`-------'
-// ERC 1155 Staking Advance with Governance v2.0.1
+// ERC 1155 Staking Advance with Governance v2.1.0
 pragma solidity ^0.8.0;
 
 import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
