@@ -116,7 +116,7 @@ contract StakingGovernance is PermissionsEnumerable, Multicall, ContractMetadata
     }
 
     function getStakeRewardRate() public view returns (uint256 stakeRewardRate) {
-        return currentStakeReward;
+        return currentStakeReward * 10;
     }
 
     function getVoterDetails(address voter) public view returns (uint256 option, uint256 power) {

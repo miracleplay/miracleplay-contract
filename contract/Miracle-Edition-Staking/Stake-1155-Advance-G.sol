@@ -163,7 +163,7 @@ contract ERC1155StakingG is ReentrancyGuard, PermissionsEnumerable, ERC1155Holde
     }
 
     function getRewardRate() public view returns (uint256){
-        return GovernanceContracts.getStakeRewardRate() * 10;
+        return GovernanceContracts.getStakeRewardRate();
     }
 
     // Public function to calculate the reward for a given user.
