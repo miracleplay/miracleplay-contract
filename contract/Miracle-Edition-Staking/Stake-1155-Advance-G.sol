@@ -10,9 +10,9 @@
 pragma solidity ^0.8.0;
 
 import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
-import "@thirdweb-dev/contracts/drop/DropERC1155.sol";
-import "@thirdweb-dev/contracts/openzeppelin-presets/utils/ERC1155/ERC1155Holder.sol";
-import "@thirdweb-dev/contracts/token/TokenERC20.sol";
+import "@thirdweb-dev/contracts/base/ERC1155Drop.sol";
+import "@thirdweb-dev/contracts/external-deps/openzeppelin/utils/ERC1155/ERC1155Holder.sol";
+import "@thirdweb-dev/contracts/base/ERC20Base.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@thirdweb-dev/contracts/extension/PermissionsEnumerable.sol";
 import "@thirdweb-dev/contracts/extension/Multicall.sol";
@@ -24,9 +24,9 @@ interface IGovernanceContract {
 contract ERC1155StakingG is ReentrancyGuard, PermissionsEnumerable, ERC1155Holder, ContractMetadata, Multicall{
     address public deployer;
     // ERC1155 token interface, representing the stakable NFTs.
-    DropERC1155 public immutable erc1155Token;
+    ERC1155Drop public immutable erc1155Token;
     // ERC20 token interface, representing the rewards token.
-    TokenERC20 public immutable rewardsToken;
+    ERC20Base public immutable rewardsToken;
     // Get NFT Staking info from NFT Staking
     IGovernanceContract public GovernanceContracts;
     // The specific ID of the ERC1155 token that is eligible for staking.
@@ -74,11 +74,11 @@ contract ERC1155StakingG is ReentrancyGuard, PermissionsEnumerable, ERC1155Holde
     bytes32 private constant FACTORY_ROLE = keccak256("FACTORY_ROLE");
 
     constructor(address _erc1155Token, uint256 _stakingTokenId, uint256 _poolStartTime, uint256 _boforeRewardsDistributed, address _erc20Token, address _daoAddress, address _GovernanceContracts, uint256 _DAO_FEE_PERCENTAGE, string memory _contractURI) {
-        erc1155Token = DropERC1155(_erc1155Token);
+        erc1155Token = ERC1155Drop(_erc1155Token);
         stakingTokenId = _stakingTokenId;
         poolStartTime = _poolStartTime;
         totalRewardsDistributed = _boforeRewardsDistributed;
-        rewardsToken = TokenERC20(_erc20Token);
+        rewardsToken = ERC20Base(_erc20Token);
         daoAddress = _daoAddress;
         GovernanceContracts = IGovernanceContract(_GovernanceContracts);
 
