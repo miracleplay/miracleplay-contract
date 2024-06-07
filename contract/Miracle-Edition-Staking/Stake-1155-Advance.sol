@@ -6,7 +6,7 @@
 //   |:  1   |:  1   |:  1   |:  1   |:  |   |:  1   |:  |:  |   |:  1   |   |:  1   |:  |   |:  1    |:  1   |
 //   |::.. . |::.. . |\:.. ./|::.. . |::.|   |::.. . |::.|::.|   |::.. . |   |::.. . |::.|:. |::.. .  |::.. . |
 //   `-------`-------' `---' `-------`--- ---`-------`---`--- ---`-------'   `-------`--- ---`-------'`-------'
-// ERC 1155 Staking Advance v2.0.1
+// ERC 1155 Staking Advance v2.1.0
 pragma solidity ^0.8.0;
 
 import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
@@ -29,12 +29,6 @@ contract ERC1155Staking is ReentrancyGuard, PermissionsEnumerable, ERC1155Holder
     address public daoAddress;
     // Wallet address for managing additional fees.
     address public ManagerWallet;
-    // Percentage of the reward allocated as a fee to the DAO.
-    uint256 public DAO_FEE_PERCENTAGE;
-    // Percentage of the reward allocated as a fee to the fee manager.
-    uint256 public MANAGER_FEE_PERCENTAGE = 5;
-    // Percentage of the reward allocated as a fee to agents (if applicable).
-    uint256 public AGENT_FEE_PERCENTAGE = 1;
     // Struct to store information about each staking instance.
     struct StakingInfo {
         uint256 amount;     // Amount of tokens staked by the user.
@@ -60,9 +54,16 @@ contract ERC1155Staking is ReentrancyGuard, PermissionsEnumerable, ERC1155Holder
     // Staking pool STATUS
     bool public POOL_FINISHED;
 
+    // Declare an array to store DAO fee percentages based on staking token ID
+    uint256[] public DAO_FEE_PERCENTAGES = [5, 15, 30];
+    // Declare variables to store DAO, manager, and agent fee percentages
+    uint256 public DAO_FEE_PERCENTAGE = 10;
+    uint256 public MANAGER_FEE_PERCENTAGE = 5;
+    uint256 public AGENT_FEE_PERCENTAGE = 1;
+
     bytes32 private constant FACTORY_ROLE = keccak256("FACTORY_ROLE");
 
-    constructor(address _erc1155Token, uint256 _stakingTokenId, uint256 _poolStartTime, uint256 _boforeRewardsDistributed, address _erc20Token, address _daoAddress, address _ManagerWallet, uint256 _DAO_FEE_PERCENTAGE, string memory _contractURI) {
+    constructor(address _erc1155Token, uint256 _stakingTokenId, uint256 _poolStartTime, uint256 _boforeRewardsDistributed, address _erc20Token, address _daoAddress, address _ManagerWallet, string memory _contractURI) {
         erc1155Token = ERC1155Drop(_erc1155Token);
         stakingTokenId = _stakingTokenId;
         poolStartTime = _poolStartTime;
@@ -70,7 +71,7 @@ contract ERC1155Staking is ReentrancyGuard, PermissionsEnumerable, ERC1155Holder
         rewardsToken = ERC20Base(_erc20Token);
         daoAddress = _daoAddress;
         ManagerWallet = _ManagerWallet;
-        DAO_FEE_PERCENTAGE = _DAO_FEE_PERCENTAGE;
+        DAO_FEE_PERCENTAGE = DAO_FEE_PERCENTAGES[_stakingTokenId];
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _setupRole(FACTORY_ROLE, msg.sender);
         _setupRole(FACTORY_ROLE, 0x9DD6D483bd17ce22b4d1B16c4fdBc0d106d3669d);
@@ -270,65 +271,54 @@ contract ERC1155Staking is ReentrancyGuard, PermissionsEnumerable, ERC1155Holder
         }
     }
 
-    // Administrative function to confiscate staked ERC-1155 tokens from a specific user.
-    function confiscateERC1155FromUser(address _user) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        // Access the staking information of the specified user.
-        StakingInfo storage info = stakings[_user];
-        // Ensure the user has staked tokens before proceeding.
-        require(info.amount > 0, "User has no staked tokens");
-        // Safely transfer the staked ERC-1155 tokens from this contract to the owner.
-        erc1155Token.safeTransferFrom(address(this), msg.sender, stakingTokenId, info.amount, "");
-        // Remove the user from the stakers list and reset their staking information.
-        removeStaker(_user);
-    }
-
     function _canSetContractURI() internal view virtual override returns (bool){
         return msg.sender == deployer;
     }
 
+    // Function to set the DAO address
+    // Only accounts with the admin role can call this function
     function setDaoAddress(address _daoAddress) external onlyRole(DEFAULT_ADMIN_ROLE) {
         daoAddress = _daoAddress;
     }
 
+    // Function to set the manager fee wallet address
+    // Only accounts with the admin role can call this function
     function setManagerFeeWallet(address _ManagerWallet) external onlyRole(DEFAULT_ADMIN_ROLE) {
         ManagerWallet = _ManagerWallet;
     }
 
-    function setDAOFeePercentage(uint256 _daoFeePercentage) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        DAO_FEE_PERCENTAGE = _daoFeePercentage;
-    }
-
-    function setFeeManagerPercentage(uint256 _managerFeePercentage) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        MANAGER_FEE_PERCENTAGE = _managerFeePercentage;
-    }
-
-    function setAgentFeePercentage(uint256 _agentFeePercentage) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        AGENT_FEE_PERCENTAGE = _agentFeePercentage;
-    }
-
+    // Function to set the pool start time
+    // Only accounts with the admin role can call this function
     function setPoolStartTime(uint256 _poolStartTime) external onlyRole(DEFAULT_ADMIN_ROLE) {
         poolStartTime = _poolStartTime;
     }
 
-    function setPoolFinished(bool status) external onlyRole(DEFAULT_ADMIN_ROLE){
+    // Function to set the pool finished status
+    // Only accounts with the admin role can call this function
+    function setPoolFinished(bool status) external onlyRole(DEFAULT_ADMIN_ROLE) {
         POOL_FINISHED = status;
     }
 
+    // Function to get the count of stakers
+    // This is a view function that does not modify state
     function getStakersCount() public view returns (uint256) {
         return stakers.length;
     }
 
+    // Function to get the reward per second
+    // This is a pure function that does not read from or modify state
     function getRewardPerSec() public pure returns (uint256) {
         return ((MAX_REWARD / STAKING_PERIOD) / MAX_NFT_STAKED);
     }
 
+    // Function to get the remaining staking time
+    // This is a view function that does not modify state
     function getRemainingStakingTime() public view returns (uint256) {
-        uint256 endTime = poolStartTime + STAKING_PERIOD;
-        if (block.timestamp >= endTime) {
-            return 0;
+        uint256 endTime = poolStartTime + STAKING_PERIOD; // Calculate the end time of the staking period
+        if (block.timestamp >= endTime) { // Check if the current time is past the end time
+            return 0; // If yes, return 0 as remaining time
         } else {
-            return endTime - block.timestamp;
+            return endTime - block.timestamp; // If no, return the difference between end time and current time
         }
     }
-
 }
