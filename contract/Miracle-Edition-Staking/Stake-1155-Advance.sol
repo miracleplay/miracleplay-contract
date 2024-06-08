@@ -55,7 +55,7 @@ contract ERC1155Staking is ReentrancyGuard, PermissionsEnumerable, ERC1155Holder
     bool public POOL_FINISHED;
 
     // Declare an array to store DAO fee percentages based on staking token ID
-    uint256[] public DAO_FEE_PERCENTAGES = [5, 15, 30];
+    uint256[] public DAO_FEE_PERCENTAGES = [10, 15, 30];
     // Declare variables to store DAO, manager, and agent fee percentages
     uint256 public DAO_FEE_PERCENTAGE = 10;
     uint256 public MANAGER_FEE_PERCENTAGE = 5;
