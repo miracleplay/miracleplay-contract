@@ -3,8 +3,10 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/governance/TimelockController.sol";
+import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
 
-contract TimelockMultiSig is AccessControl {
+contract TimelockMultiSig is AccessControl, ContractMetadata {
+    address public deployer;
     bytes32 public constant MULTISIG_ADMIN_ROLE = keccak256("MULTISIG_ADMIN_ROLE");
     bytes32 public constant SUBMIT_ROLE = keccak256("SUBMIT_ROLE");
     bytes32 public constant EXECUTOR_ROLE = keccak256("EXECUTOR_ROLE");
@@ -43,7 +45,7 @@ contract TimelockMultiSig is AccessControl {
         _;
     }
 
-    constructor(address[] memory _owners, uint256 _required, address payable _timelock) {
+    constructor(address[] memory _owners, uint256 _required, address payable _timelock, string memory _contractURI) {
         require(_owners.length > 0, "There must be at least one owner");
         require(_required > 0 && _required <= _owners.length, "Invalid number of required confirmations");
         require(_timelock != address(0), "invalid timelock address");
@@ -64,6 +66,12 @@ contract TimelockMultiSig is AccessControl {
         required = _required;
         timelock = TimelockController(_timelock);
         _grantRole(EXECUTOR_ROLE, _timelock);
+        deployer = msg.sender;
+        _setupContractURI(_contractURI);
+    }
+
+    function _canSetContractURI() internal view virtual override returns (bool){
+        return msg.sender == deployer;
     }
 
     function submitTransaction(address _to, uint256 _value, bytes memory _data)
