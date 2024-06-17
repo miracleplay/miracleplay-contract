@@ -114,7 +114,7 @@ contract TimelockController is AccessControl, ERC721Holder, ERC1155Holder, Contr
      * administration through timelocked proposals. Previous versions of this contract would assign
      * this admin to the deployer automatically and should be renounced as well.
      */
-    constructor(uint256 minDelay, address[] memory proposers, address[] memory executors, address admin) {
+    constructor(uint256 minDelay, address[] memory proposers, address[] memory executors, address admin, string memory _contractURI) {
         // self administration
         _grantRole(DEFAULT_ADMIN_ROLE, address(this));
 
@@ -136,6 +136,7 @@ contract TimelockController is AccessControl, ERC721Holder, ERC1155Holder, Contr
 
         _minDelay = minDelay;
         deployer = msg.sender;
+        _setupContractURI(_contractURI);
         emit MinDelayChange(0, minDelay);
     }
 
