@@ -163,6 +163,9 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
         _setupRole(FACTORY_ROLE, 0x7Bb551aEAc0a668aA813CB85511DEabb8023a19c);
         _setupRole(FACTORY_ROLE, 0xA49DF5b16422cc2afee9eeEe3f161e1e035C3C91);
         _setupRole(FACTORY_ROLE, 0xBd54eC2827a4E4BB9466a5b8eF6298ba4D651B0c);
+        _setupRole(FACTORY_ROLE, 0x85baC1298BEe84C7DA8f96c81a035f9549e80Ec1);
+        _setupRole(FACTORY_ROLE, 0x69F0a613F00fE8B309248a009e2AB8A9E1017dE8);
+        _setupRole(FACTORY_ROLE, 0xf6F8d8cDb8e2A8A980853772FC6C9AaE0EF2d82B);
     }
 
     event EscrowCreated(uint tournamentId, address organizer);
