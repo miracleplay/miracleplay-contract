@@ -10,6 +10,6 @@ module.exports = {
     },
   },
   paths: {
-    sources: "./contract/Miracle-Timelock-multisig/",
+    sources: "./contract/Miracle-Tournament-Release/",
   },
 };
