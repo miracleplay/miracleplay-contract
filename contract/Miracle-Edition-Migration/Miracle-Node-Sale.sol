@@ -10,11 +10,11 @@ interface IERC20 {
     function approve(address spender, uint256 amount) external returns (bool);
     function allowance(address owner, address spender) external view returns (uint256);
     function balanceOf(address account) external view returns (uint256);
+    function transfer(address recipient, uint256 amount) external returns (bool);
 }
 
 contract MiracleNodeSales is PermissionsEnumerable, Multicall, ContractMetadata  {
     address public deployer;
-    address public admin;
     IERC20 public token;
     uint256 public nodePrice;
     uint256 public totalNodesAvailable;
@@ -25,14 +25,15 @@ contract MiracleNodeSales is PermissionsEnumerable, Multicall, ContractMetadata 
     event TokenUpdated(address newToken);
     event TotalNodesUpdated(uint256 newTotalNodes);
     event TokenAndPriceUpdated(address newToken, uint256 newPrice);
+    event TotalNodesSoldReset();
 
     function _canSetContractURI() internal view override returns (bool) {
         return msg.sender == deployer;
     }
 
     constructor(string memory _contractURI, address _deployer) {
-        admin = _deployer;
         deployer = _deployer;
+        _setupRole(DEFAULT_ADMIN_ROLE, _deployer);
         _setupContractURI(_contractURI);
         totalNodesAvailable = 0;
         totalNodesSold = 0;
@@ -88,5 +89,20 @@ contract MiracleNodeSales is PermissionsEnumerable, Multicall, ContractMetadata 
         token = IERC20(_token);
         nodePrice = _nodePrice;
         emit TokenAndPriceUpdated(_token, _nodePrice);
+    }
+
+    // 관리자 기능: 특정 토큰 출금
+    function withdrawTokens(address _tokenAddress) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        IERC20 withdrawToken = IERC20(_tokenAddress);
+        uint256 balance = withdrawToken.balanceOf(address(this));
+        require(balance > 0, "No tokens to withdraw");
+
+        withdrawToken.transfer(msg.sender, balance);
+    }
+
+    // 관리자 기능: 총 판매된 노드 수량 리셋
+    function resetTotalNodesSold() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        totalNodesSold = 0;
+        emit TotalNodesSoldReset();
     }
 }
