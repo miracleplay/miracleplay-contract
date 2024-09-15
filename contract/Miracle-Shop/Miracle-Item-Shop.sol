@@ -20,7 +20,7 @@ contract MiracleStoreEscrow is PermissionsEnumerable, Multicall, ContractMetadat
         _setupRole(DEFAULT_ADMIN_ROLE, admin);
         _setupRole(FACTORY_ROLE, admin);
         _setupRole(FACTORY_ROLE, 0x9DD6D483bd17ce22b4d1B16c4fdBc0d106d3669d);
-        deployer = msg.sender;
+        deployer = admin;
         _setupContractURI(_contractURI);
     }
 
