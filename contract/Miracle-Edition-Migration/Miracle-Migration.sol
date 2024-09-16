@@ -11,6 +11,9 @@ contract EditionMigration is PermissionsEnumerable, Multicall, ContractMetadata,
     IERC1155 public erc1155Token; // ERC-1155 token contract address
     address public deployer;
 
+    // Mapping to track the total amount of tokens migrated per user per token ID
+    mapping(address => mapping(uint256 => uint256)) public migratedTokens;
+
     // Event emitted when migration occurs
     event Migration(address indexed user, uint256 indexed tokenId, uint256 amount);
 
@@ -39,18 +42,15 @@ contract EditionMigration is PermissionsEnumerable, Multicall, ContractMetadata,
         // Transfer the user's ERC-1155 tokens to the contract
         erc1155Token.safeTransferFrom(msg.sender, address(this), tokenId, userBalance, "");
 
+        // Record the number of tokens migrated by the user
+        migratedTokens[msg.sender][tokenId] += userBalance;
+
         // Emit the migration event
         emit Migration(msg.sender, tokenId, userBalance);
     }
 
-    // Function to allow the admin to burn all tokens of a specific tokenId from the contract
-    function burn(uint256 tokenId) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        uint256 contractBalance = erc1155Token.balanceOf(address(this), tokenId);
-        
-        // Ensure the contract has tokens to burn
-        require(contractBalance > 0, "No tokens to burn");
-
-        // Burn all tokens of the specified tokenId by transferring them to address(0)
-        erc1155Token.safeTransferFrom(address(this), address(0), tokenId, contractBalance, "");
+    // Function to get the number of tokens migrated by a specific user for a given token ID
+    function getMigratedTokens(address user, uint256 tokenId) external view returns (uint256) {
+        return migratedTokens[user][tokenId];
     }
 }

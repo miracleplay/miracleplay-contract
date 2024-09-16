@@ -15,12 +15,13 @@ interface IERC20 {
 
 contract MiracleNodeSales is PermissionsEnumerable, Multicall, ContractMetadata  {
     address public deployer;
+    address public admin;
     IERC20 public token;
     uint256 public nodePrice;
     uint256 public totalNodesAvailable;
     uint256 public totalNodesSold;
 
-    event NodePurchased(address indexed buyer, uint256 indexed nodeCount, uint256 price);
+    event NodePurchased(address indexed buyer, uint256 indexed nodeCount, address tokenUsed, uint256 tokenAmount);
     event NodePriceUpdated(uint256 newPrice);
     event TokenUpdated(address newToken);
     event TotalNodesUpdated(uint256 newTotalNodes);
@@ -32,14 +33,14 @@ contract MiracleNodeSales is PermissionsEnumerable, Multicall, ContractMetadata 
     }
 
     constructor(string memory _contractURI, address _deployer) {
+        admin = _deployer;
         deployer = _deployer;
-        _setupRole(DEFAULT_ADMIN_ROLE, _deployer);
         _setupContractURI(_contractURI);
         totalNodesAvailable = 0;
         totalNodesSold = 0;
     }
 
-    // 노드 구매 기능
+    // Function to purchase nodes
     function purchaseNode(uint256 nodeCount) external {
         uint256 cost = nodePrice * nodeCount;
         require(token.allowance(msg.sender, address(this)) >= cost, "Token allowance too low");
@@ -48,59 +49,64 @@ contract MiracleNodeSales is PermissionsEnumerable, Multicall, ContractMetadata 
         token.transferFrom(msg.sender, address(this), cost);
         totalNodesSold += nodeCount;
 
-        emit NodePurchased(msg.sender, nodeCount, cost);
+        emit NodePurchased(msg.sender, nodeCount, address(token), cost);
     }
 
-    // 현재 노드 가격 조회
+    // Function to get the current node price
     function getNodePrice() external view returns (uint256) {
         return nodePrice;
     }
 
-    // 구매 가능한 노드 수량 조회
+    // Function to get the available number of nodes for purchase
     function getAvailableNodes() external view returns (uint256) {
         return totalNodesAvailable - totalNodesSold;
     }
 
-    // 총 판매된 노드 수량 조회
+    // Function to get the total number of sold nodes
     function getTotalNodesSold() external view returns (uint256) {
         return totalNodesSold;
     }
 
-    // 관리자 기능: 토큰 변경
+    // Function to get the current token used for node purchases
+    function getToken() external view returns (address) {
+        return address(token);
+    }
+
+    // Admin function to update the token used for node purchases
     function setToken(address _token) external onlyRole(DEFAULT_ADMIN_ROLE) {
         token = IERC20(_token);
         emit TokenUpdated(_token);
     }
 
-    // 관리자 기능: 노드 가격 설정
+    // Admin function to update the node price
     function setNodePrice(uint256 _nodePrice) external onlyRole(DEFAULT_ADMIN_ROLE) {
         nodePrice = _nodePrice;
         emit NodePriceUpdated(_nodePrice);
     }
 
-    // 관리자 기능: 총 판매 가능 노드 수량 설정
+    // Admin function to update the total number of nodes available for sale
     function setTotalNodesAvailable(uint256 _totalNodesAvailable) external onlyRole(DEFAULT_ADMIN_ROLE) {
         totalNodesAvailable = _totalNodesAvailable;
         emit TotalNodesUpdated(_totalNodesAvailable);
     }
 
-    // 관리자 기능: 토큰 및 가격 변경
+    // Admin function to update both the token and the price for node purchases
     function setTokenAndPrice(address _token, uint256 _nodePrice) external onlyRole(DEFAULT_ADMIN_ROLE) {
         token = IERC20(_token);
         nodePrice = _nodePrice;
         emit TokenAndPriceUpdated(_token, _nodePrice);
     }
 
-    // 관리자 기능: 특정 토큰 출금
+    // Admin function to withdraw specific tokens from the contract
     function withdrawTokens(address _tokenAddress) external onlyRole(DEFAULT_ADMIN_ROLE) {
         IERC20 withdrawToken = IERC20(_tokenAddress);
         uint256 balance = withdrawToken.balanceOf(address(this));
         require(balance > 0, "No tokens to withdraw");
 
-        withdrawToken.transfer(msg.sender, balance);
+        withdrawToken.transfer(admin, balance);
     }
 
-    // 관리자 기능: 총 판매된 노드 수량 리셋
+    // Admin function to reset the total number of nodes sold
     function resetTotalNodesSold() external onlyRole(DEFAULT_ADMIN_ROLE) {
         totalNodesSold = 0;
         emit TotalNodesSoldReset();
