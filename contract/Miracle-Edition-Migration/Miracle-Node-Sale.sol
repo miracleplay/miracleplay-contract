@@ -102,7 +102,7 @@ contract MiracleNodeSales is PermissionsEnumerable, Multicall, ContractMetadata 
         uint256 balance = withdrawToken.balanceOf(address(this));
         require(balance > 0, "No tokens to withdraw");
 
-        withdrawToken.transfer(deployer, balance);
+        withdrawToken.transfer(msg.sender, balance);
     }
 
     // Admin function to reset the total number of nodes sold
