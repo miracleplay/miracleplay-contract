@@ -15,7 +15,6 @@ interface IERC20 {
 
 contract MiracleNodeSales is PermissionsEnumerable, Multicall, ContractMetadata  {
     address public deployer;
-    address public admin;
     IERC20 public token;
     uint256 public nodePrice;
     uint256 public totalNodesAvailable;
@@ -33,7 +32,7 @@ contract MiracleNodeSales is PermissionsEnumerable, Multicall, ContractMetadata 
     }
 
     constructor(string memory _contractURI, address _deployer) {
-        admin = _deployer;
+        _setupRole(DEFAULT_ADMIN_ROLE, _deployer);
         deployer = _deployer;
         _setupContractURI(_contractURI);
         totalNodesAvailable = 0;
@@ -103,7 +102,7 @@ contract MiracleNodeSales is PermissionsEnumerable, Multicall, ContractMetadata 
         uint256 balance = withdrawToken.balanceOf(address(this));
         require(balance > 0, "No tokens to withdraw");
 
-        withdrawToken.transfer(admin, balance);
+        withdrawToken.transfer(deployer, balance);
     }
 
     // Admin function to reset the total number of nodes sold
