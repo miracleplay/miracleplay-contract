@@ -17,12 +17,17 @@ contract EditionMigration is PermissionsEnumerable, Multicall, ContractMetadata,
     // Event emitted when migration occurs
     event Migration(address indexed user, uint256 indexed tokenId, uint256 amount);
 
-    // Constructor to set the ERC-1155 contract address
-    constructor(address _erc1155TokenAddress, string memory _contractURI, address _deployer) {
+    // Constructor to initialize the contract without setting the ERC-1155 token address
+    constructor(string memory _contractURI, address _deployer) {
         _setupRole(DEFAULT_ADMIN_ROLE, _deployer);
-        erc1155Token = IERC1155(_erc1155TokenAddress);
         deployer = _deployer;
         _setupContractURI(_contractURI);
+    }
+
+    // Function to set or update the ERC-1155 token contract address (only callable by admin)
+    function setERC1155Token(address _erc1155TokenAddress) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(_erc1155TokenAddress != address(0), "Invalid ERC-1155 token address");
+        erc1155Token = IERC1155(_erc1155TokenAddress);
     }
 
     function _canSetContractURI() internal view override returns (bool) {
@@ -31,6 +36,8 @@ contract EditionMigration is PermissionsEnumerable, Multicall, ContractMetadata,
 
     // Function to migrate the user's ERC-1155 tokens to the contract
     function migrate(uint256 tokenId) external {
+        require(address(erc1155Token) != address(0), "ERC-1155 token address not set");
+
         uint256 userBalance = erc1155Token.balanceOf(msg.sender, tokenId);
         
         // If the user does not own any of the specified token, revert the transaction
