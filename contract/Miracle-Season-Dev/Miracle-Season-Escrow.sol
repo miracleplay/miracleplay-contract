@@ -18,7 +18,6 @@ contract MiracleSeasonEscrow is PermissionsEnumerable, Multicall, ContractMetada
     }
 
     mapping(uint256 => Season) public seasons;
-    uint256 public currentSeasonId;
 
     modifier seasonExists(uint256 _seasonId) {
         require(seasons[_seasonId].seasonId == _seasonId, "Season does not exist.");
@@ -54,6 +53,7 @@ contract MiracleSeasonEscrow is PermissionsEnumerable, Multicall, ContractMetada
     }
 
     function createSeason(
+        uint256 currentSeasonId,
         address _rewardToken,
         uint256 _totalRewardAmount,
         uint256[] memory _prizeDistribution
@@ -76,8 +76,6 @@ contract MiracleSeasonEscrow is PermissionsEnumerable, Multicall, ContractMetada
             prizeDistribution: _prizeDistribution,
             isEnded: false
         });
-
-        currentSeasonId++;
     }
 
     function endSeason(uint256 _seasonId, address[] memory _rankedUsers) 
