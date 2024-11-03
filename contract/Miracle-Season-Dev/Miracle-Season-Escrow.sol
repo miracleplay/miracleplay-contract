@@ -6,35 +6,56 @@ import "@thirdweb-dev/contracts/extension/PermissionsEnumerable.sol";
 import "@thirdweb-dev/contracts/extension/Multicall.sol";
 import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
 
-contract MiracleSeasonEscrow is PermissionsEnumerable, Multicall, ContractMetadata{
-    address public deployer;
+contract MiracleSeasonEscrow is PermissionsEnumerable, Multicall, ContractMetadata {
+    address public deployer; // Address of the contract deployer
 
+    // Struct to store season information
     struct Season {
-        uint256 seasonId;
-        address rewardToken;
-        uint256 totalRewardAmount;
-        uint256[] prizeDistribution;
-        bool isEnded;
+        uint256 seasonId;              // Season ID
+        address rewardToken;           // Token address used as reward
+        uint256 totalRewardAmount;     // Total reward amount to be distributed in the season
+        uint256[] prizeDistribution;   // Array for prize distribution by rank
+        bool isEnded;                  // Status of season (true if ended)
     }
 
-    mapping(uint256 => Season) public seasons;
+    mapping(uint256 => Season) public seasons; // Mapping of season ID to Season struct
 
+    // Modifier to check if a season exists
     modifier seasonExists(uint256 _seasonId) {
         require(seasons[_seasonId].seasonId == _seasonId, "Season does not exist.");
         _;
     }
 
+    // Modifier to check if a season has not ended
     modifier seasonNotEnded(uint256 _seasonId) {
         require(!seasons[_seasonId].isEnded, "Season has already ended.");
         _;
     }
 
-    bytes32 public constant FACTORY_ROLE = keccak256("FACTORY_ROLE");
+    bytes32 public constant FACTORY_ROLE = keccak256("FACTORY_ROLE"); // Definition of the FACTORY_ROLE
 
+    // Event definitions
+    event SeasonCreated(
+        uint256 indexed seasonId,
+        address rewardToken,
+        uint256 totalRewardAmount,
+        uint256 timestamp
+    );
+
+    event SeasonEnded(
+        uint256 indexed seasonId,
+        address[] winners,
+        uint256[] prizes,
+        uint256 timestamp
+    );
+
+    // Constructor to initialize contract metadata and roles
     constructor(string memory _contractURI, address admin) {
-        _setupRole(DEFAULT_ADMIN_ROLE, admin);
-        _setupRole(FACTORY_ROLE, admin);
-        // Backend worker address
+        _setupRole(DEFAULT_ADMIN_ROLE, admin); // Set admin role
+        _setupRole(FACTORY_ROLE, admin);       // Set FACTORY_ROLE
+        deployer = msg.sender;                 // Store the deployer address
+
+        // Setup FACTORY_ROLE for specific addresses
         _setupRole(FACTORY_ROLE, 0x8914b41C3D0491E751d4eA3EbfC04c42D7275A75);
         _setupRole(FACTORY_ROLE, 0x2fB586cD6bF507998e0816897D812d5dF2aF7677);
         _setupRole(FACTORY_ROLE, 0x7C7f65a0f86a556aAA04FD9ceDb1AA6D943C35c3);
@@ -45,13 +66,16 @@ contract MiracleSeasonEscrow is PermissionsEnumerable, Multicall, ContractMetada
         _setupRole(FACTORY_ROLE, 0xbE810123C22046d93Afb018d7c4b7248df0088BE);
         _setupRole(FACTORY_ROLE, 0xc184A36eac1EA5d62829cc80e8e57E7c4994D40B);
         _setupRole(FACTORY_ROLE, 0xDCa74207a0cB028A2dE3aEeDdC7A9Be52109a785);
-        _setupContractURI(_contractURI);
+
+        _setupContractURI(_contractURI); // Set contract metadata URI
     }
 
-    function _canSetContractURI() internal view virtual override returns (bool){
+    // Checks if the deployer can set the contract URI
+    function _canSetContractURI() internal view virtual override returns (bool) {
         return msg.sender == deployer;
     }
 
+    // Function to create a season, receiving reward tokens to be stored in the contract
     function createSeason(
         uint256 currentSeasonId,
         address _rewardToken,
@@ -62,13 +86,17 @@ contract MiracleSeasonEscrow is PermissionsEnumerable, Multicall, ContractMetada
         require(_totalRewardAmount > 0, "Total reward amount should be greater than 0.");
         require(_prizeDistribution.length > 0, "Prize distribution array should not be empty.");
 
+        // Ensure that the sum of prizeDistribution matches the totalRewardAmount
         uint256 totalDistributed = 0;
         for (uint256 i = 0; i < _prizeDistribution.length; i++) {
             totalDistributed += _prizeDistribution[i];
         }
-
         require(totalDistributed == _totalRewardAmount, "Sum of prize distribution does not match total reward amount.");
 
+        // Transfer reward tokens to the contract for safekeeping
+        IERC20(_rewardToken).transferFrom(msg.sender, address(this), _totalRewardAmount);
+
+        // Store the new season details
         seasons[currentSeasonId] = Season({
             seasonId: currentSeasonId,
             rewardToken: _rewardToken,
@@ -76,8 +104,12 @@ contract MiracleSeasonEscrow is PermissionsEnumerable, Multicall, ContractMetada
             prizeDistribution: _prizeDistribution,
             isEnded: false
         });
+
+        // Emit an event for season creation
+        emit SeasonCreated(currentSeasonId, _rewardToken, _totalRewardAmount, block.timestamp);
     }
 
+    // Function to end a season; only callable by FACTORY_ROLE holders to distribute rewards
     function endSeason(uint256 _seasonId, address[] memory _rankedUsers) 
         external 
         onlyRole(FACTORY_ROLE) 
@@ -87,18 +119,25 @@ contract MiracleSeasonEscrow is PermissionsEnumerable, Multicall, ContractMetada
         Season storage season = seasons[_seasonId];
         require(_rankedUsers.length == season.prizeDistribution.length, "Ranked users and prize distribution length mismatch.");
 
-        season.isEnded = true;
+        season.isEnded = true; // Set season status to ended
 
-        IERC20 rewardToken = IERC20(season.rewardToken);
+        IERC20 rewardToken = IERC20(season.rewardToken); // Create an instance of the reward token
+        address[] memory winners = new address[](_rankedUsers.length); // Array to store winners
+        uint256[] memory prizes = new uint256[](_rankedUsers.length);  // Array to store prize amounts
 
+        // Distribute prizes to each winner based on rank
         for (uint256 i = 0; i < _rankedUsers.length; i++) {
             uint256 prize = season.prizeDistribution[i];
-            require(prize <= season.totalRewardAmount, "Prize amount exceeds total reward amount.");
-            season.totalRewardAmount -= prize;
-            rewardToken.transfer(_rankedUsers[i], prize);
+            winners[i] = _rankedUsers[i];
+            prizes[i] = prize;
+            rewardToken.transfer(_rankedUsers[i], prize); // Transfer prize to winner
         }
+
+        // Emit an event for season end
+        emit SeasonEnded(_seasonId, winners, prizes, block.timestamp);
     }
 
+    // View function to retrieve details of a specific season
     function getSeason(uint256 _seasonId) external view returns (
         uint256 seasonId,
         address rewardToken,
