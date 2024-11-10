@@ -208,8 +208,17 @@ contract  MiracleTournamentManager is PermissionsEnumerable, Multicall, Contract
         tournament.isActive = false;
         tournament.isPrizesSet = true;
 
-        // Step 2: setDistributePrizes
-        // Step 3: distributePrizes or claimPrize
+        // Calculate remaining prize after fees
+        uint256 remainingPrize = calculateAdjustedPrize(totalPrize);
+
+        // Set prize for each winner based on remaining prize
+        for (uint256 i = 0; i < _winners.length; i++) {
+            uint256 adjustedPrize = (remainingPrize * tournament.prizeDistribution[i]) / totalPrize; // Adjust prize based on remaining prize
+            tournament.winnerPrizes[_winners[i]] = adjustedPrize;
+        }
+
+        tournament.isActive = false;
+        tournament.isPrizesSet = true;
     }
 
     // End tournament and automatically handle fees, prize setting, and distribution
