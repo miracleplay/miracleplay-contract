@@ -197,6 +197,7 @@ contract  MiracleTournamentManager is PermissionsEnumerable, Multicall, Contract
         require(tournament.isActive, "Tournament is not active.");
         require(_winners.length == tournament.prizeDistribution.length, "Winners and prize distribution length mismatch.");
         require(!tournament.isPrizesSet, "Prizes already set.");
+        require(!tournament.isPrizesDistributed, "Prizes already distributed.");
 
         uint256 totalPrize = tournament.prizeAmount;
         uint256 totalEntryFee = tournament.entryFee * tournament.participants.length;
@@ -207,6 +208,7 @@ contract  MiracleTournamentManager is PermissionsEnumerable, Multicall, Contract
         // Step 2 and 3: Calculate and set prizes for claim
         setDistributePrizes(_tournamentId, _winners);
 
+        // Finalize tournament state
         tournament.isActive = false;
         tournament.isPrizesSet = true;
     }
@@ -217,6 +219,7 @@ contract  MiracleTournamentManager is PermissionsEnumerable, Multicall, Contract
         require(tournament.isActive, "Tournament is not active.");
         require(_winners.length == tournament.prizeDistribution.length, "Winners and prize distribution length mismatch.");
         require(!tournament.isPrizesSet, "Prizes already set.");
+        require(!tournament.isPrizesDistributed, "Prizes already distributed.");
 
         uint256 totalPrize = tournament.prizeAmount;
         uint256 totalEntryFee = tournament.entryFee * tournament.participants.length;
@@ -229,7 +232,7 @@ contract  MiracleTournamentManager is PermissionsEnumerable, Multicall, Contract
 
         // Finalize tournament state
         tournament.isActive = false;
-        tournament.isPrizesSet = true;
+        tournament.isPrizesDistributed = true;
     }
 
     // Transfer and distribute fees (Prize and Entry fees)
