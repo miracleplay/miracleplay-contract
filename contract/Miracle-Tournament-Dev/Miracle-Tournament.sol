@@ -8,21 +8,25 @@
 //   `-------`-------' `---' `-------`--- ---`-------`---`--- ---`-------'   `-------`--- ---`-------'`-------'
 //   TournamentManager V1.0
 pragma solidity ^0.8.0;
+import "@thirdweb-dev/contracts/extension/PermissionsEnumerable.sol";
+import "@thirdweb-dev/contracts/extension/Multicall.sol";
+import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
 
 interface IERC20 {
     function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
     function transfer(address recipient, uint256 amount) external returns (bool);
 }
 
-contract  MiracleTournamentManager {
-
-    address private admin;
+contract  MiracleTournamentManager is PermissionsEnumerable, Multicall, ContractMetadata{
+    address public deployer;
     uint256 private developerFeePercent;
     uint256 private winnerClubFeePercent;
     uint256 private platformFeePercent;
     address private developerFeeAddress;
     address private winnerClubFeeAddress;
     address private platformFeeAddress;
+
+    bytes32 public constant FACTORY_ROLE = keccak256("FACTORY_ROLE");
 
     struct Tournament {
         uint256 id;
@@ -43,13 +47,27 @@ contract  MiracleTournamentManager {
 
     mapping(uint256 => Tournament) private tournaments;
 
-    modifier onlyAdmin() {
-        require(msg.sender == admin, "Only admin can call this function.");
-        _;
+    constructor(address admin, string memory _contractURI) {
+        deployer = admin;
+        _setupContractURI(_contractURI);
+
+        _setupRole(DEFAULT_ADMIN_ROLE, admin);
+        _setupRole(FACTORY_ROLE, admin);
+
+        _setupRole(FACTORY_ROLE, 0x8914b41C3D0491E751d4eA3EbfC04c42D7275A75);
+        _setupRole(FACTORY_ROLE, 0x2fB586cD6bF507998e0816897D812d5dF2aF7677);
+        _setupRole(FACTORY_ROLE, 0x7C7f65a0f86a556aAA04FD9ceDb1AA6D943C35c3);
+        _setupRole(FACTORY_ROLE, 0xd278a5A5B9A83574852d25F08420029972fd2c6f);
+        _setupRole(FACTORY_ROLE, 0x7c35582e6b953b0D7980ED3444363B5c99d1ded3);
+        _setupRole(FACTORY_ROLE, 0xe463D4fdBc692D9016949881E6a5e18d815C4537);
+        _setupRole(FACTORY_ROLE, 0x622DfbD67fa2e87aa8c774e14fda2791656f282b);
+        _setupRole(FACTORY_ROLE, 0xbE810123C22046d93Afb018d7c4b7248df0088BE);
+        _setupRole(FACTORY_ROLE, 0xc184A36eac1EA5d62829cc80e8e57E7c4994D40B);
+        _setupRole(FACTORY_ROLE, 0xDCa74207a0cB028A2dE3aEeDdC7A9Be52109a785);
     }
 
-    constructor() {
-        admin = msg.sender;
+    function _canSetContractURI() internal view virtual override returns (bool){
+        return msg.sender == deployer;
     }
 
     // Tournament creation
@@ -97,7 +115,7 @@ contract  MiracleTournamentManager {
         tournament.prizeDistribution = _prizeDistribution;
     }
 
-    function updatePrizeDistributionByAdmin(uint256 _tournamentId, uint256[] memory _prizeDistribution) external onlyAdmin {
+    function updatePrizeDistributionByFactory(uint256 _tournamentId, uint256[] memory _prizeDistribution) external onlyRole(FACTORY_ROLE) {
         updatePrizeDistribution(_tournamentId, _prizeDistribution);
     }
 
@@ -116,7 +134,7 @@ contract  MiracleTournamentManager {
     }
 
     // Remove participant
-    function removeParticipant(uint256 _tournamentId, address _participant) external onlyAdmin {
+    function removeParticipant(uint256 _tournamentId, address _participant) external onlyRole(FACTORY_ROLE) {
         Tournament storage tournament = tournaments[_tournamentId];
         require(tournament.isActive, "Tournament is not active.");
 
@@ -133,13 +151,21 @@ contract  MiracleTournamentManager {
         }
     }
 
-    // Shuffle participants (Admin only)
-    function shuffleParticipants(uint256 _tournamentId) external onlyAdmin {
+    // Shuffle participants
+    function shuffleParticipants(uint256 _tournamentId) external onlyRole(FACTORY_ROLE) {
         Tournament storage tournament = tournaments[_tournamentId];
         require(tournament.isActive, "Tournament must be active to shuffle participants.");
+        
         uint256 numParticipants = tournament.participants.length;
         for (uint256 i = 0; i < numParticipants; i++) {
-            uint256 n = i + uint256(keccak256(abi.encodePacked(block.timestamp, block.difficulty, msg.sender))) % (numParticipants - i);
+            uint256 n = i + uint256(keccak256(abi.encodePacked(
+                block.timestamp,
+                block.prevrandao,   // Replace block.difficulty with block.prevrandao
+                msg.sender,
+                _tournamentId,
+                i
+            ))) % (numParticipants - i);
+            
             address temp = tournament.participants[n];
             tournament.participants[n] = tournament.participants[i];
             tournament.participants[i] = temp;
@@ -147,9 +173,8 @@ contract  MiracleTournamentManager {
     }
 
     // Cancel tournament
-    function cancelTournament(uint256 _tournamentId) external {
+    function cancelTournament(uint256 _tournamentId) external onlyRole(FACTORY_ROLE) {
         Tournament storage tournament = tournaments[_tournamentId];
-        require(msg.sender == admin || msg.sender == tournament.creator, "Only admin or creator can cancel.");
         require(tournament.isActive, "Tournament is not active.");
 
         for (uint256 i = 0; i < tournament.participants.length; i++) {
@@ -167,7 +192,7 @@ contract  MiracleTournamentManager {
     }
 
     // End tournament and calculate claimable prizes
-    function endTournamentC(uint256 _tournamentId, address[] memory _winners) external onlyAdmin {
+    function endTournamentC(uint256 _tournamentId, address[] memory _winners) external onlyRole(FACTORY_ROLE) {
         Tournament storage tournament = tournaments[_tournamentId];
         require(tournament.isActive, "Tournament is not active.");
         require(_winners.length == tournament.prizeDistribution.length, "Winners and prize distribution length mismatch.");
@@ -188,7 +213,7 @@ contract  MiracleTournamentManager {
     }
 
     // End tournament and automatically handle fees, prize setting, and distribution
-    function endTournamentA(uint256 _tournamentId, address[] memory _winners) external onlyAdmin {
+    function endTournamentA(uint256 _tournamentId, address[] memory _winners) external onlyRole(FACTORY_ROLE) {
         Tournament storage tournament = tournaments[_tournamentId];
         require(tournament.isActive, "Tournament is not active.");
         require(_winners.length == tournament.prizeDistribution.length, "Winners and prize distribution length mismatch.");
@@ -246,7 +271,7 @@ contract  MiracleTournamentManager {
     }
 
     // Set distribute prizes (manual distribution)
-    function setDistributePrizes(uint256 _tournamentId, address[] memory _winners) external onlyAdmin {
+    function setDistributePrizes(uint256 _tournamentId, address[] memory _winners) external onlyRole(FACTORY_ROLE) {
         Tournament storage tournament = tournaments[_tournamentId];
         require(!tournament.isActive, "Tournament must be ended.");
         require(!tournament.isPrizesDistributed, "Prizes have already been distributed.");
@@ -266,7 +291,7 @@ contract  MiracleTournamentManager {
     }
 
     // Distribute prizes by admin (Version 1)
-    function distributePrizes(uint256 _tournamentId, address[] memory _winners) external onlyAdmin {
+    function distributePrizes(uint256 _tournamentId, address[] memory _winners) external onlyRole(FACTORY_ROLE) {
         Tournament storage tournament = tournaments[_tournamentId];
         require(!tournament.isActive, "Tournament must be ended before distributing prizes.");
         require(!tournament.isPrizesDistributed, "Prizes have already been distributed.");
@@ -353,17 +378,17 @@ contract  MiracleTournamentManager {
     }
 
     // Fee management functions
-    function setDeveloperFee(address _feeAddress, uint256 _feePercent) external onlyAdmin {
+    function setDeveloperFee(address _feeAddress, uint256 _feePercent) external onlyRole(DEFAULT_ADMIN_ROLE) {
         developerFeeAddress = _feeAddress;
         developerFeePercent = _feePercent;
     }
 
-    function setWinnerClubFee(address _feeAddress, uint256 _feePercent) external onlyAdmin {
+    function setWinnerClubFee(address _feeAddress, uint256 _feePercent) external onlyRole(DEFAULT_ADMIN_ROLE) {
         winnerClubFeeAddress = _feeAddress;
         winnerClubFeePercent = _feePercent;
     }
 
-    function setPlatformFee(address _feeAddress, uint256 _feePercent) external onlyAdmin {
+    function setPlatformFee(address _feeAddress, uint256 _feePercent) external onlyRole(DEFAULT_ADMIN_ROLE) {
         platformFeeAddress = _feeAddress;
         platformFeePercent = _feePercent;
     }
