@@ -204,18 +204,8 @@ contract  MiracleTournamentManager is PermissionsEnumerable, Multicall, Contract
         // Step 1: Transfer and distribute fees (prize and entry fees)
         TransferFees(totalPrize, totalEntryFee, tournament.prizeTokenAddress, tournament.entryTokenAddress);
 
-        // Set the tournament as ended but wait for manual prize distribution
-        tournament.isActive = false;
-        tournament.isPrizesSet = true;
-
-        // Calculate remaining prize after fees
-        uint256 remainingPrize = calculateAdjustedPrize(totalPrize);
-
-        // Set prize for each winner based on remaining prize
-        for (uint256 i = 0; i < _winners.length; i++) {
-            uint256 adjustedPrize = (remainingPrize * tournament.prizeDistribution[i]) / totalPrize; // Adjust prize based on remaining prize
-            tournament.winnerPrizes[_winners[i]] = adjustedPrize;
-        }
+        // Step 2 and 3: Calculate and set prizes for claim
+        setDistributePrizes(_tournamentId, _winners);
 
         tournament.isActive = false;
         tournament.isPrizesSet = true;
@@ -235,18 +225,11 @@ contract  MiracleTournamentManager is PermissionsEnumerable, Multicall, Contract
         TransferFees(totalPrize, totalEntryFee, tournament.prizeTokenAddress, tournament.entryTokenAddress);
 
         // Step 2 and 3: Calculate and directly distribute prizes
-        uint256 remainingPrize = calculateAdjustedPrize(totalPrize);
-        IERC20 prizeToken = IERC20(tournament.prizeTokenAddress);
-
-        for (uint256 i = 0; i < _winners.length; i++) {
-            uint256 adjustedPrize = (remainingPrize * tournament.prizeDistribution[i]) / totalPrize;
-            prizeToken.transfer(_winners[i], adjustedPrize);  // Directly transfer the prize
-        }
+        distributePrizes(_tournamentId, _winners);
 
         // Finalize tournament state
         tournament.isActive = false;
         tournament.isPrizesSet = true;
-        tournament.isPrizesDistributed = true;
     }
 
     // Transfer and distribute fees (Prize and Entry fees)
@@ -279,8 +262,8 @@ contract  MiracleTournamentManager is PermissionsEnumerable, Multicall, Contract
         return remainingPrize;
     }
 
-    // Set distribute prizes (manual distribution)
-    function setDistributePrizes(uint256 _tournamentId, address[] memory _winners) external onlyRole(FACTORY_ROLE) {
+    // Set distribute prizes (Version 2 - Claim)
+    function setDistributePrizes(uint256 _tournamentId, address[] memory _winners) internal {
         Tournament storage tournament = tournaments[_tournamentId];
         require(!tournament.isActive, "Tournament must be ended.");
         require(!tournament.isPrizesDistributed, "Prizes have already been distributed.");
@@ -299,8 +282,8 @@ contract  MiracleTournamentManager is PermissionsEnumerable, Multicall, Contract
         tournament.isPrizesDistributed = true;
     }
 
-    // Distribute prizes by admin (Version 1)
-    function distributePrizes(uint256 _tournamentId, address[] memory _winners) external onlyRole(FACTORY_ROLE) {
+    // Distribute prizes by admin (Version 1 - Auto distribute)
+    function distributePrizes(uint256 _tournamentId, address[] memory _winners) internal {
         Tournament storage tournament = tournaments[_tournamentId];
         require(!tournament.isActive, "Tournament must be ended before distributing prizes.");
         require(!tournament.isPrizesDistributed, "Prizes have already been distributed.");
