@@ -18,7 +18,7 @@ interface IMintableToken {
     function mintTo(address to, uint256 amount) external;
 }
 
-contract MiracleStoreEscrow is PermissionsEnumerable, Multicall, ContractMetadata {
+contract MiracleTokenShop is PermissionsEnumerable, Multicall, ContractMetadata {
     address public deployer;
 
     struct Item {

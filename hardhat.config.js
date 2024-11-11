@@ -10,6 +10,6 @@ module.exports = {
     },
   },
   paths: {
-    sources: "./contract/Miracle-Season-Dev/",
+    sources: "./contract/Miracle-Shop/",
   },
 };
