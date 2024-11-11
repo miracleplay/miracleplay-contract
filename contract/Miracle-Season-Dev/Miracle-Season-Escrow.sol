@@ -53,7 +53,6 @@ contract MiracleSeasonEscrow is PermissionsEnumerable, Multicall, ContractMetada
     event SeasonEnded(
         uint256 indexed seasonId,
         address[] winners,
-        uint256[] prizes,
         uint256 timestamp
     );
 
@@ -144,10 +143,10 @@ contract MiracleSeasonEscrow is PermissionsEnumerable, Multicall, ContractMetada
             }
 
             // Emit an event for season end with rewards
-            emit SeasonEnded(_seasonId, winners, prizes, block.timestamp);
+            emit SeasonEnded(_seasonId, winners, block.timestamp);
         } else {
             // Emit an event for season end without rewards
-            emit SeasonEnded(_seasonId, new addressw uint256 , block.timestamp);
+            emit SeasonEnded(_seasonId, _rankedUsers, block.timestamp);
         }
     }
 
