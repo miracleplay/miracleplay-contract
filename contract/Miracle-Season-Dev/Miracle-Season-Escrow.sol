@@ -1,4 +1,12 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: UNLICENSED
+//    _______ _______ ___ ___ _______ ______  ___     ___ ______  _______     ___     _______ _______  _______
+//   |   _   |   _   |   Y   |   _   |   _  \|   |   |   |   _  \|   _   |   |   |   |   _   |   _   \|   _   |
+//   |   1___|.  1___|.  |   |.  1___|.  |   |.  |   |.  |.  |   |.  1___|   |.  |   |.  1   |.  1   /|   1___|
+//   |____   |.  __)_|.  |   |.  __)_|.  |   |.  |___|.  |.  |   |.  __)_    |.  |___|.  _   |.  _   \|____   |
+//   |:  1   |:  1   |:  1   |:  1   |:  |   |:  1   |:  |:  |   |:  1   |   |:  1   |:  |   |:  1    |:  1   |
+//   |::.. . |::.. . |\:.. ./|::.. . |::.|   |::.. . |::.|::.|   |::.. . |   |::.. . |::.|:. |::.. .  |::.. . |
+//   `-------`-------' `---' `-------`--- ---`-------`---`--- ---`-------'   `-------`--- ---`-------'`-------'
+//   MiracleSeasonEscrow V1.1.0
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -75,26 +83,26 @@ contract MiracleSeasonEscrow is PermissionsEnumerable, Multicall, ContractMetada
         return msg.sender == deployer;
     }
 
-    // Function to create a season, receiving reward tokens to be stored in the contract
+    // Function to create a season, allowing for optional rewards if rewardToken is address(0)
     function createSeason(
         uint256 currentSeasonId,
         address _rewardToken,
         uint256 _totalRewardAmount,
         uint256[] memory _prizeDistribution
     ) external {
-        require(_rewardToken != address(0), "Invalid reward token address.");
-        require(_totalRewardAmount > 0, "Total reward amount should be greater than 0.");
+        require(_totalRewardAmount > 0 || _rewardToken == address(0), "Total reward amount should be greater than 0 for rewarded season.");
         require(_prizeDistribution.length > 0, "Prize distribution array should not be empty.");
 
-        // Ensure that the sum of prizeDistribution matches the totalRewardAmount
         uint256 totalDistributed = 0;
         for (uint256 i = 0; i < _prizeDistribution.length; i++) {
             totalDistributed += _prizeDistribution[i];
         }
         require(totalDistributed == _totalRewardAmount, "Sum of prize distribution does not match total reward amount.");
 
-        // Transfer reward tokens to the contract for safekeeping
-        IERC20(_rewardToken).transferFrom(msg.sender, address(this), _totalRewardAmount);
+        // If rewardToken is specified, transfer the reward tokens to the contract for safekeeping
+        if (_rewardToken != address(0)) {
+            IERC20(_rewardToken).transferFrom(msg.sender, address(this), _totalRewardAmount);
+        }
 
         // Store the new season details
         seasons[currentSeasonId] = Season({
@@ -109,32 +117,38 @@ contract MiracleSeasonEscrow is PermissionsEnumerable, Multicall, ContractMetada
         emit SeasonCreated(currentSeasonId, _rewardToken, _totalRewardAmount, block.timestamp);
     }
 
-    // Function to end a season; only callable by FACTORY_ROLE holders to distribute rewards
-    function endSeason(uint256 _seasonId, address[] memory _rankedUsers) 
-        external 
-        onlyRole(FACTORY_ROLE) 
-        seasonExists(_seasonId) 
-        seasonNotEnded(_seasonId) 
+    // Function to end a season; if no rewards, skip prize distribution
+    function endSeason(uint256 _seasonId, address[] memory _rankedUsers)
+        external
+        onlyRole(FACTORY_ROLE)
+        seasonExists(_seasonId)
+        seasonNotEnded(_seasonId)
     {
         Season storage season = seasons[_seasonId];
         require(_rankedUsers.length == season.prizeDistribution.length, "Ranked users and prize distribution length mismatch.");
 
         season.isEnded = true; // Set season status to ended
 
-        IERC20 rewardToken = IERC20(season.rewardToken); // Create an instance of the reward token
-        address[] memory winners = new address[](_rankedUsers.length); // Array to store winners
-        uint256[] memory prizes = new uint256[](_rankedUsers.length);  // Array to store prize amounts
+        // If rewardToken is not address(0), distribute rewards
+        if (season.rewardToken != address(0)) {
+            IERC20 rewardToken = IERC20(season.rewardToken); // Create an instance of the reward token
+            address[] memory winners = new address[](_rankedUsers.length); // Array to store winners
+            uint256[] memory prizes = new uint256[](_rankedUsers.length);  // Array to store prize amounts
 
-        // Distribute prizes to each winner based on rank
-        for (uint256 i = 0; i < _rankedUsers.length; i++) {
-            uint256 prize = season.prizeDistribution[i];
-            winners[i] = _rankedUsers[i];
-            prizes[i] = prize;
-            rewardToken.transfer(_rankedUsers[i], prize); // Transfer prize to winner
+            // Distribute prizes to each winner based on rank
+            for (uint256 i = 0; i < _rankedUsers.length; i++) {
+                uint256 prize = season.prizeDistribution[i];
+                winners[i] = _rankedUsers[i];
+                prizes[i] = prize;
+                rewardToken.transfer(_rankedUsers[i], prize); // Transfer prize to winner
+            }
+
+            // Emit an event for season end with rewards
+            emit SeasonEnded(_seasonId, winners, prizes, block.timestamp);
+        } else {
+            // Emit an event for season end without rewards
+            emit SeasonEnded(_seasonId, new addressw uint256 , block.timestamp);
         }
-
-        // Emit an event for season end
-        emit SeasonEnded(_seasonId, winners, prizes, block.timestamp);
     }
 
     // View function to retrieve details of a specific season
