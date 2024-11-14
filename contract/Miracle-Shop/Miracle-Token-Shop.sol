@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: UNLICENSED
 //    _______ _______ ___ ___ _______ ______  ___     ___ ______  _______     ___     _______ _______  _______
 //   |   _   |   _   |   Y   |   _   |   _  \|   |   |   |   _  \|   _   |   |   |   |   _   |   _   \|   _   |
 //   |   1___|.  1___|.  |   |.  1___|.  |   |.  |   |.  |.  |   |.  1___|   |.  |   |.  1   |.  1   /|   1___|
@@ -21,7 +20,7 @@ interface IMintableToken {
 
 contract MiracleTokenShop is PermissionsEnumerable, Multicall, ContractMetadata {
     address public deployer;
-    uint256 public constant COOLDOWN_PERIOD = 7 days; // Cooldown period of 7 days
+    uint256 public COOLDOWN_PERIOD = 7 days; // Cooldown period of 7 days
 
     struct Item {
         uint256 price;
