@@ -7,6 +7,7 @@
 //   |::.. . |::.. . |\:.. ./|::.. . |::.|   |::.. . |::.|::.|   |::.. . |   |::.. . |::.|:. |::.. .  |::.. . |
 //   `-------`-------' `---' `-------`--- ---`-------`---`--- ---`-------'   `-------`--- ---`-------'`-------'
 //   Miracle Token Shop V1.0.0
+// SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -20,6 +21,7 @@ interface IMintableToken {
 
 contract MiracleTokenShop is PermissionsEnumerable, Multicall, ContractMetadata {
     address public deployer;
+    uint256 public constant COOLDOWN_PERIOD = 7 days; // Cooldown period of 7 days
 
     struct Item {
         uint256 price;
@@ -30,6 +32,16 @@ contract MiracleTokenShop is PermissionsEnumerable, Multicall, ContractMetadata 
         bool exists;
     }
 
+    mapping(uint256 => mapping(address => Item)) public items;
+    mapping(address => mapping(uint256 => uint256)) public lastPurchaseTime; // Mapping to store last purchase time
+
+    bytes32 public constant FACTORY_ROLE = keccak256("FACTORY_ROLE");
+
+    event ItemSet(uint256 indexed itemId, address indexed tokenAddress, uint256 price, string name);
+    event ItemPurchased(uint256 indexed itemId, address indexed buyer, address indexed tokenAddress, uint256 price);
+    event ItemRemoved(uint256 indexed itemId, address indexed tokenAddress);
+    event TokensWithdrawn(address indexed tokenAddress, uint256 amount, address indexed to);
+
     constructor(string memory _contractURI, address admin) {
         _setupRole(DEFAULT_ADMIN_ROLE, admin);
         _setupRole(FACTORY_ROLE, admin);
@@ -37,14 +49,6 @@ contract MiracleTokenShop is PermissionsEnumerable, Multicall, ContractMetadata 
         deployer = admin;
         _setupContractURI(_contractURI);
     }
-
-    mapping(uint256 => mapping(address => Item)) public items;
-    bytes32 public constant FACTORY_ROLE = keccak256("FACTORY_ROLE");
-
-    event ItemSet(uint256 indexed itemId, address indexed tokenAddress, uint256 price, string name);
-    event ItemPurchased(uint256 indexed itemId, address indexed buyer, address indexed tokenAddress, uint256 price);
-    event ItemRemoved(uint256 indexed itemId, address indexed tokenAddress);
-    event TokensWithdrawn(address indexed tokenAddress, uint256 amount, address indexed to);
 
     function _canSetContractURI() internal view override returns (bool) {
         return msg.sender == deployer;
@@ -76,12 +80,17 @@ contract MiracleTokenShop is PermissionsEnumerable, Multicall, ContractMetadata 
         Item memory item = items[itemId][tokenAddress];
         require(item.exists, "Item does not exist");
 
+        // Check cooldown period
+        require(block.timestamp >= lastPurchaseTime[msg.sender][itemId] + COOLDOWN_PERIOD, "Cooldown period has not passed");
+
         IERC20 paymentToken = IERC20(tokenAddress);
         require(paymentToken.transferFrom(msg.sender, address(this), item.price), "Token transfer failed");
 
-        // 민팅 로직 추가
         IMintableToken mintToken = IMintableToken(item.mintTokenAddress);
         mintToken.mintTo(msg.sender, item.mintAmount);
+
+        // Update last purchase time
+        lastPurchaseTime[msg.sender][itemId] = block.timestamp;
 
         emit ItemPurchased(itemId, msg.sender, tokenAddress, item.price);
     }
@@ -103,5 +112,20 @@ contract MiracleTokenShop is PermissionsEnumerable, Multicall, ContractMetadata 
     function getItem(uint256 itemId, address tokenAddress) external view returns (uint256 price, string memory name, bool exists, address mintTokenAddress, uint256 mintAmount) {
         Item memory item = items[itemId][tokenAddress];
         return (item.price, item.name, item.exists, item.mintTokenAddress, item.mintAmount);
+    }
+
+    // Function to get the last purchase time of an item by a user
+    function getLastPurchaseTime(address user, uint256 itemId) external view returns (uint256) {
+        return lastPurchaseTime[user][itemId];
+    }
+
+    // Function to get the remaining cooldown time (in seconds) before a user can purchase the same item again
+    function getRemainingCooldownTime(address user, uint256 itemId) external view returns (uint256) {
+        uint256 lastTime = lastPurchaseTime[user][itemId];
+        if (block.timestamp >= lastTime + COOLDOWN_PERIOD) {
+            return 0;
+        } else {
+            return (lastTime + COOLDOWN_PERIOD) - block.timestamp;
+        }
     }
 }
