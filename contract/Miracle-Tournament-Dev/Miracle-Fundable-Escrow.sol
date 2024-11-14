@@ -15,18 +15,9 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@thirdweb-dev/contracts/extension/PermissionsEnumerable.sol";
 import "@thirdweb-dev/contracts/extension/Multicall.sol";
 import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
-              
-interface IMintableERC20 is IERC20 {
-    function mintTo(address to, uint256 amount) external;
-}
 
 interface IStakingContract {
     function stakings(address user) external view returns (uint256, uint256, uint256);
-}
-
-interface iMiraclePass {
-    function hasValidPremiumPass(address user) external view returns (bool);
-    function hasValidPlatinumPass(address user) external view returns (bool);
 }
 
 contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractMetadata {
@@ -173,7 +164,7 @@ contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractM
     // Create tournament
     function createTournamentEscrow(uint256[] memory _tournamentInfo, bool _isFunding, address[] memory _prizeFeeToken, uint256[] memory _prizeFeeAmount, uint256[] memory _regStartEndTime, uint256[] memory _FundStartEndTime, uint256[] memory _prizeAmountArray, string memory _tournamentURI, uint _playerLimit, address[] memory _referees) external {
         // Escrow -> Tournament
-        // Create Tournament Pamameter
+        // Create Tournament Pamameterㅅ
         // _tournamentInfo 0-TournamentId, 1-TournamentTier
         require(_FundStartEndTime[0] < _FundStartEndTime[1], "Invalid funding time range");
         require(_regStartEndTime[0] < _regStartEndTime[1], "Invalid join tournament time range");
