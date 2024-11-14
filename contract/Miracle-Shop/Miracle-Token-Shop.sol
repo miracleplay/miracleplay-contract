@@ -6,7 +6,7 @@
 //   |:  1   |:  1   |:  1   |:  1   |:  |   |:  1   |:  |:  |   |:  1   |   |:  1   |:  |   |:  1    |:  1   |
 //   |::.. . |::.. . |\:.. ./|::.. . |::.|   |::.. . |::.|::.|   |::.. . |   |::.. . |::.|:. |::.. .  |::.. . |
 //   `-------`-------' `---' `-------`--- ---`-------`---`--- ---`-------'   `-------`--- ---`-------'`-------'
-//   Miracle Token Shop V1.0.0
+//   Miracle Token Shop V1.1.0
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
@@ -107,6 +107,11 @@ contract MiracleTokenShop is PermissionsEnumerable, Multicall, ContractMetadata 
         require(token.balanceOf(address(this)) >= amount, "Insufficient balance in contract");
         require(token.transfer(msg.sender, amount), "Token transfer failed");
         emit TokensWithdrawn(tokenAddress, amount, msg.sender);
+    }
+
+    function updateCooldownPeriod(uint256 newCooldownPeriod) external onlyRole(FACTORY_ROLE) {
+        require(newCooldownPeriod > 0, "Cooldown period must be greater than zero");
+        COOLDOWN_PERIOD = newCooldownPeriod;
     }
 
     function getItem(uint256 itemId, address tokenAddress) external view returns (uint256 price, string memory name, bool exists, address mintTokenAddress, uint256 mintAmount) {
