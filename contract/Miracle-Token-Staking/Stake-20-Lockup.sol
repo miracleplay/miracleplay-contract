@@ -12,23 +12,26 @@ contract TimeLockedStakingWithAPR is PermissionsEnumerable, ContractMetadata, Mu
     IERC20 public stakingToken;
     uint256 public stakingStartTime;
     uint256 public stakingEndTime;
-    uint256 public stakingDuration = 90 days;
-    uint256 public apr = 10; // Initial APR is 10%
+    uint256 public stakingDuration;
+    uint256 public apr;
     bool public isPaused = false;
     uint256 public totalStakedAmount;
-    address[] public stakerAddresses;
+
     struct Staker {
         uint256 stakedAmount;
         uint256 rewardEarned;
         bool hasClaimed;
     }
 
+    address[] public stakerAddresses;
     mapping(address => Staker) public stakers;
 
-    constructor(address _adminAddr, address _stakingToken, uint256 _stakingStartTime, string memory _contractURI) {
-        _setupRole(DEFAULT_ADMIN_ROLE, admin);
+    constructor(address _adminAddr, address _stakingToken, uint256 _stakingStartTime, uint256 _stakingDurationInDays, uint256 _apr, string memory _contractURI) {
+        _setupRole(DEFAULT_ADMIN_ROLE, _adminAddr);
         stakingToken = IERC20(_stakingToken);
         stakingStartTime = _stakingStartTime;
+        stakingDuration = _stakingDurationInDays * 1 days;
+        apr = _apr;
         stakingEndTime = stakingStartTime + stakingDuration;
         deployer = _adminAddr;
         _setupContractURI(_contractURI);
@@ -58,7 +61,7 @@ contract TimeLockedStakingWithAPR is PermissionsEnumerable, ContractMetadata, Mu
         _;
     }
 
-    function stake(uint256 amount) external onlyDuringStakingPeriod whenNotPaused {
+    function stake(uint256 amount) external onlyBeforeStakingStart whenNotPaused {
         require(stakingToken.transferFrom(msg.sender, address(this), amount), "Transfer failed");
         if (stakers[msg.sender].stakedAmount == 0) {
             stakerAddresses.push(msg.sender);
@@ -75,7 +78,7 @@ contract TimeLockedStakingWithAPR is PermissionsEnumerable, ContractMetadata, Mu
         return reward;
     }
 
-    function claim() external onlyAfterStakingPeriod {
+    function claim() external onlyAfterStakingPeriod whenNotPaused{
         Staker storage user = stakers[msg.sender];
         require(user.stakedAmount > 0, "No staked tokens");
         require(!user.hasClaimed, "Rewards already claimed");
@@ -90,25 +93,6 @@ contract TimeLockedStakingWithAPR is PermissionsEnumerable, ContractMetadata, Mu
 
     function depositRewards(uint256 amount) external onlyRole(DEFAULT_ADMIN_ROLE) {
         require(stakingToken.transferFrom(msg.sender, address(this), amount), "Transfer failed");
-    }
-
-    function withdraw(uint256 amount) external onlyBeforeStakingStart {
-        Staker storage user = stakers[msg.sender];
-        require(user.stakedAmount >= amount, "Insufficient staked amount");
-
-        user.stakedAmount -= amount;
-        totalStakedAmount -= amount;
-        require(stakingToken.transfer(msg.sender, amount), "Staking token transfer failed");
-
-        if (user.stakedAmount == 0) {
-            for (uint256 i = 0; i < stakerAddresses.length; i++) {
-                if (stakerAddresses[i] == msg.sender) {
-                    stakerAddresses[i] = stakerAddresses[stakerAddresses.length - 1];
-                    stakerAddresses.pop();
-                    break;
-                }
-            }
-        }
     }
 
     function pauseStaking() external onlyRole(DEFAULT_ADMIN_ROLE) {
@@ -160,10 +144,18 @@ contract TimeLockedStakingWithAPR is PermissionsEnumerable, ContractMetadata, Mu
         return stakerAddresses[index];
     }
 
-    function getStakerAddressWithInfo(uint256 index) external view returns (uint256 stakedAmount, uint256 rewardEarned, bool hasClaimed) {
+    function getStakerAddressWithInfo(uint256 index) external view returns (address stakerAddress, uint256 stakedAmount, uint256 rewardEarned, bool hasClaimed) {
         require(index < stakerAddresses.length, "Index out of bounds");
         address stakerAddress = stakerAddresses[index];
         Staker storage user = stakers[stakerAddress];
-        return (user.stakedAmount, user.rewardEarned, user.hasClaimed);
+        return (stakerAddress, user.stakedAmount, user.rewardEarned, user.hasClaimed);
+    }
+
+    function getStakingDuration() external view returns (uint256) {
+        return stakingDuration;
+    }
+
+    function getAPR() external view returns (uint256) {
+        return apr;
     }
 }
