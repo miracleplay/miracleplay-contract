@@ -1,4 +1,5 @@
-// SPDX-License-Identifier: MIT
+// TimeLockedStakingWithAPR V1.0.0
+// SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
