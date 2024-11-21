@@ -9,7 +9,7 @@
 //   Tournament V0.9.0 Tournament
 pragma solidity ^0.8.22;    
 
-import "./Escrow.sol";
+import "./TournamentEscrow.sol";
 import "@thirdweb-dev/contracts/extension/PermissionsEnumerable.sol";
 import "@thirdweb-dev/contracts/extension/Multicall.sol";
 import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
