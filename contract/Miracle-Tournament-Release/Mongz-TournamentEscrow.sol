@@ -6,10 +6,10 @@
 //   |:  1   |:  1   |:  1   |:  1   |:  |   |:  1   |:  |:  |   |:  1   |   |:  1   |:  |   |:  1    |:  1   |
 //   |::.. . |::.. . |\:.. ./|::.. . |::.|   |::.. . |::.|::.|   |::.. . |   |::.. . |::.|:. |::.. .  |::.. . |
 //   `-------`-------' `---' `-------`--- ---`-------`---`--- ---`-------'   `-------`--- ---`-------'`-------'
-//   TournamentEscrow V0.9.0 Tournament
+//   MongzTournamentEscrow V0.9.0 Tournament
 pragma solidity ^0.8.22;
 
-import "./Tournament.sol";
+import "./Mongz-Tournament.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@thirdweb-dev/contracts/extension/PermissionsEnumerable.sol";
 import "@thirdweb-dev/contracts/extension/Multicall.sol";
@@ -24,7 +24,7 @@ interface iMiraclePass {
     function hasValidPlatinumPass(address user) external view returns (bool);
 }
 
-contract TournamentEscrowContract is PermissionsEnumerable, Multicall, ContractMetadata {
+contract MongzTournamentEscrow is PermissionsEnumerable, Multicall, ContractMetadata {
     address public deployer;
     address public admin;
     // Royalty setting
@@ -41,7 +41,7 @@ contract TournamentEscrowContract is PermissionsEnumerable, Multicall, ContractM
     bytes32 public constant TOURNAMENT_ROLE = keccak256("TOURNAMENT_ROLE");
     bytes32 public constant FACTORY_ROLE = keccak256("FACTORY_ROLE");
 
-    TournamentContract public miracletournament;
+    MongzTournament public miracletournament;
 
     struct Tournament {
         address organizer;

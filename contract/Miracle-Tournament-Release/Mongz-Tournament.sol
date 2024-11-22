@@ -6,15 +6,15 @@
 //   |:  1   |:  1   |:  1   |:  1   |:  |   |:  1   |:  |:  |   |:  1   |   |:  1   |:  |   |:  1    |:  1   |
 //   |::.. . |::.. . |\:.. ./|::.. . |::.|   |::.. . |::.|::.|   |::.. . |   |::.. . |::.|:. |::.. .  |::.. . |
 //   `-------`-------' `---' `-------`--- ---`-------`---`--- ---`-------'   `-------`--- ---`-------'`-------'
-//   Tournament V0.9.0 Tournament
+//   MongzTournament V0.9.0 Tournament
 pragma solidity ^0.8.22;    
 
-import "./TournamentEscrow.sol";
+import "./Mongz-TournamentEscrow.sol";
 import "@thirdweb-dev/contracts/extension/PermissionsEnumerable.sol";
 import "@thirdweb-dev/contracts/extension/Multicall.sol";
 import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
 
-contract TournamentContract is PermissionsEnumerable, Multicall, ContractMetadata {
+contract MongzTournament is PermissionsEnumerable, Multicall, ContractMetadata {
     address public deployer;
     address payable public EscrowAddr;
     uint[] private OnGoingTournaments;
