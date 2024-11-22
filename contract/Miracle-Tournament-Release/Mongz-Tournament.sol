@@ -47,25 +47,11 @@ contract MongzTournament is PermissionsEnumerable, Multicall, ContractMetadata {
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _setupRole(FACTORY_ROLE, msg.sender);
         // Backend worker address
-        _setupRole(FACTORY_ROLE, 0x2fB586cD6bF507998e0816897D812d5dF2aF7677);
-        _setupRole(FACTORY_ROLE, 0x7C7f65a0f86a556aAA04FD9ceDb1AA6D943C35c3);
-        _setupRole(FACTORY_ROLE, 0xd278a5A5B9A83574852d25F08420029972fd2c6f);
-        _setupRole(FACTORY_ROLE, 0x7c35582e6b953b0D7980ED3444363B5c99d1ded3);
-        _setupRole(FACTORY_ROLE, 0xe463D4fdBc692D9016949881E6a5e18d815C4537);
-        _setupRole(FACTORY_ROLE, 0x622DfbD67fa2e87aa8c774e14fda2791656f282b);
-        _setupRole(FACTORY_ROLE, 0xbE810123C22046d93Afb018d7c4b7248df0088BE);
-        _setupRole(FACTORY_ROLE, 0xc184A36eac1EA5d62829cc80e8e57E7c4994D40B);
-        _setupRole(FACTORY_ROLE, 0xDCa74207a0cB028A2dE3aEeDdC7A9Be52109a785);
-        _setupRole(FACTORY_ROLE, 0x2D328292CDfA09e4Aa247F45753A13e546cEB29B);
-        _setupRole(FACTORY_ROLE, 0x8914b41C3D0491E751d4eA3EbfC04c42D7275A75);
-        _setupRole(FACTORY_ROLE, 0xe818aa4d851645aB525da5C11Ac231e2fAEDA322);
-        _setupRole(FACTORY_ROLE, 0x116CAceb39AEA14BC93EF7f67f9176A32470F073);
-        _setupRole(FACTORY_ROLE, 0xC498f5e9cba0637De9A3d59FBc113286230E7EB2);
-        _setupRole(FACTORY_ROLE, 0x7a43acBA2D4C5ECe3A3114b48d22e6aedce72890);
-        _setupRole(FACTORY_ROLE, 0x0ea564b0119555B14e96327A9ea8463bCCC39291);
-        _setupRole(FACTORY_ROLE, 0x2ABc2dB509B7519b018FCf3194906a89c0aa127e);
-        _setupRole(FACTORY_ROLE, 0x6C5d470a4777A81655Cb220dC5C8c6B38D2DF257);
-        _setupRole(FACTORY_ROLE, 0xA49DF5b16422cc2afee9eeEe3f161e1e035C3C91);
+        _setupRole(FACTORY_ROLE, 0x83a32D04FD216264CE21CA06B66179C572f5Dd58);
+        _setupRole(FACTORY_ROLE, 0x986e84f252B1eD9cDc76b999FD2d9e24C402282C);
+        _setupRole(FACTORY_ROLE, 0xE7316Fa07e3a8E87e5479d7F407ba57c319B6037);
+        _setupRole(FACTORY_ROLE, 0x1A5B5D209DC324521CF66576787966A20ad749e1);
+        _setupRole(FACTORY_ROLE, 0x053B2C6445c67711b4FE3240A983Aa6113900233);
 
         deployer = msg.sender;
         _setupContractURI(_contractURI);
@@ -170,7 +156,7 @@ contract MongzTournament is PermissionsEnumerable, Multicall, ContractMetadata {
             prizeAddr[i] = _rankers[i];
         }
 
-        TournamentEscrowContract(EscrowAddr).endedTournament(_tournamentId, prizeAddr);
+        MongzTournamentEscrow(EscrowAddr).endedTournament(_tournamentId, prizeAddr);
         _tournament.tournamentEnded = true;
 
         removeOnGoingTournament(_tournamentId);
@@ -183,7 +169,7 @@ contract MongzTournament is PermissionsEnumerable, Multicall, ContractMetadata {
         require(!_tournament.tournamentEnded, "Tournament has already ended");
 
         address[] memory _entryPlayers = _tournament.players;
-        TournamentEscrowContract(EscrowAddr).canceledTournament(_tournamentId, _entryPlayers);
+        MongzTournamentEscrow(EscrowAddr).canceledTournament(_tournamentId, _entryPlayers);
         _tournament.tournamentEnded = true;
 
         removeOnGoingTournament(_tournamentId);

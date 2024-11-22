@@ -99,7 +99,6 @@ contract TimeLockedStakingWithAPR is PermissionsEnumerable, ContractMetadata, Mu
         }
     }
 
-    // Add a function to force withdraw tokens for a user (principal only)
     function forceWithdraw(address staker) external onlyRole(DEFAULT_ADMIN_ROLE) {
         Staker storage user = stakers[staker];
         require(user.stakedAmount > 0, "No staked tokens");

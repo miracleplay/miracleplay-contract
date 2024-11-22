@@ -15,15 +15,6 @@ import "@thirdweb-dev/contracts/extension/PermissionsEnumerable.sol";
 import "@thirdweb-dev/contracts/extension/Multicall.sol";
 import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
 
-interface IStakingContract {
-    function stakings(address user) external view returns (uint256, uint256, uint256);
-}
-
-interface iMiraclePass {
-    function hasValidPremiumPass(address user) external view returns (bool);
-    function hasValidPlatinumPass(address user) external view returns (bool);
-}
-
 contract MongzTournamentEscrow is PermissionsEnumerable, Multicall, ContractMetadata {
     address public deployer;
     address public admin;
@@ -41,7 +32,7 @@ contract MongzTournamentEscrow is PermissionsEnumerable, Multicall, ContractMeta
     bytes32 public constant TOURNAMENT_ROLE = keccak256("TOURNAMENT_ROLE");
     bytes32 public constant FACTORY_ROLE = keccak256("FACTORY_ROLE");
 
-    MongzTournament public miracletournament;
+    MongzTournament public mongztournament;
 
     struct Tournament {
         address organizer;
@@ -65,7 +56,7 @@ contract MongzTournamentEscrow is PermissionsEnumerable, Multicall, ContractMeta
     event UnlockPrize(uint tournamentId, uint amount);
     event UnlockFee(uint tournamentId, uint amount);
 
-    constructor(address _royaltyAddrDev, address _royaltyAddrFlp,address _miracletournament,string memory _contractURI) {
+    constructor(address _royaltyAddrDev, address _royaltyAddrFlp,address _mongztournament,string memory _contractURI) {
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         royaltyAddrDev = _royaltyAddrDev;
         royaltyAddrFlp = _royaltyAddrFlp;
@@ -80,8 +71,8 @@ contract MongzTournamentEscrow is PermissionsEnumerable, Multicall, ContractMeta
         RoyaltyRegfeeReferee = 0;
         deployer = msg.sender;
         // Set tournament contract
-        _setupRole(TOURNAMENT_ROLE, _miracletournament);
-        miracletournament = TournamentContract(_miracletournament);
+        _setupRole(TOURNAMENT_ROLE, _mongztournament);
+        mongztournament = MongzTournament(_mongztournament);
         _setupContractURI(_contractURI);
         // Set default tournament admin
         _setupRole(FACTORY_ROLE, msg.sender); // Deployer tournament admin
@@ -103,9 +94,9 @@ contract MongzTournamentEscrow is PermissionsEnumerable, Multicall, ContractMeta
         _;
     }
 
-    function connectTournament(address _miracletournament) external onlyRole(DEFAULT_ADMIN_ROLE){
-        _setupRole(TOURNAMENT_ROLE, _miracletournament);
-        miracletournament = TournamentContract(_miracletournament);
+    function connectTournament(address _mongztournament) external onlyRole(DEFAULT_ADMIN_ROLE){
+        _setupRole(TOURNAMENT_ROLE, _mongztournament);
+        mongztournament = MongzTournament(_mongztournament);
     }
 
     // Create tournament
@@ -139,7 +130,7 @@ contract MongzTournamentEscrow is PermissionsEnumerable, Multicall, ContractMeta
         newTournament.tournamentURI = _tournamentURI;
         newTournament.referees = _referees;
         newTournament.PlayersLimit = _playerLimit;
-        miracletournament.createTournament(_tournamentInfo[0], msg.sender, _regStartEndTime[0], _regStartEndTime[1], _prizeAmountArray.length, _playerLimit);
+        mongztournament.createTournament(_tournamentInfo[0], msg.sender, _regStartEndTime[0], _regStartEndTime[1], _prizeAmountArray.length, _playerLimit);
 
         require(IERC20(_prizeFeeToken[0]).transferFrom(msg.sender, address(this), _prizeFeeAmount[0]), "Transfer failed.");
         
@@ -172,7 +163,7 @@ contract MongzTournamentEscrow is PermissionsEnumerable, Multicall, ContractMeta
             _tournament.feeBalance = _tournament.feeBalance + _tournament.joinFee;
         }
         
-        miracletournament.register(_tournamentId, msg.sender);
+        mongztournament.register(_tournamentId, msg.sender);
         emit Registration(_tournamentId, msg.sender);
     }
 
