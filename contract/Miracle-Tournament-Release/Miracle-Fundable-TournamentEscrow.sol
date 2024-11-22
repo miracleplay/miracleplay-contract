@@ -19,11 +19,6 @@ interface IStakingContract {
     function stakings(address user) external view returns (uint256, uint256, uint256);
 }
 
-interface iMiraclePass {
-    function hasValidPremiumPass(address user) external view returns (bool);
-    function hasValidPlatinumPass(address user) external view returns (bool);
-}
-
 contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractMetadata {
     address public deployer;
     address public admin;
