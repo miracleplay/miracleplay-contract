@@ -6,22 +6,26 @@
 //   |:  1   |:  1   |:  1   |:  1   |:  |   |:  1   |:  |:  |   |:  1   |   |:  1   |:  |   |:  1    |:  1   |
 //   |::.. . |::.. . |\:.. ./|::.. . |::.|   |::.. . |::.|::.|   |::.. . |   |::.. . |::.|:. |::.. .  |::.. . |
 //   `-------`-------' `---' `-------`--- ---`-------`---`--- ---`-------'   `-------`--- ---`-------'`-------'
-//   Tournament V0.9.0 Tournament
+//   MiracleEscrow V0.9 Fundable Tournament / Sponsored Tournament
 pragma solidity ^0.8.22;    
 
-import "./TournamentEscrow.sol";
+import "./Miracle-Fundable-TournamentEscrow.sol";
 import "@thirdweb-dev/contracts/extension/PermissionsEnumerable.sol";
 import "@thirdweb-dev/contracts/extension/Multicall.sol";
 import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
 
-contract TournamentContract is PermissionsEnumerable, Multicall, ContractMetadata {
+contract FundableTournament is PermissionsEnumerable, Multicall, ContractMetadata {
     address public deployer;
     address payable public EscrowAddr;
     uint[] private OnGoingTournaments;
     uint[] private EndedTournaments;
+    // Tournament setting
+    uint public minTournamentRate;
 
     struct Tournament {
         bool created;
+        bool isFunding;
+        bool isSponsorTournament;
         address [] players;
         mapping(address => bool) playerRegistered;
         address [] ranker;
@@ -43,7 +47,7 @@ contract TournamentContract is PermissionsEnumerable, Multicall, ContractMetadat
     bytes32 public constant ESCROW_ROLE = keccak256("ESCROW_ROLE");
     bytes32 public constant FACTORY_ROLE = keccak256("FACTORY_ROLE");
 
-    constructor(string memory _contractURI)  {
+    constructor(address _VoteToken, address _BattlePoint, string memory _contractURI)  {
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _setupRole(FACTORY_ROLE, msg.sender);
         // Backend worker address
@@ -67,6 +71,7 @@ contract TournamentContract is PermissionsEnumerable, Multicall, ContractMetadat
         _setupRole(FACTORY_ROLE, 0x6C5d470a4777A81655Cb220dC5C8c6B38D2DF257);
         _setupRole(FACTORY_ROLE, 0xA49DF5b16422cc2afee9eeEe3f161e1e035C3C91);
 
+        minTournamentRate = 100;
         deployer = msg.sender;
         _setupContractURI(_contractURI);
     }
@@ -87,9 +92,11 @@ contract TournamentContract is PermissionsEnumerable, Multicall, ContractMetadat
         EscrowAddr = _escrowAddr;
     }
 
-    function createTournament(uint _tournamentId, address _organizer, uint _registerStartTime, uint _registerEndTime, uint _prizeCount, uint _playerLimit) public onlyRole(ESCROW_ROLE) {
+    function createTournament(uint _tournamentId, bool _isFunding, bool _isSponsorTournament, address _organizer, uint _registerStartTime, uint _registerEndTime, uint _prizeCount, uint _playerLimit) public onlyRole(ESCROW_ROLE) {
         Tournament storage newTournament = tournamentMapping[_tournamentId];
         newTournament.created = true;
+        newTournament.isSponsorTournament = _isSponsorTournament;
+        newTournament.isFunding = _isFunding;
         newTournament.organizer = _organizer;
         newTournament.registerStartTime = _registerStartTime;
         newTournament.registerEndTime = _registerEndTime;
@@ -141,6 +148,7 @@ contract TournamentContract is PermissionsEnumerable, Multicall, ContractMetadat
         }
     }
 
+
     function updateScore(uint tournamentId, string calldata _uri) external onlyRole(FACTORY_ROLE) {
         tournamentMapping[tournamentId].scoreURI = _uri;
     }
@@ -159,6 +167,14 @@ contract TournamentContract is PermissionsEnumerable, Multicall, ContractMetadat
         emit ShuffledPlayers(tournamentId, shuffledArray.length);
     }
 
+    function endFunding(uint _tournamentId) external onlyRole(FACTORY_ROLE) {
+        FundableTournamentEscrow(EscrowAddr).endFunding(_tournamentId);
+    }
+
+    function cancelFunding(uint _tournamentId) external onlyRole(FACTORY_ROLE) {
+        FundableTournamentEscrow(EscrowAddr).cancelFunding(_tournamentId);
+    }
+
     function endTournament(uint _tournamentId, address[] calldata _rankers) public onlyRole(FACTORY_ROLE) {
         Tournament storage _tournament = tournamentMapping[_tournamentId];
 
@@ -170,7 +186,7 @@ contract TournamentContract is PermissionsEnumerable, Multicall, ContractMetadat
             prizeAddr[i] = _rankers[i];
         }
 
-        TournamentEscrowContract(EscrowAddr).endedTournament(_tournamentId, prizeAddr);
+        FundableTournamentEscrow(EscrowAddr).endedTournament(_tournamentId, prizeAddr);
         _tournament.tournamentEnded = true;
 
         removeOnGoingTournament(_tournamentId);
@@ -183,7 +199,7 @@ contract TournamentContract is PermissionsEnumerable, Multicall, ContractMetadat
         require(!_tournament.tournamentEnded, "Tournament has already ended");
 
         address[] memory _entryPlayers = _tournament.players;
-        TournamentEscrowContract(EscrowAddr).canceledTournament(_tournamentId, _entryPlayers);
+        FundableTournamentEscrow(EscrowAddr).canceledTournament(_tournamentId, _entryPlayers);
         _tournament.tournamentEnded = true;
 
         removeOnGoingTournament(_tournamentId);
@@ -229,6 +245,20 @@ contract TournamentContract is PermissionsEnumerable, Multicall, ContractMetadat
         return progress;
     }
 
+    function getMinTournamentRate() public view returns (uint) {
+        return minTournamentRate;
+    }
+
+    function isTounamentSuccess(uint _tournamentId) public view returns (bool) {
+        uint progress = getFundingProgress(_tournamentId);
+        uint minRate = getMinTournamentRate();
+        return progress >= minRate;
+    }
+
+    function isFundingSuccess(uint _tournamentId) public view returns (bool) {
+        return FundableTournamentEscrow(EscrowAddr).isFundingSuccess(_tournamentId);
+    }
+    
     function getAllTournamentCount() external view returns (uint) {
         uint count = OnGoingTournaments.length + EndedTournaments.length;
         return count;
@@ -258,5 +288,10 @@ contract TournamentContract is PermissionsEnumerable, Multicall, ContractMetadat
     function getPlayers(uint _tournamentId) external view returns(address[] memory){
         Tournament storage _tournament = tournamentMapping[_tournamentId];
         return _tournament.players;
+    }
+
+    // View from escrow
+    function getFundingProgress(uint _tournamentId) public view returns (uint) {
+        return FundableTournamentEscrow(EscrowAddr).getFundingProgress(_tournamentId);
     }
 }

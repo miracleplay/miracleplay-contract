@@ -6,10 +6,10 @@
 //   |:  1   |:  1   |:  1   |:  1   |:  |   |:  1   |:  |:  |   |:  1   |   |:  1   |:  |   |:  1    |:  1   |
 //   |::.. . |::.. . |\:.. ./|::.. . |::.|   |::.. . |::.|::.|   |::.. . |   |::.. . |::.|:. |::.. .  |::.. . |
 //   `-------`-------' `---' `-------`--- ---`-------`---`--- ---`-------'   `-------`--- ---`-------'`-------'
-//   TournamentEscrow V0.9.0 Tournament
+//   MiracleEscrow V0.9 Fundable Tournament / Sponsored Tournament
 pragma solidity ^0.8.22;
 
-import "./Tournament.sol";
+import "./Miracle-Fundable-Tournament.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@thirdweb-dev/contracts/extension/PermissionsEnumerable.sol";
 import "@thirdweb-dev/contracts/extension/Multicall.sol";
@@ -24,7 +24,7 @@ interface iMiraclePass {
     function hasValidPlatinumPass(address user) external view returns (bool);
 }
 
-contract TournamentEscrowContract is PermissionsEnumerable, Multicall, ContractMetadata {
+contract FundableTournamentEscrow is PermissionsEnumerable, Multicall, ContractMetadata {
     address public deployer;
     address public admin;
     // Royalty setting
@@ -36,15 +36,21 @@ contract TournamentEscrowContract is PermissionsEnumerable, Multicall, ContractM
     uint public RoyaltyRegfeeReferee;
     address public royaltyAddrDev;
     address public royaltyAddrFlp;
+    // Funding setting
+    uint public minFundingRate;
+    uint public baseLimit;
+    // Get NFT Staking info from NFT Staking
+    IStakingContract[] public stakingContracts;
 
     // Permissions
     bytes32 public constant TOURNAMENT_ROLE = keccak256("TOURNAMENT_ROLE");
     bytes32 public constant FACTORY_ROLE = keccak256("FACTORY_ROLE");
 
-    TournamentContract public miracletournament;
+    FundableTournament public miracletournament;
 
     struct Tournament {
         address organizer;
+        bool isFunding;
         bool isSponsored;
         uint tier;
         IERC20 prizeToken;
@@ -62,13 +68,31 @@ contract TournamentEscrowContract is PermissionsEnumerable, Multicall, ContractM
     }
     mapping(uint => Tournament) public tournamentMapping;
 
+    struct Funding {
+        uint256 startTime;
+        uint256 endTime;
+        IERC20 fundingToken;
+        uint256 totalFunded;
+        uint256 fundingGoal;
+        bool fundingActive;
+        bool fundingEnded;
+        bool fundingCanceled;
+        mapping(address => uint256) contributions;
+        address[] contributors;
+    }
+    mapping(uint => Funding) public fundingMapping;
+
     event UnlockPrize(uint tournamentId, uint amount);
     event UnlockFee(uint tournamentId, uint amount);
 
-    constructor(address _royaltyAddrDev, address _royaltyAddrFlp,address _miracletournament,string memory _contractURI) {
+    constructor(address _royaltyAddrDev, address _royaltyAddrFlp, address[] memory _stakingContractAddresses, address _assetMasterAddr, address _miracletournament, address _miraclePass, string memory _contractURI) {
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         royaltyAddrDev = _royaltyAddrDev;
         royaltyAddrFlp = _royaltyAddrFlp;
+        // Set staking contract
+        for (uint i = 0; i < _stakingContractAddresses.length; i++) {
+            stakingContracts.push(IStakingContract(_stakingContractAddresses[i]));
+        }
         // Set default dev royalty
         RoyaltyPrizeDev = 5;
         RoyaltyRegfeeDev = 5;
@@ -78,10 +102,13 @@ contract TournamentEscrowContract is PermissionsEnumerable, Multicall, ContractM
         // Set Referee user royalty
         RoyaltyPrizeReferee = 5;
         RoyaltyRegfeeReferee = 0;
+        // Set default funding setting
+        minFundingRate = 100;
+        baseLimit = 200e6;
         deployer = msg.sender;
         // Set tournament contract
         _setupRole(TOURNAMENT_ROLE, _miracletournament);
-        miracletournament = TournamentContract(_miracletournament);
+        miracletournament = FundableTournament(_miracletournament);
         _setupContractURI(_contractURI);
         // Set default tournament admin
         _setupRole(FACTORY_ROLE, msg.sender); // Deployer tournament admin
@@ -90,6 +117,9 @@ contract TournamentEscrowContract is PermissionsEnumerable, Multicall, ContractM
     event EscrowCreated(uint tournamentId, address organizer);
     event Registration(uint tournamentId, address user);
     event KickPlayer(uint tournamentId, address user);
+    event Fund(uint tournamentId, address fundingUser, uint256 fundingAmount);
+    event FundEnded(uint tournamentId);
+    event FundCanceled(uint tournamentId);
     event TournamentEnded(uint tournamentId);
     event TournamentCanceled(uint tournamentId);
 
@@ -103,9 +133,18 @@ contract TournamentEscrowContract is PermissionsEnumerable, Multicall, ContractM
         _;
     }
 
+    function connectEditionStakings(address[] memory _stakingContractAddresses) external onlyRole(DEFAULT_ADMIN_ROLE){
+        // Clear the existing array
+        delete stakingContracts;
+        
+        for (uint i = 0; i < _stakingContractAddresses.length; i++) {
+            stakingContracts.push(IStakingContract(_stakingContractAddresses[i]));
+        }
+    }
+
     function connectTournament(address _miracletournament) external onlyRole(DEFAULT_ADMIN_ROLE){
         _setupRole(TOURNAMENT_ROLE, _miracletournament);
-        miracletournament = TournamentContract(_miracletournament);
+        miracletournament = FundableTournament(_miracletournament);
     }
 
     // Create tournament
@@ -113,8 +152,7 @@ contract TournamentEscrowContract is PermissionsEnumerable, Multicall, ContractM
         // Escrow -> Tournament
         // Create Tournament Pamameter
         // _tournamentInfo 0-TournamentId, 1-TournamentTier
-        require(_isFunding == false, "Funding is not supported.");
-        require(_FundStartEndTime[0] == _regStartEndTime[0] && _FundStartEndTime[1] == _regStartEndTime[1], "Funding is not supported.");
+        require(_FundStartEndTime[0] < _FundStartEndTime[1], "Invalid funding time range");
         require(_regStartEndTime[0] < _regStartEndTime[1], "Invalid join tournament time range");
         uint256 totalWithdrawAmount;
         for (uint256 i = 0; i < _prizeAmountArray.length; i++) {
@@ -125,7 +163,16 @@ contract TournamentEscrowContract is PermissionsEnumerable, Multicall, ContractM
         Tournament storage newTournament = tournamentMapping[_tournamentInfo[0]];
         require(newTournament.tournamentCreated == false, "Tournament already created.");
 
+        bool _isSponsor = isSponsor(msg.sender);
+        if(!_isSponsor){
+            if(_isFunding){
+                revert("Funding tournaments can only be created by sponsors.");
+            }
+        }
+
         newTournament.organizer = msg.sender;
+        newTournament.isFunding = _isFunding;
+        newTournament.isSponsored = _isSponsor;
         newTournament.tier = _tournamentInfo[1];
         newTournament.prizeToken = IERC20(_prizeFeeToken[0]);
         newTournament.feeToken = IERC20(_prizeFeeToken[1]);
@@ -139,11 +186,29 @@ contract TournamentEscrowContract is PermissionsEnumerable, Multicall, ContractM
         newTournament.tournamentURI = _tournamentURI;
         newTournament.referees = _referees;
         newTournament.PlayersLimit = _playerLimit;
-        miracletournament.createTournament(_tournamentInfo[0], msg.sender, _regStartEndTime[0], _regStartEndTime[1], _prizeAmountArray.length, _playerLimit);
+        miracletournament.createTournament(_tournamentInfo[0], _isFunding, _isSponsor, msg.sender, _regStartEndTime[0], _regStartEndTime[1], _prizeAmountArray.length, _playerLimit);
 
-        require(IERC20(_prizeFeeToken[0]).transferFrom(msg.sender, address(this), _prizeFeeAmount[0]), "Transfer failed.");
+        _payFeeCreate();
+
+        if (_isFunding){
+            createFunding(_tournamentInfo[0], _FundStartEndTime[0], _FundStartEndTime[1], _prizeFeeToken[0], _prizeFeeAmount[0]);
+        } else {
+            require(IERC20(_prizeFeeToken[0]).transferFrom(msg.sender, address(this), _prizeFeeAmount[0]), "Transfer failed.");
+        }
         
         emit EscrowCreated(_tournamentInfo[0], msg.sender);
+    }
+
+    function createFunding(uint _tournamentId, uint _fundStartTime, uint _fundEndTime, address _fundingToken, uint _fundingGoal) internal {
+        Funding storage funding = fundingMapping[_tournamentId];
+        require(_fundStartTime < _fundEndTime, "Invalid time range");
+        require(_fundingToken != address(0), "Invalid token address");
+
+        funding.startTime = _fundStartTime;
+        funding.endTime = _fundEndTime;
+        funding.fundingToken = IERC20(_fundingToken);
+        funding.fundingGoal = _fundingGoal;
+        funding.fundingActive = true;
     }
 
     function endedTournament(uint _tournamentId, address[] memory _withdrawAddresses) external onlyRole(TOURNAMENT_ROLE) {
@@ -166,6 +231,14 @@ contract TournamentEscrowContract is PermissionsEnumerable, Multicall, ContractM
         require(_tournament.feeToken.allowance(msg.sender, address(this)) >= _tournament.joinFee, "Allowance is not sufficient.");
         require(_tournament.joinFee <= _tournament.feeToken.balanceOf(msg.sender), "Insufficient balance.");
         require(_tournament.organizer != msg.sender, "Organizers cannot register.");
+        require(tierValify(_tournament.tier, msg.sender), "There are no required passes for the tournament.");
+
+        if (_tournament.isFunding){
+            Funding storage funding = fundingMapping[_tournamentId];
+            require(funding.fundingEnded, "Funding is not ended.");
+        }
+
+        _payFeeRegister();
 
         if(_tournament.joinFee > 0){
             require(_tournament.feeToken.transferFrom(msg.sender, address(this), _tournament.joinFee), "Transfer failed.");
@@ -186,18 +259,84 @@ contract TournamentEscrowContract is PermissionsEnumerable, Multicall, ContractM
         emit KickPlayer(_tournamentId, msg.sender);
     }
 
+    function fundTournament(uint _tournamentId, uint256 _amount) external {
+        Funding storage funding = fundingMapping[_tournamentId];
+        require(block.timestamp >= funding.startTime && block.timestamp <= funding.endTime, "Funding not active");
+        require(funding.fundingActive, "Funding not active");
+        require(funding.totalFunded + _amount <= funding.fundingGoal, "Funding amount exceeds goal");
+        require(IERC20(funding.fundingToken).allowance(msg.sender, address(this)) >= _amount, "Allowance is not sufficient.");
+        require(funding.fundingToken.transferFrom(msg.sender, address(this), _amount), "Transfer failed");
+
+        require(_amount >= baseLimit, "Amount is less than the minimum required");
+        require(_amount % baseLimit == 0, "Amount must be in multiples of 200");
+
+        // Get staking amount
+        uint256 stakedNFTs = getTotalUserStakedAmount(msg.sender);
+        uint256 maxFundingLimit = calculateMaxFundingLimit(stakedNFTs);
+
+        uint256 newTotalContribution = funding.contributions[msg.sender] + _amount;
+        require(newTotalContribution <= maxFundingLimit, "Total contribution exceeds maximum funding limit");
+
+        if (funding.contributions[msg.sender] == 0) {
+            // New funder
+            funding.contributors.push(msg.sender);
+        }
+        funding.contributions[msg.sender] = newTotalContribution;
+        funding.totalFunded += _amount;
+        emit Fund(_tournamentId, msg.sender, _amount);
+    }
+
+    function endFunding(uint _tournamentId) external onlyRole(TOURNAMENT_ROLE) {
+        // Tournament -> Escrow
+        Funding storage funding = fundingMapping[_tournamentId];
+        require(funding.fundingActive, "Funding not active");
+        require(funding.totalFunded >= funding.fundingGoal * minFundingRate / 100, "Funding did not reach the minimum rate");
+        funding.fundingActive = false;
+        funding.fundingEnded = true;
+        tournamentMapping[_tournamentId].prizeAmount = funding.totalFunded;
+
+        emit FundEnded(_tournamentId);
+    }
+
+    function cancelFunding(uint _tournamentId) external onlyRole(TOURNAMENT_ROLE) {
+        // Tournament -> Escrow
+        Funding storage funding = fundingMapping[_tournamentId];
+        require(funding.fundingActive, "Funding not active");
+        funding.fundingActive = false;
+        funding.fundingCanceled = true;
+        for (uint i = 0; i < funding.contributors.length; i++) {
+            address contributor = funding.contributors[i];
+            uint256 amount = funding.contributions[contributor];
+            funding.fundingToken.transfer(contributor, amount);
+        }
+        emit FundCanceled(_tournamentId);
+    }
+
     function _EndedUnlockFee(uint _tournamentId) internal {
         Tournament storage _tournament = tournamentMapping[_tournamentId];
         // Calculate join fee and transfer
         uint256 _feeAmount = _tournament.feeBalance;
         uint256 _feeDev = (_feeAmount * RoyaltyRegfeeDev) / 100;
         uint256 _feeFlp = (_feeAmount * RoyaltyRegfeeFlp) / 100;
-
-        uint256 _feeOrg = _feeAmount - (_feeDev + _feeFlp);
-        _transferToken(_tournament.feeToken, royaltyAddrDev, _feeDev);
-        _transferToken(_tournament.feeToken, royaltyAddrFlp, _feeFlp);
-        _transferToken(_tournament.feeToken, _tournament.organizer, _feeOrg);
-
+        if(_tournament.isFunding){
+            uint256 _feeForInvestors = _feeAmount - (_feeDev + _feeFlp);
+            _transferToken(_tournament.feeToken, royaltyAddrDev, _feeDev);
+            _transferToken(_tournament.feeToken, royaltyAddrFlp, _feeFlp);
+            // Distribute remaining fee to investors
+            Funding storage funding = fundingMapping[_tournamentId];
+            uint256 totalInvested = funding.totalFunded;
+            for (uint i = 0; i < funding.contributors.length; i++) {
+                address investor = funding.contributors[i];
+                uint256 investedAmount = funding.contributions[investor];
+                uint256 investorShare = (_feeForInvestors * investedAmount) / totalInvested;
+                _transferToken(_tournament.feeToken, investor, investorShare);
+            }
+        } else {
+            uint256 _feeOrg = _feeAmount - (_feeDev + _feeFlp);
+            _transferToken(_tournament.feeToken, royaltyAddrDev, _feeDev);
+            _transferToken(_tournament.feeToken, royaltyAddrFlp, _feeFlp);
+            _transferToken(_tournament.feeToken, _tournament.organizer, _feeOrg);
+        }
         emit UnlockFee(_tournamentId, _tournament.feeBalance);
     }
 
@@ -246,10 +385,21 @@ contract TournamentEscrowContract is PermissionsEnumerable, Multicall, ContractM
                 _tournament.feeToken.transfer(_players[i], _tournament.joinFee);
             }
         }
-
-        if(_tournament.prizeAmount > 0){
-            // Transfer prize to org
-            _tournament.prizeToken.transfer(_tournament.organizer, _tournament.prizeAmount);
+        
+        if(_tournament.isFunding){
+            Funding storage funding = fundingMapping[_tournamentId];
+            funding.fundingActive = false;
+            funding.fundingCanceled = true;
+            for (uint i = 0; i < funding.contributors.length; i++) {
+                address contributor = funding.contributors[i];
+                uint256 amount = funding.contributions[contributor];
+                funding.fundingToken.transfer(contributor, amount);
+            }
+        }else{
+            if(_tournament.prizeAmount > 0){
+                // Transfer prize to org
+                _tournament.prizeToken.transfer(_tournament.organizer, _tournament.prizeAmount);
+            }
         }
     }
 
@@ -292,5 +442,68 @@ contract TournamentEscrowContract is PermissionsEnumerable, Multicall, ContractM
 
     function setRegfeeRoyaltyRefRate(uint _royaltyRate) external onlyRole(DEFAULT_ADMIN_ROLE){
         RoyaltyRegfeeReferee = _royaltyRate;
+    }
+
+    // Set Funding
+    function setMinimumFundingRate(uint _newRate) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(_newRate > 0 && _newRate <= 100, "Invalid rate");
+        minFundingRate = _newRate;
+    }
+    
+    // View function
+    function getFundingProgress(uint _tournamentId) public view returns (uint) {
+        Funding storage funding = fundingMapping[_tournamentId];
+        if (funding.fundingGoal == 0) {
+            return 0;
+        }
+        uint progress = (funding.totalFunded * 100) / funding.fundingGoal;
+        return progress;
+    }
+
+    function getMinFundingRate() public view returns (uint) {
+        return minFundingRate;
+    }
+
+    function getFundingDetails(uint _tournamentId) public view returns (uint256 startTime, uint256 endTime, address fundingToken, uint256 totalFunded, uint256 fundingGoal, bool fundingActive, bool fundingEnded, bool fundingCanceled, address[] memory contributors) {
+        Funding storage funding = fundingMapping[_tournamentId];
+        return (funding.startTime, funding.endTime, address(funding.fundingToken), funding.totalFunded, funding.fundingGoal, funding.fundingActive, funding.fundingEnded, funding.fundingCanceled, funding.contributors);
+    }
+
+    function isFundingSuccess(uint _tournamentId) public view returns (bool) {
+        uint progress = getFundingProgress(_tournamentId);
+        uint minRate = getMinFundingRate();
+        return progress >= minRate;
+    }
+
+    function getReferees(uint _tournamentId) public view returns (address[] memory referees) {
+        Tournament storage _tournament = tournamentMapping[_tournamentId];
+        return _tournament.referees;
+    }
+
+    function getTotalUserStakedAmount(address user) public view returns (uint256 totalAmount) {
+        totalAmount = 0;
+
+        for (uint i = 0; i < stakingContracts.length; i++) {
+            (uint256 amount,,) = stakingContracts[i].stakings(user);
+            totalAmount += amount;
+        }
+    }
+
+    function isSponsor(address user) public view returns (bool isSponsorRole) {
+        return hasRole(FACTORY_ROLE, user);
+    }
+
+    function calculateMaxFundingLimit(uint256 stakedNFTs) public view returns (uint256) {
+        uint256 maxStakedNFTs = 50; 
+
+        if (stakedNFTs <= 1) {
+            return baseLimit;
+        }   
+
+        if (stakedNFTs > maxStakedNFTs) {
+            stakedNFTs = maxStakedNFTs;
+        }
+
+        return baseLimit * stakedNFTs;
     }
 }

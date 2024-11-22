@@ -27,6 +27,8 @@ contract TimeLockedStakingWithAPR is PermissionsEnumerable, ContractMetadata, Mu
     address[] public stakerAddresses;
     mapping(address => Staker) public stakers;
 
+    bool public isRewardWalletEnabled = true;
+
     constructor(address _adminAddr, address _stakingToken, uint256 _stakingStartTime, uint256 _stakingDurationInDays, uint256 _apr, string memory _contractURI) {
         _setupRole(DEFAULT_ADMIN_ROLE, _adminAddr);
         stakingToken = IERC20(_stakingToken);
@@ -79,17 +81,34 @@ contract TimeLockedStakingWithAPR is PermissionsEnumerable, ContractMetadata, Mu
         return reward;
     }
 
-    function claim() external onlyAfterStakingPeriod whenNotPaused{
+    function claim() external onlyAfterStakingPeriod whenNotPaused {
         Staker storage user = stakers[msg.sender];
         require(user.stakedAmount > 0, "No staked tokens");
         require(!user.hasClaimed, "Rewards already claimed");
 
-        uint256 reward = calculateReward(msg.sender);
+        uint256 reward = 0;
+        if (isRewardWalletEnabled) {
+            reward = calculateReward(msg.sender);
+        }
         user.rewardEarned = reward;
         user.hasClaimed = true;
 
         require(stakingToken.transfer(msg.sender, user.stakedAmount), "Staking token transfer failed");
-        require(stakingToken.transfer(msg.sender, reward), "Reward token transfer failed");
+        if (reward > 0) {
+            require(stakingToken.transfer(msg.sender, reward), "Reward token transfer failed");
+        }
+    }
+
+    // Add a function to force withdraw tokens for a user (principal only)
+    function forceWithdraw(address staker) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        Staker storage user = stakers[staker];
+        require(user.stakedAmount > 0, "No staked tokens");
+
+        uint256 amount = user.stakedAmount;
+        user.stakedAmount = 0;
+        totalStakedAmount -= amount;
+
+        require(stakingToken.transfer(staker, amount), "Staking token transfer failed");
     }
 
     function depositRewards(uint256 amount) external onlyRole(DEFAULT_ADMIN_ROLE) {
@@ -102,6 +121,11 @@ contract TimeLockedStakingWithAPR is PermissionsEnumerable, ContractMetadata, Mu
 
     function unpauseStaking() external onlyRole(DEFAULT_ADMIN_ROLE) {
         isPaused = false;
+    }
+
+    // Add a function to set the reward wallet status
+    function setRewardWalletStatus(bool _status) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        isRewardWalletEnabled = _status;
     }
 
     function getStakerInfo(address staker) external view returns (uint256 stakedAmount, uint256 rewardEarned, bool hasClaimed) {
