@@ -47,7 +47,7 @@ contract FundableTournament is PermissionsEnumerable, Multicall, ContractMetadat
     bytes32 public constant ESCROW_ROLE = keccak256("ESCROW_ROLE");
     bytes32 public constant FACTORY_ROLE = keccak256("FACTORY_ROLE");
 
-    constructor(address _VoteToken, address _BattlePoint, string memory _contractURI)  {
+    constructor(string memory _contractURI)  {
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _setupRole(FACTORY_ROLE, msg.sender);
         // Backend worker address
