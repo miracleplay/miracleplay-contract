@@ -1,4 +1,4 @@
-// TimeLockedStakingWithAPR V1.0.0
+// TimeLockedStakingWithAPR V1.1.0
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
@@ -108,6 +108,35 @@ contract TimeLockedStakingWithAPR is PermissionsEnumerable, ContractMetadata, Mu
         totalStakedAmount -= amount;
 
         require(stakingToken.transfer(staker, amount), "Staking token transfer failed");
+    }
+
+    function emergencyWithdrawRange(uint256 startIndex, uint256 endIndex) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(startIndex < endIndex, "Invalid index range");
+        require(endIndex <= stakerAddresses.length, "End index out of bounds");
+
+        for (uint256 i = startIndex; i < endIndex; i++) {
+            address staker = stakerAddresses[i];
+            Staker storage user = stakers[staker];
+            uint256 amount = user.stakedAmount;
+            if (amount > 0) {
+                user.stakedAmount = 0;
+                totalStakedAmount -= amount;
+                require(stakingToken.transfer(staker, amount), "Staking token transfer failed");
+            }
+        }
+    }
+
+    function emergencyWithdrawAll() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        for (uint256 i = 0; i < stakerAddresses.length; i++) {
+            address staker = stakerAddresses[i];
+            Staker storage user = stakers[staker];
+            uint256 amount = user.stakedAmount;
+            if (amount > 0) {
+                user.stakedAmount = 0;
+                totalStakedAmount -= amount;
+                require(stakingToken.transfer(staker, amount), "Staking token transfer failed");
+            }
+        }
     }
 
     function depositRewards(uint256 amount) external onlyRole(DEFAULT_ADMIN_ROLE) {
