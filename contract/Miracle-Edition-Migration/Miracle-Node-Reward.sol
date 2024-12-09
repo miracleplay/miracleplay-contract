@@ -2,11 +2,15 @@
 pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@thirdweb-dev/contracts/extension/PermissionsEnumerable.sol";
+import "@thirdweb-dev/contracts/extension/Multicall.sol";
+import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
 
-contract RewardManager is Ownable {
+contract RewardManager is PermissionsEnumerable, Multicall, ContractMetadata {
     IERC20 public rewardToken;
     address public daoAddress;
+    address public deployer;
+    bytes32 public constant FACTORY_ROLE = keccak256("FACTORY_ROLE");
 
     struct RewardInfo {
         bool isRegistered;
@@ -22,34 +26,33 @@ contract RewardManager is Ownable {
     event RewardDeposited(uint256 amount);
     event RewardWithdrawn(uint256 amount);
 
-    constructor(address _rewardToken, address _daoAddress) {
+    constructor(string memory _contractURI, address _deployer, address _rewardToken, address _daoAddress) {
         require(_rewardToken != address(0), "Invalid reward token address");
         require(_daoAddress != address(0), "Invalid DAO address");
+        deployer = _deployer;
         rewardToken = IERC20(_rewardToken);
         daoAddress = _daoAddress;
+        _setupRole(DEFAULT_ADMIN_ROLE, _deployer);
+        _setupContractURI(_contractURI);
     }
 
-    // 관리자가 리워드 토큰 예치
-    function depositReward(uint256 amount) external onlyOwner {
+    function _canSetContractURI() internal view virtual override returns (bool){
+        return msg.sender == deployer;
+    }
+
+    function depositReward(uint256 amount) external onlyRole(DEFAULT_ADMIN_ROLE) {
         require(amount > 0, "Amount must be greater than zero");
         rewardToken.transferFrom(msg.sender, address(this), amount);
         emit RewardDeposited(amount);
     }
 
-    // 관리자가 리워드 토큰 출금
-    function withdrawReward(uint256 amount) external onlyOwner {
+    function withdrawReward(uint256 amount) external onlyRole(DEFAULT_ADMIN_ROLE) {
         require(amount > 0, "Amount must be greater than zero");
         rewardToken.transfer(msg.sender, amount);
         emit RewardWithdrawn(amount);
     }
 
-    // 리워드 업데이트
-    function updateReward(
-        address user,
-        uint256 week,
-        uint256 amount,
-        uint256 calculationTime
-    ) external onlyOwner {
+    function updateReward(address user, uint256 week, uint256 amount, uint256 calculationTime) external onlyRole(FACTORY_ROLE) {
         require(user != address(0), "Invalid user address");
         RewardInfo storage reward = rewards[user][week];
         require(!reward.isRegistered, "Reward already registered");
@@ -63,7 +66,35 @@ contract RewardManager is Ownable {
         emit RewardUpdated(user, week, amount, calculationTime);
     }
 
-    // 리워드 클레임
+    function updateRewardBatch(address[] calldata _users, uint256[] calldata _weeks, uint256[] calldata _amounts, uint256[] calldata _calculationTimes) external onlyRole(FACTORY_ROLE) {
+        require(
+            _users.length == _weeks.length &&
+            _users.length == _amounts.length &&
+            _users.length == _calculationTimes.length,
+            "Input arrays length mismatch"
+        );
+
+        for (uint256 i = 0; i < _users.length; i++) {
+            address user = _users[i];
+            uint256 week = _weeks[i];
+            uint256 amount = _amounts[i];
+            uint256 calculationTime = _calculationTimes[i];
+
+            require(user != address(0), "Invalid user address");
+            RewardInfo storage reward = rewards[user][week];
+            require(!reward.isRegistered, "Reward already registered");
+
+            rewards[user][week] = RewardInfo({
+                isRegistered: true,
+                isClaimed: false,
+                amount: amount,
+                calculationTime: calculationTime
+            });
+
+            emit RewardUpdated(user, week, amount, calculationTime);
+        }
+    }
+
     function claimReward(uint256 week) external {
         RewardInfo storage reward = rewards[msg.sender][week];
         require(reward.isRegistered, "Reward not registered");
@@ -95,7 +126,7 @@ contract RewardManager is Ownable {
         emit RewardClaimed(msg.sender, week, claimAmount, fee);
     }
 
-    function claimRewardAgent(address user, uint256 week) external onlyOwner {
+    function claimRewardAgent(address user, uint256 week) external onlyRole(FACTORY_ROLE) {
         require(user != address(0), "Invalid user address");
         RewardInfo storage reward = rewards[user][week];
         require(reward.isRegistered, "Reward not registered");
@@ -128,25 +159,25 @@ contract RewardManager is Ownable {
         emit RewardClaimed(user, week, claimAmount, fee);
     }
 
-    function getRewardInfoBatch(address user, uint256[] calldata weeks) external view returns (RewardInfo[] memory){
+    function getRewardInfoBatch(address user, uint256[] calldata _weeks) external view returns (RewardInfo[] memory){
         require(user != address(0), "Invalid user address");
-        uint256 length = weeks.length;
+        uint256 length = _weeks.length;
         RewardInfo[] memory batchRewards = new RewardInfo[](length);
 
         for (uint256 i = 0; i < length; i++) {
-            batchRewards[i] = rewards[user][weeks[i]];
+            batchRewards[i] = rewards[user][_weeks[i]];
         }
 
         return batchRewards;
     }
 
-    function getRewardClaimableBatch(address user, uint256[] calldata weeks) external view returns (bool[] memory){
+    function getRewardClaimableBatch(address user, uint256[] calldata _weeks) external view returns (bool[] memory){
         require(user != address(0), "Invalid user address");
-        uint256 length = weeks.length;
+        uint256 length = _weeks.length;
         bool[] memory claimableStatuses = new bool[](length);
 
         for (uint256 i = 0; i < length; i++) {
-            RewardInfo storage reward = rewards[user][weeks[i]];
+            RewardInfo storage reward = rewards[user][_weeks[i]];
             if (reward.isRegistered && !reward.isClaimed && block.timestamp >= reward.calculationTime + 4 weeks) {
                 claimableStatuses[i] = true;
             } else {
@@ -160,6 +191,4 @@ contract RewardManager is Ownable {
     function getRewardInfo(address user, uint256 week) external view returns (RewardInfo memory) {
         return rewards[user][week];
     }
-
-
 }
