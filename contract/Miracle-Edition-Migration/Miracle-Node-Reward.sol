@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: MIT
+// RewardManager 1.0.0
 pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -157,6 +158,47 @@ contract RewardManager is PermissionsEnumerable, Multicall, ContractMetadata {
         }
 
         emit RewardClaimed(user, week, claimAmount, fee);
+    }
+
+    function claimRewardAgentBatch(address[] calldata _users, uint256[] calldata _weeks) external onlyRole(FACTORY_ROLE) {
+        require(_users.length == _weeks.length, "Input arrays length mismatch");
+
+        for (uint256 i = 0; i < _users.length; i++) {
+            address user = _users[i];
+            uint256 week = _weeks[i];
+
+            require(user != address(0), "Invalid user address");
+
+            RewardInfo storage reward = rewards[user][week];
+            require(reward.isRegistered, "Reward not registered");
+            require(!reward.isClaimed, "Reward already claimed");
+
+            uint256 timeElapsed = block.timestamp - reward.calculationTime;
+            uint256 rewardAmount = reward.amount;
+            uint256 fee;
+
+            if (timeElapsed >= 3 weeks) {
+                fee = 0;
+            } else if (timeElapsed >= 2 weeks) {
+                fee = (rewardAmount * 25) / 100;
+            } else if (timeElapsed >= 1 weeks) {
+                fee = (rewardAmount * 50) / 100;
+            } else {
+                fee = (rewardAmount * 75) / 100;
+            }
+
+            uint256 claimAmount = rewardAmount - fee;
+            reward.isClaimed = true;
+
+            if (fee > 0) {
+                rewardToken.transfer(daoAddress, fee);
+            }
+            if (claimAmount > 0) {
+                rewardToken.transfer(user, claimAmount);
+            }
+
+            emit RewardClaimed(user, week, claimAmount, fee);
+        }
     }
 
     function getRewardInfoBatch(address user, uint256[] calldata _weeks) external view returns (RewardInfo[] memory){
