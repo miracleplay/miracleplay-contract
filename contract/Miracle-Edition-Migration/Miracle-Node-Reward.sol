@@ -72,16 +72,14 @@ contract RewardManager is Ownable {
         uint256 timeElapsed = block.timestamp - reward.calculationTime;
         uint256 rewardAmount = reward.amount;
         uint256 fee;
-        if (timeElapsed >= 4 weeks) {
+        if (timeElapsed >= 3 weeks) {
             fee = 0;
-        } else if (timeElapsed >= 3 weeks) {
-            fee = (rewardAmount * 25) / 100;
         } else if (timeElapsed >= 2 weeks) {
-            fee = (rewardAmount * 50) / 100;
+            fee = (rewardAmount * 25) / 100;
         } else if (timeElapsed >= 1 weeks) {
-            fee = (rewardAmount * 75) / 100;
+            fee = (rewardAmount * 50) / 100;
         } else {
-            fee = rewardAmount;
+            fee = (rewardAmount * 75) / 100;
         }
 
         uint256 claimAmount = rewardAmount - fee;
@@ -97,6 +95,39 @@ contract RewardManager is Ownable {
         emit RewardClaimed(msg.sender, week, claimAmount, fee);
     }
 
+    function claimRewardAgent(address user, uint256 week) external onlyOwner {
+        require(user != address(0), "Invalid user address");
+        RewardInfo storage reward = rewards[user][week];
+        require(reward.isRegistered, "Reward not registered");
+        require(!reward.isClaimed, "Reward already claimed");
+
+        uint256 timeElapsed = block.timestamp - reward.calculationTime;
+        uint256 rewardAmount = reward.amount;
+        uint256 fee;
+
+        if (timeElapsed >= 3 weeks) {
+            fee = 0;
+        } else if (timeElapsed >= 2 weeks) {
+            fee = (rewardAmount * 25) / 100;
+        } else if (timeElapsed >= 1 weeks) {
+            fee = (rewardAmount * 50) / 100;
+        } else {
+            fee = (rewardAmount * 75) / 100;
+        }
+
+        uint256 claimAmount = rewardAmount - fee;
+        reward.isClaimed = true;
+
+        if (fee > 0) {
+            rewardToken.transfer(daoAddress, fee);
+        }
+        if (claimAmount > 0) {
+            rewardToken.transfer(user, claimAmount);
+        }
+
+        emit RewardClaimed(user, week, claimAmount, fee);
+    }
+
     function getRewardInfoBatch(address user, uint256[] calldata weeks) external view returns (RewardInfo[] memory){
         require(user != address(0), "Invalid user address");
         uint256 length = weeks.length;
@@ -109,7 +140,23 @@ contract RewardManager is Ownable {
         return batchRewards;
     }
 
-    // 리워드 조회
+    function getRewardClaimableBatch(address user, uint256[] calldata weeks) external view returns (bool[] memory){
+        require(user != address(0), "Invalid user address");
+        uint256 length = weeks.length;
+        bool[] memory claimableStatuses = new bool[](length);
+
+        for (uint256 i = 0; i < length; i++) {
+            RewardInfo storage reward = rewards[user][weeks[i]];
+            if (reward.isRegistered && !reward.isClaimed && block.timestamp >= reward.calculationTime + 4 weeks) {
+                claimableStatuses[i] = true;
+            } else {
+                claimableStatuses[i] = false;
+            }
+        }
+
+        return claimableStatuses;
+    }
+
     function getRewardInfo(address user, uint256 week) external view returns (RewardInfo memory) {
         return rewards[user][week];
     }
