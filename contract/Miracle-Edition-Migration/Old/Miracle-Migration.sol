@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// EditionMigration 1.2.0
+// EditionMigration 1.1.0
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
@@ -14,7 +14,6 @@ contract EditionMigration is PermissionsEnumerable, Multicall, ContractMetadata,
 
     // Migration state variables
     bool public isMigrationPaused;
-    bool public isWithdrawPaused;
     uint256 public migrationPausedTime;
 
     // Mapping to track the total amount of tokens migrated per user per token ID
@@ -30,8 +29,6 @@ contract EditionMigration is PermissionsEnumerable, Multicall, ContractMetadata,
     event Migration(address indexed user, uint256 indexed tokenId, uint256 amount, uint256 timestamp);
     event MigrationPaused(address indexed admin, uint256 timestamp);
     event MigrationResumed(address indexed admin, uint256 timestamp);
-    event Withdrawal(address indexed user, uint256 indexed tokenId, uint256 amount, uint256 timestamp);
-
 
     // Constructor to initialize the contract without setting the ERC-1155 token address
     constructor(string memory _contractURI, address _deployer) {
@@ -47,12 +44,6 @@ contract EditionMigration is PermissionsEnumerable, Multicall, ContractMetadata,
         _;
     }
 
-    // Modifier to check if migration is active
-    modifier whenNotPaused() {
-    require(!isMigrationPaused && !isWithdrawPaused, "Migration or withdrawal is currently paused");
-    _;
-    }
-
     // Function to pause migration (only admin)
     function pauseMigration() external onlyRole(DEFAULT_ADMIN_ROLE) {
         require(!isMigrationPaused, "Migration is already paused");
@@ -65,20 +56,6 @@ contract EditionMigration is PermissionsEnumerable, Multicall, ContractMetadata,
     function resumeMigration() external onlyRole(DEFAULT_ADMIN_ROLE) {
         require(isMigrationPaused, "Migration is not paused");
         isMigrationPaused = false;
-        emit MigrationResumed(msg.sender, block.timestamp);
-    }
-
-    // Function to pause withdrawal (only admin)
-    function pauseWithdraw() external onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(!isWithdrawPaused, "Withdrawal is already paused");
-        isWithdrawPaused = true;
-        emit MigrationPaused(msg.sender, block.timestamp);
-    }
-
-    // Function to resume withdrawal (only admin)
-    function resumeWithdraw() external onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(isWithdrawPaused, "Withdrawal is not paused");
-        isWithdrawPaused = false;
         emit MigrationResumed(msg.sender, block.timestamp);
     }
 
@@ -118,42 +95,6 @@ contract EditionMigration is PermissionsEnumerable, Multicall, ContractMetadata,
 
         // Emit the migration event
         emit Migration(msg.sender, tokenId, userBalance, block.timestamp);
-    }
-
-    // Function to withdraw the user's ERC-1155 tokens from the contract
-    function withdraw(uint256 tokenId, uint256 amount) external {
-        require(address(erc1155Token) != address(0), "ERC-1155 token address not set");
-        require(migratedTokens[msg.sender][tokenId] >= amount, "Insufficient migrated tokens");
-
-        // Decrease the number of tokens migrated by the user
-        migratedTokens[msg.sender][tokenId] -= amount;
-
-        // Transfer the ERC-1155 tokens back to the user
-        erc1155Token.safeTransferFrom(address(this), msg.sender, tokenId, amount, "");
-
-        // If the user has no more tokens of this type, remove them from migratedUsers
-        if (migratedTokens[msg.sender][tokenId] == 0) {
-            bool hasOtherTokens = false;
-            for (uint256 i = 0; i < migratedUsers.length; i++) {
-                if (migratedUsers[i] == msg.sender) {
-                    for (uint256 j = 0; j < migratedUsers.length; j++) {
-                        if (migratedTokens[msg.sender][j] > 0) {
-                            hasOtherTokens = true;
-                            break;
-                        }
-                    }
-                    if (!hasOtherTokens) {
-                        migratedUsers[i] = migratedUsers[migratedUsers.length - 1];
-                        migratedUsers.pop();
-                        hasUserMigrated[msg.sender] = false;
-                    }
-                    break;
-                }
-            }
-        }
-
-        // Emit the withdrawal event
-        emit Withdrawal(msg.sender, tokenId, amount, block.timestamp);
     }
 
     // Function to get the number of tokens migrated by a specific user for a given token ID
