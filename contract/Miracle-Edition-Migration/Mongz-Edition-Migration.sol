@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// EditionMigration 1.2.0
+// MongzEditionMigration 1.1.0
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
@@ -23,7 +23,6 @@ contract MongzEditionMigration is PermissionsEnumerable, Multicall, ContractMeta
     address[] public migratedUsers;
     mapping(address => bool) public hasUserMigrated;
 
-    // 이벤트를 배열로 처리하도록 수정
     event TokensMigrated(address indexed user, uint256[] tokenIds, uint256 timestamp);
     event MigrationPaused(address indexed admin, uint256 timestamp);
     event MigrationResumed(address indexed admin, uint256 timestamp);
@@ -86,6 +85,7 @@ contract MongzEditionMigration is PermissionsEnumerable, Multicall, ContractMeta
     function migrate(uint256[] calldata tokenIds) external whenMigrationActive {
         require(address(erc1155Token) != address(0), "ERC-1155 token address not set");
         require(tokenIds.length > 0, "Must migrate at least one token");
+        require(!hasUserMigrated[msg.sender], "Must withdraw existing tokens before new migration");
         require(erc1155Token.isApprovedForAll(msg.sender, address(this)), "Contract not approved to transfer tokens");
 
         for (uint256 i = 0; i < tokenIds.length; i++) {
@@ -100,12 +100,9 @@ contract MongzEditionMigration is PermissionsEnumerable, Multicall, ContractMeta
             userMigratedTokenIds[msg.sender].push(tokenId);
         }
 
-        if (!hasUserMigrated[msg.sender]) {
-            migratedUsers.push(msg.sender);
-            hasUserMigrated[msg.sender] = true;
-        }
+        migratedUsers.push(msg.sender);
+        hasUserMigrated[msg.sender] = true;
 
-        // 한 번의 이벤트로 모든 토큰 ID 처리
         emit TokensMigrated(msg.sender, tokenIds, block.timestamp);
     }
 
@@ -114,6 +111,7 @@ contract MongzEditionMigration is PermissionsEnumerable, Multicall, ContractMeta
 
         uint256[] memory tokenIds = userMigratedTokenIds[msg.sender];
         require(tokenIds.length > 0, "No tokens to withdraw");
+        delete userMigratedTokenIds[msg.sender];
 
         for (uint256 i = 0; i < tokenIds.length; i++) {
             uint256 tokenId = tokenIds[i];
@@ -132,12 +130,8 @@ contract MongzEditionMigration is PermissionsEnumerable, Multicall, ContractMeta
                 break;
             }
         }
-
-        // 한 번의 이벤트로 모든 토큰 ID 처리
-        emit TokensWithdrawn(msg.sender, tokenIds, block.timestamp);
-
-        delete userMigratedTokenIds[msg.sender];
         hasUserMigrated[msg.sender] = false;
+        emit TokensWithdrawn(msg.sender, tokenIds, block.timestamp);
     }
 
     function getUserMigratedTokens(address user) external view returns (uint256[] memory) {
