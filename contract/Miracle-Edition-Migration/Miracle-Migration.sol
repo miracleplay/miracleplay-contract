@@ -32,7 +32,6 @@ contract EditionMigration is PermissionsEnumerable, Multicall, ContractMetadata,
     event MigrationResumed(address indexed admin, uint256 timestamp);
     event Withdrawal(address indexed user, uint256 indexed tokenId, uint256 amount, uint256 timestamp);
 
-
     // Constructor to initialize the contract without setting the ERC-1155 token address
     constructor(string memory _contractURI, address _deployer) {
         _setupRole(DEFAULT_ADMIN_ROLE, _deployer);
@@ -120,35 +119,35 @@ contract EditionMigration is PermissionsEnumerable, Multicall, ContractMetadata,
         emit Migration(msg.sender, tokenId, userBalance, block.timestamp);
     }
 
-    // Function to withdraw the user's ERC-1155 tokens from the contract
-    function withdraw(uint256 tokenId, uint256 amount) external {
+    // Modified withdraw function to withdraw all tokens of a specific tokenId
+    function withdraw(uint256 tokenId) external whenNotPaused {
         require(address(erc1155Token) != address(0), "ERC-1155 token address not set");
-        require(migratedTokens[msg.sender][tokenId] >= amount, "Insufficient migrated tokens");
 
-        // Decrease the number of tokens migrated by the user
-        migratedTokens[msg.sender][tokenId] -= amount;
+        uint256 amount = migratedTokens[msg.sender][tokenId];
+        require(amount > 0, "No tokens to withdraw");
 
-        // Transfer the ERC-1155 tokens back to the user
+        // Reset the user's token balance before transfer
+        migratedTokens[msg.sender][tokenId] = 0;
+
+        // Transfer all ERC-1155 tokens back to the user
         erc1155Token.safeTransferFrom(address(this), msg.sender, tokenId, amount, "");
 
-        // If the user has no more tokens of this type, remove them from migratedUsers
-        if (migratedTokens[msg.sender][tokenId] == 0) {
-            bool hasOtherTokens = false;
-            for (uint256 i = 0; i < migratedUsers.length; i++) {
-                if (migratedUsers[i] == msg.sender) {
-                    for (uint256 j = 0; j < migratedUsers.length; j++) {
-                        if (migratedTokens[msg.sender][j] > 0) {
-                            hasOtherTokens = true;
-                            break;
-                        }
+        // Check if the user has any other tokens left
+        bool hasOtherTokens = false;
+        for (uint256 i = 0; i < migratedUsers.length; i++) {
+            if (migratedUsers[i] == msg.sender) {
+                for (uint256 j = 0; j < migratedUsers.length; j++) {
+                    if (migratedTokens[msg.sender][j] > 0) {
+                        hasOtherTokens = true;
+                        break;
                     }
-                    if (!hasOtherTokens) {
-                        migratedUsers[i] = migratedUsers[migratedUsers.length - 1];
-                        migratedUsers.pop();
-                        hasUserMigrated[msg.sender] = false;
-                    }
-                    break;
                 }
+                if (!hasOtherTokens) {
+                    migratedUsers[i] = migratedUsers[migratedUsers.length - 1];
+                    migratedUsers.pop();
+                    hasUserMigrated[msg.sender] = false;
+                }
+                break;
             }
         }
 
