@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// MongzEditionMigration 1.1.0
+// MongzEditionMigration 1.2.0
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
@@ -30,9 +30,10 @@ contract MongzEditionMigration is PermissionsEnumerable, Multicall, ContractMeta
     event WithdrawalResumed(address indexed admin, uint256 timestamp);
     event TokensWithdrawn(address indexed user, uint256[] tokenIds, uint256 timestamp);
 
-    constructor(string memory _contractURI, address _deployer) {
+    constructor(string memory _contractURI, address _deployer, address _erc1155TokenAddress) {
         _setupRole(DEFAULT_ADMIN_ROLE, _deployer);
         deployer = _deployer;
+        erc1155Token = IERC1155(_erc1155TokenAddress);
         _setupContractURI(_contractURI);
         isMigrationPaused = false;
         isWithdrawPaused = false;
