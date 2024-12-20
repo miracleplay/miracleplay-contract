@@ -1,4 +1,4 @@
-// TimeLockedStakingWithAPR V1.1.0
+// TimeLockedStakingWithAPR V1.2.0
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
@@ -17,6 +17,7 @@ contract TimeLockedStakingWithAPR is PermissionsEnumerable, ContractMetadata, Mu
     uint256 public apr;
     bool public isPaused = false;
     uint256 public totalStakedAmount;
+    uint256 public maxStakingAmount;
 
     struct Staker {
         uint256 stakedAmount;
@@ -29,12 +30,13 @@ contract TimeLockedStakingWithAPR is PermissionsEnumerable, ContractMetadata, Mu
 
     bool public isRewardWalletEnabled = true;
 
-    constructor(address _adminAddr, address _stakingToken, uint256 _stakingStartTime, uint256 _stakingDurationInDays, uint256 _apr, string memory _contractURI) {
+    constructor(address _adminAddr, address _stakingToken, uint256 _stakingStartTime, uint256 _stakingDurationInDays, uint256 _apr, uint256 _maxStakingAmount, string memory _contractURI) {
         _setupRole(DEFAULT_ADMIN_ROLE, _adminAddr);
         stakingToken = IERC20(_stakingToken);
         stakingStartTime = _stakingStartTime;
         stakingDuration = _stakingDurationInDays * 1 days;
         apr = _apr;
+        maxStakingAmount = _maxStakingAmount;
         stakingEndTime = stakingStartTime + stakingDuration;
         deployer = _adminAddr;
         _setupContractURI(_contractURI);
@@ -64,7 +66,13 @@ contract TimeLockedStakingWithAPR is PermissionsEnumerable, ContractMetadata, Mu
         _;
     }
 
+    function setMaxStakingAmount(uint256 _maxStakingAmount) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(_maxStakingAmount >= totalStakedAmount, "New max amount must be greater than or equal to total staked amount");
+        maxStakingAmount = _maxStakingAmount;
+    }
+
     function stake(uint256 amount) external onlyBeforeStakingStart whenNotPaused {
+        require(totalStakedAmount + amount <= maxStakingAmount, "Exceeds maximum staking amount");
         require(stakingToken.transferFrom(msg.sender, address(this), amount), "Transfer failed");
         if (stakers[msg.sender].stakedAmount == 0) {
             stakerAddresses.push(msg.sender);
@@ -165,10 +173,6 @@ contract TimeLockedStakingWithAPR is PermissionsEnumerable, ContractMetadata, Mu
         return calculateReward(staker);
     }
 
-    function getStakingTokenBalance() external view returns (uint256) {
-        return totalStakedAmount;
-    }
-
     function getRewardTokenBalance() external view returns (uint256) {
         return stakingToken.balanceOf(address(this)) - totalStakedAmount;
     }
@@ -210,5 +214,17 @@ contract TimeLockedStakingWithAPR is PermissionsEnumerable, ContractMetadata, Mu
 
     function getAPR() external view returns (uint256) {
         return apr;
+    }
+
+    function getStakingTokenBalance() external view returns (uint256) {
+        return totalStakedAmount;
+    }
+
+    function getMaxStakingAmount() external view returns (uint256) {
+        return maxStakingAmount;
+    }
+
+    function getAvailableStakingAmount() external view returns (uint256) {
+        return maxStakingAmount - totalStakedAmount;
     }
 }
