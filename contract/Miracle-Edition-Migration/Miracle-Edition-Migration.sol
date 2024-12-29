@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// SingleEditionMigration 1.0.0
+// MultiEditionMigration 1.0.0
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
@@ -8,7 +8,7 @@ import "@thirdweb-dev/contracts/extension/PermissionsEnumerable.sol";
 import "@thirdweb-dev/contracts/extension/Multicall.sol";
 import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
 
-contract SingleEditionMigration is PermissionsEnumerable, Multicall, ContractMetadata, ERC1155Holder {
+contract MultiEditionMigration is PermissionsEnumerable, Multicall, ContractMetadata, ERC1155Holder {
     IERC1155 public erc1155Token;
     address public deployer;
 
@@ -83,75 +83,77 @@ contract SingleEditionMigration is PermissionsEnumerable, Multicall, ContractMet
         return msg.sender == deployer;
     }
 
-    function migrate(uint256[] calldata tokenIds) external whenMigrationActive {
+    function migrate() external whenMigrationActive {
         require(address(erc1155Token) != address(0), "ERC-1155 token address not set");
-        require(tokenIds.length > 0, "Must migrate at least one token");
+        require(!hasUserMigrated[msg.sender], "Must withdraw existing tokens before new migration");
         require(erc1155Token.isApprovedForAll(msg.sender, address(this)), "Contract not approved to transfer tokens");
 
-        uint256[] memory amounts = new uint256[](tokenIds.length);
+        uint256[] memory tokenIds = new uint256[](3);
+        uint256[] memory amounts = new uint256[](3);
 
-        for (uint256 i = 0; i < tokenIds.length; i++) {
-            uint256 tokenId = tokenIds[i];
-            require(!isTokenMigrated[tokenId], "Token already migrated");
-            require(erc1155Token.balanceOf(msg.sender, tokenId) == 1, "Must own exactly one of this token");
-
-            erc1155Token.safeTransferFrom(msg.sender, address(this), tokenId, 1, "");
-
-            amounts[i] = 1;
-            isTokenMigrated[tokenId] = true;
-            tokenOwner[tokenId] = msg.sender;
-            userMigratedTokenIds[msg.sender].push(tokenId);
+        // Check balances and prepare arrays
+        uint256 totalBalance = 0;
+        for (uint256 i = 0; i < 3; i++) {
+            uint256 balance = erc1155Token.balanceOf(msg.sender, i);
+            if (balance > 0) {
+                tokenIds[i] = i;
+                amounts[i] = balance;
+                totalBalance += balance;
+            }
         }
 
-        if (!hasUserMigrated[msg.sender]) {
-            migratedUsers.push(msg.sender);
-            hasUserMigrated[msg.sender] = true;
+        // Revert if user has no tokens
+        require(totalBalance > 0, "No tokens to migrate");
+
+        // Process migration for tokens with non-zero balance
+        for (uint256 i = 0; i < 3; i++) {
+            if (amounts[i] > 0) {
+                require(!isTokenMigrated[i], "Token already migrated");
+
+                erc1155Token.safeTransferFrom(msg.sender, address(this), i, amounts[i], "");
+
+                isTokenMigrated[i] = true;
+                tokenOwner[i] = msg.sender;
+                userMigratedTokenIds[msg.sender].push(i);
+            }
         }
+
+        migratedUsers.push(msg.sender);
+        hasUserMigrated[msg.sender] = true;
 
         emit TokensMigrated(msg.sender, tokenIds, amounts, block.timestamp);
     }
 
-    function withdraw(uint256[] calldata tokenIdsToWithdraw) external whenWithdrawActive {
+    function withdraw() external whenWithdrawActive {
         require(hasUserMigrated[msg.sender], "No tokens to withdraw");
-        require(tokenIdsToWithdraw.length > 0, "Must withdraw at least one token");
 
-        uint256[] memory amounts = new uint256[](tokenIdsToWithdraw.length);
+        uint256[] memory tokenIds = userMigratedTokenIds[msg.sender];
+        require(tokenIds.length > 0, "No tokens to withdraw");
+        delete userMigratedTokenIds[msg.sender];
 
-        for (uint256 i = 0; i < tokenIdsToWithdraw.length; i++) {
-            uint256 tokenId = tokenIdsToWithdraw[i];
+        uint256[] memory amounts = new uint256[](tokenIds.length); // 수량을 저장할 배열
+
+        for (uint256 i = 0; i < tokenIds.length; i++) {
+            uint256 tokenId = tokenIds[i];
             require(tokenOwner[tokenId] == msg.sender, "Not the owner of token");
 
-            bool found = false;
-            for (uint256 j = 0; j < userMigratedTokenIds[msg.sender].length; j++) {
-                if (userMigratedTokenIds[msg.sender][j] == tokenId) {
-                    userMigratedTokenIds[msg.sender][j] = userMigratedTokenIds[msg.sender][userMigratedTokenIds[msg.sender].length - 1];
-                    userMigratedTokenIds[msg.sender].pop();
-                    found = true;
-                    break;
-                }
-            }
-            require(found, "Token not found in user's migrated tokens");
-
             erc1155Token.safeTransferFrom(address(this), msg.sender, tokenId, 1, "");
-            amounts[i] = 1;
+            amounts[i] = 1; // 각 토큰의 출금 수량 저장
 
             isTokenMigrated[tokenId] = false;
             delete tokenOwner[tokenId];
         }
 
-        if (userMigratedTokenIds[msg.sender].length == 0) {
-            hasUserMigrated[msg.sender] = false;
-
-            for (uint256 i = 0; i < migratedUsers.length; i++) {
-                if (migratedUsers[i] == msg.sender) {
-                    migratedUsers[i] = migratedUsers[migratedUsers.length - 1];
-                    migratedUsers.pop();
-                    break;
-                }
+        for (uint256 i = 0; i < migratedUsers.length; i++) {
+            if (migratedUsers[i] == msg.sender) {
+                migratedUsers[i] = migratedUsers[migratedUsers.length - 1];
+                migratedUsers.pop();
+                break;
             }
         }
+        hasUserMigrated[msg.sender] = false;
 
-        emit TokensWithdrawn(msg.sender, tokenIdsToWithdraw, amounts, block.timestamp);
+        emit TokensWithdrawn(msg.sender, tokenIds, amounts, block.timestamp);
     }
 
     function getUserMigratedTokens(address user) external view returns (uint256[] memory) {
