@@ -38,6 +38,7 @@ contract MiracleNodeRewardManager is PermissionsEnumerable, Multicall, ContractM
     event RewardClaimed(address indexed user, uint256 indexed month, uint256 amount, uint256 fee);
     event RewardDeposited(uint256 amount);
     event RewardWithdrawn(uint256 amount);
+    event DaoNodeFeeMinted(uint256 amount);
 
     constructor(
         string memory _contractURI,
@@ -169,6 +170,15 @@ contract MiracleNodeRewardManager is PermissionsEnumerable, Multicall, ContractM
             require(user != address(0), "Invalid user address");
             _processRewardClaim(user, _months[i]);
         }
+    }
+
+    function mintDaoNodeFee(uint256 amount) external onlyRole(FACTORY_ROLE) {
+        require(amount > 0, "Amount must be greater than 0");
+        
+        rewardToken.mintTo(daoAddress, amount);
+        totalEarlyClaimedPenalty += amount;  // DAO로 발행되는 금액도 패널티 총액에 포함
+
+        emit DaoNodeFeeMinted(amount);
     }
 
     function getRewardInfoBatch(address user, uint256[] calldata _months) external view returns (RewardInfo[] memory) {
