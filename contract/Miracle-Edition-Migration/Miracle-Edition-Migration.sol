@@ -8,7 +8,7 @@ import "@thirdweb-dev/contracts/extension/PermissionsEnumerable.sol";
 import "@thirdweb-dev/contracts/extension/Multicall.sol";
 import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
 
-contract MultiEditionMigration is PermissionsEnumerable, Multicall, ContractMetadata, ERC1155Holder {
+contract MiracleEditionMigration is PermissionsEnumerable, Multicall, ContractMetadata, ERC1155Holder {
     IERC1155 public erc1155Token;
     address public deployer;
 
