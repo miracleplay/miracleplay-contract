@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// Miracle-Node-RewardManager 1.0.0
+// Miracle-Node-RewardManager 1.1.0
 pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -7,12 +7,7 @@ import "@thirdweb-dev/contracts/extension/PermissionsEnumerable.sol";
 import "@thirdweb-dev/contracts/extension/Multicall.sol";
 import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
 
-interface IMintableERC20 is IERC20 {
-    function mintTo(address to, uint256 amount) external;
-}
-
 contract MiracleNodeRewardManager is PermissionsEnumerable, Multicall, ContractMetadata {
-    IMintableERC20 public rewardToken;
     address public daoAddress;
     address public deployer;
     bytes32 public constant FACTORY_ROLE = keccak256("FACTORY_ROLE");
@@ -39,20 +34,18 @@ contract MiracleNodeRewardManager is PermissionsEnumerable, Multicall, ContractM
     event RewardDeposited(uint256 amount);
     event RewardWithdrawn(uint256 amount);
     event DaoNodeFeeMinted(uint256 amount);
+    event EmergencyWithdrawn(uint256 amount, address to);
 
     constructor(
         string memory _contractURI,
         address _deployer,
-        address _rewardToken,
         address _daoAddress,
         address _managerFeeAddress
     ) {
-        require(_rewardToken != address(0), "Invalid reward token address");
         require(_daoAddress != address(0), "Invalid DAO address");
         require(_managerFeeAddress != address(0), "Invalid manager fee address");
         
         deployer = _deployer;
-        rewardToken = IMintableERC20(_rewardToken);
         daoAddress = _daoAddress;
         managerFeeAddress = _managerFeeAddress;
         
@@ -116,6 +109,7 @@ contract MiracleNodeRewardManager is PermissionsEnumerable, Multicall, ContractM
         RewardInfo storage reward = rewards[user][month];
         require(reward.isRegistered, "Reward not registered");
         require(!reward.isClaimed, "Reward already claimed");
+        require(address(this).balance >= reward.amount, "Insufficient contract balance");
 
         uint256 timeElapsed = block.timestamp - reward.calculationTime;
         uint256 rewardAmount = reward.amount;
@@ -136,17 +130,20 @@ contract MiracleNodeRewardManager is PermissionsEnumerable, Multicall, ContractM
         reward.isClaimed = true;
 
         if (fee > 0) {
-            rewardToken.mintTo(daoAddress, fee);
+            (bool feeSuccess, ) = payable(daoAddress).call{value: fee}("");
+            require(feeSuccess, "DAO fee transfer failed");
             totalEarlyClaimedPenalty += fee;
         }
 
         if (managerFee > 0) {
-            rewardToken.mintTo(managerFeeAddress, managerFee);
+            (bool managerSuccess, ) = payable(managerFeeAddress).call{value: managerFee}("");
+            require(managerSuccess, "Manager fee transfer failed");
             totalManagerFee += managerFee;
         }
 
         if (claimAmount > 0) {
-            rewardToken.mintTo(user, claimAmount);
+            (bool success, ) = payable(user).call{value: claimAmount}("");
+            require(success, "Reward transfer failed");
             totalMinted += claimAmount;
         }
 
@@ -174,9 +171,11 @@ contract MiracleNodeRewardManager is PermissionsEnumerable, Multicall, ContractM
 
     function mintDaoNodeFee(uint256 amount) external onlyRole(FACTORY_ROLE) {
         require(amount > 0, "Amount must be greater than 0");
+        require(address(this).balance >= amount, "Insufficient contract balance");
         
-        rewardToken.mintTo(daoAddress, amount);
-        totalEarlyClaimedPenalty += amount;  // DAO로 발행되는 금액도 패널티 총액에 포함
+        (bool success, ) = payable(daoAddress).call{value: amount}("");
+        require(success, "Transfer failed");
+        totalEarlyClaimedPenalty += amount;
 
         emit DaoNodeFeeMinted(amount);
     }
@@ -216,5 +215,25 @@ contract MiracleNodeRewardManager is PermissionsEnumerable, Multicall, ContractM
 
     function getTotalMintedAmount() external view returns (uint256) {
         return totalMinted + totalEarlyClaimedPenalty + totalManagerFee;
+    }
+
+    receive() external payable {}
+
+    function deposit() external payable {
+        emit RewardDeposited(msg.value);
+    }
+
+    function emergencyWithdraw() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        uint256 balance = address(this).balance;
+        require(balance > 0, "No balance to withdraw");
+        
+        (bool success, ) = payable(msg.sender).call{value: balance}("");
+        require(success, "Emergency withdraw failed");
+        
+        emit EmergencyWithdrawn(balance, msg.sender);
+    }
+
+    function getContractBalance() external view returns (uint256) {
+        return address(this).balance;
     }
 }
