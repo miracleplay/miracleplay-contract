@@ -1,239 +1,205 @@
 // SPDX-License-Identifier: MIT
-// Miracle-Node-RewardManager 1.1.0
-pragma solidity ^0.8.19;
+// MultiEditionMigration 1.0.1
+pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
+import "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
 import "@thirdweb-dev/contracts/extension/PermissionsEnumerable.sol";
 import "@thirdweb-dev/contracts/extension/Multicall.sol";
 import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
 
-contract MiracleNodeRewardManager is PermissionsEnumerable, Multicall, ContractMetadata {
-    address public daoAddress;
+contract MiracleEditionMigration is PermissionsEnumerable, Multicall, ContractMetadata, ERC1155Holder {
+    IERC1155 public erc1155Token;
     address public deployer;
-    bytes32 public constant FACTORY_ROLE = keccak256("FACTORY_ROLE");
 
-    uint256 public totalMinted;
-    uint256 public totalEarlyClaimedPenalty;
-    address public managerFeeAddress;
-    uint256 public managerFeeRate = 500;  // 500 = 5%
-    uint256 public totalManagerFee;
+    bool public isMigrationPaused;
+    bool public isWithdrawPaused;
+    uint256 public migrationPausedTime;
 
-    uint256 private constant MONTH = 30 days; // 30 days = 2592000 seconds
+    mapping(address => uint256[]) public userMigratedTokenIds;
+    mapping(uint256 => bool) public isTokenMigrated;
+    mapping(uint256 => address) public tokenOwner;
 
-    struct RewardInfo {
-        bool isRegistered;
-        bool isClaimed;
+    address[] public migratedUsers;
+    mapping(address => bool) public hasUserMigrated;
+
+    // 사용자별 토큰 수량을 기록하기 위한 구조체 추가
+    struct TokenAmount {
+        uint256 tokenId;
         uint256 amount;
-        uint256 calculationTime;
     }
 
-    mapping(address => mapping(uint256 => RewardInfo)) public rewards;
+    // 사용자별 토큰 수량 매핑 추가
+    mapping(address => TokenAmount[]) public userMigratedTokenAmounts;
 
-    event RewardUpdated(address indexed user, uint256 indexed month, uint256 amount, uint256 calculationTime);
-    event RewardClaimed(address indexed user, uint256 indexed month, uint256 amount, uint256 fee);
-    event RewardDeposited(uint256 amount);
-    event RewardWithdrawn(uint256 amount);
-    event DaoNodeFeeMinted(uint256 amount);
-    event EmergencyWithdrawn(uint256 amount, address to);
+    event TokensMigrated(address indexed user, uint256[] tokenIds, uint256[] amounts, uint256 timestamp);
+    event MigrationPaused(address indexed admin, uint256 timestamp);
+    event MigrationResumed(address indexed admin, uint256 timestamp);
+    event WithdrawalPaused(address indexed admin, uint256 timestamp);
+    event WithdrawalResumed(address indexed admin, uint256 timestamp);
+    event TokensWithdrawn(address indexed user, uint256[] tokenIds, uint256[] amounts, uint256 timestamp);
 
-    constructor(
-        string memory _contractURI,
-        address _deployer,
-        address _daoAddress,
-        address _managerFeeAddress
-    ) {
-        require(_daoAddress != address(0), "Invalid DAO address");
-        require(_managerFeeAddress != address(0), "Invalid manager fee address");
-
-        deployer = _deployer;
-        daoAddress = _daoAddress;
-        managerFeeAddress = _managerFeeAddress;
-
+    constructor(string memory _contractURI, address _deployer, address _erc1155TokenAddress) {
         _setupRole(DEFAULT_ADMIN_ROLE, _deployer);
+        deployer = _deployer;
+        erc1155Token = IERC1155(_erc1155TokenAddress);
         _setupContractURI(_contractURI);
+        isMigrationPaused = false;
+        isWithdrawPaused = false;
     }
 
-    function _canSetContractURI() internal view virtual override returns (bool){
+    modifier whenMigrationActive() {
+        require(!isMigrationPaused, "Migration is currently paused");
+        _;
+    }
+
+    modifier whenWithdrawActive() {
+        require(!isWithdrawPaused, "Withdrawal is currently paused");
+        _;
+    }
+
+    function pauseMigration() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(!isMigrationPaused, "Migration is already paused");
+        isMigrationPaused = true;
+        migrationPausedTime = block.timestamp;
+        emit MigrationPaused(msg.sender, block.timestamp);
+    }
+
+    function resumeMigration() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(isMigrationPaused, "Migration is not paused");
+        isMigrationPaused = false;
+        emit MigrationResumed(msg.sender, block.timestamp);
+    }
+
+    function pauseWithdraw() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(!isWithdrawPaused, "Withdrawal is already paused");
+        isWithdrawPaused = true;
+        emit WithdrawalPaused(msg.sender, block.timestamp);
+    }
+
+    function resumeWithdraw() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(isWithdrawPaused, "Withdrawal is not paused");
+        isWithdrawPaused = false;
+        emit WithdrawalResumed(msg.sender, block.timestamp);
+    }
+
+    function setERC1155Token(address _erc1155TokenAddress) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(_erc1155TokenAddress != address(0), "Invalid ERC-1155 token address");
+        erc1155Token = IERC1155(_erc1155TokenAddress);
+    }
+
+    function _canSetContractURI() internal view override returns (bool) {
         return msg.sender == deployer;
     }
 
-    function updateReward(address user, uint256 month, uint256 amount, uint256 calculationTime) external onlyRole(FACTORY_ROLE) {
-        require(user != address(0), "Invalid user address");
-        RewardInfo storage reward = rewards[user][month];
-        require(!reward.isRegistered, "Reward already registered");
+    function migrate() external whenMigrationActive {
+        require(address(erc1155Token) != address(0), "ERC-1155 token address not set");
+        require(!hasUserMigrated[msg.sender], "Must withdraw existing tokens before new migration");
+        require(erc1155Token.isApprovedForAll(msg.sender, address(this)), "Contract not approved to transfer tokens");
 
-        rewards[user][month] = RewardInfo({
-            isRegistered: true,
-            isClaimed: false,
-            amount: amount,
-            calculationTime: calculationTime
-        });
-        emit RewardUpdated(user, month, amount, calculationTime);
-    }
+        uint256[] memory tokenIds = new uint256[](3);
+        uint256[] memory amounts = new uint256[](3);
 
-    function updateRewardBatch(
-        address[] calldata _users,
-        uint256[] calldata _months,
-        uint256[] calldata _amounts,
-        uint256[] calldata _calculationTimes
-    ) external onlyRole(FACTORY_ROLE) {
-        require(
-            _users.length == _months.length &&
-            _users.length == _amounts.length &&
-            _users.length == _calculationTimes.length,
-            "Input arrays length mismatch"
-        );
+        // Check balances and prepare arrays
+        uint256 totalBalance = 0;
+        for (uint256 i = 0; i < 3; i++) {  // 0~2까지 체크
+            uint256 balance = erc1155Token.balanceOf(msg.sender, i);
+            if (balance > 0) {
+                tokenIds[i] = i;
+                amounts[i] = balance;
+                totalBalance += balance;
 
-        for (uint256 i = 0; i < _users.length; i++) {
-            address user = _users[i];
-            uint256 month = _months[i];
-            uint256 amount = _amounts[i];
-            uint256 calculationTime = _calculationTimes[i];
-
-            require(user != address(0), "Invalid user address");
-            RewardInfo storage reward = rewards[user][month];
-            require(!reward.isRegistered, "Reward already registered");
-
-            rewards[user][month] = RewardInfo({
-                isRegistered: true,
-                isClaimed: false,
-                amount: amount,
-                calculationTime: calculationTime
-            });
-
-            emit RewardUpdated(user, month, amount, calculationTime);
-        }
-    }
-
-    function _processRewardClaim(address user, uint256 month) internal returns (uint256 claimAmount, uint256 fee) {
-        RewardInfo storage reward = rewards[user][month];
-        require(reward.isRegistered, "Reward not registered");
-        require(!reward.isClaimed, "Reward already claimed");
-        require(address(this).balance >= reward.amount, "Insufficient contract balance");
-
-        uint256 timeElapsed = block.timestamp - reward.calculationTime;
-        uint256 rewardAmount = reward.amount;
-
-        if (timeElapsed >= 3 * MONTH) {
-            fee = 0;
-        } else if (timeElapsed >= 2 * MONTH) {
-            fee = (rewardAmount * 25) / 100;
-        } else if (timeElapsed >= MONTH) {
-            fee = (rewardAmount * 50) / 100;
-        } else {
-            fee = (rewardAmount * 75) / 100;
-        }
-
-        uint256 managerFee = (rewardAmount * managerFeeRate) / 10000;
-
-        claimAmount = rewardAmount - fee - managerFee;
-        reward.isClaimed = true;
-
-        if (fee > 0) {
-            (bool feeSuccess, ) = payable(daoAddress).call{value: fee}("");
-            require(feeSuccess, "DAO fee transfer failed");
-            totalEarlyClaimedPenalty += fee;
-        }
-
-        if (managerFee > 0) {
-            (bool managerSuccess, ) = payable(managerFeeAddress).call{value: managerFee}("");
-            require(managerSuccess, "Manager fee transfer failed");
-            totalManagerFee += managerFee;
-        }
-
-        if (claimAmount > 0) {
-            (bool success, ) = payable(user).call{value: claimAmount}("");
-            require(success, "Reward transfer failed");
-            totalMinted += claimAmount;
-        }
-
-        emit RewardClaimed(user, month, claimAmount, fee);
-    }
-
-    function claimReward(uint256 month) external {
-        _processRewardClaim(msg.sender, month);
-    }
-
-    function claimRewardAgent(address user, uint256 month) external onlyRole(FACTORY_ROLE) {
-        require(user != address(0), "Invalid user address");
-        _processRewardClaim(user, month);
-    }
-
-    function claimRewardAgentBatch(address[] calldata _users, uint256[] calldata _months) external onlyRole(FACTORY_ROLE) {
-        require(_users.length == _months.length, "Input arrays length mismatch");
-
-        for (uint256 i = 0; i < _users.length; i++) {
-            address user = _users[i];
-            require(user != address(0), "Invalid user address");
-            _processRewardClaim(user, _months[i]);
-        }
-    }
-
-    function mintDaoNodeFee(uint256 amount) external onlyRole(FACTORY_ROLE) {
-        require(amount > 0, "Amount must be greater than 0");
-        require(address(this).balance >= amount, "Insufficient contract balance");
-
-        (bool success, ) = payable(daoAddress).call{value: amount}("");
-        require(success, "Transfer failed");
-        totalEarlyClaimedPenalty += amount;
-
-        emit DaoNodeFeeMinted(amount);
-    }
-
-    function getRewardInfoBatch(address user, uint256[] calldata _months) external view returns (RewardInfo[] memory) {
-        require(user != address(0), "Invalid user address");
-        uint256 length = _months.length;
-        RewardInfo[] memory batchRewards = new RewardInfo[](length);
-
-        for (uint256 i = 0; i < length; i++) {
-            batchRewards[i] = rewards[user][_months[i]];
-        }
-
-        return batchRewards;
-    }
-
-    function getRewardClaimableBatch(address user, uint256[] calldata _months) external view returns (bool[] memory){
-        require(user != address(0), "Invalid user address");
-        uint256 length = _months.length;
-        bool[] memory claimableStatuses = new bool[](length);
-
-        for (uint256 i = 0; i < length; i++) {
-            RewardInfo storage reward = rewards[user][_months[i]];
-            if (reward.isRegistered && !reward.isClaimed && block.timestamp >= reward.calculationTime + 4 weeks) {
-                claimableStatuses[i] = true;
-            } else {
-                claimableStatuses[i] = false;
+                // 토큰 수량 기록
+                userMigratedTokenAmounts[msg.sender].push(TokenAmount({
+                    tokenId: i,
+                    amount: balance
+                }));
             }
         }
 
-        return claimableStatuses;
+        // Revert if user has no tokens
+        require(totalBalance > 0, "No tokens to migrate");
+
+        // Process migration for tokens with non-zero balance
+        for (uint256 i = 0; i < 3; i++) {
+            if (amounts[i] > 0) {
+                require(!isTokenMigrated[i], "Token already migrated");
+
+                erc1155Token.safeTransferFrom(msg.sender, address(this), i, amounts[i], "");
+
+                isTokenMigrated[i] = true;
+                tokenOwner[i] = msg.sender;
+                userMigratedTokenIds[msg.sender].push(i);
+            }
+        }
+
+        migratedUsers.push(msg.sender);
+        hasUserMigrated[msg.sender] = true;
+
+        emit TokensMigrated(msg.sender, tokenIds, amounts, block.timestamp);
     }
 
-    function getRewardInfo(address user, uint256 month) external view returns (RewardInfo memory) {
-        return rewards[user][month];
+    function withdraw() external whenWithdrawActive {
+        require(hasUserMigrated[msg.sender], "No tokens to withdraw");
+
+        TokenAmount[] memory tokenAmounts = userMigratedTokenAmounts[msg.sender];
+        require(tokenAmounts.length > 0, "No tokens to withdraw");
+
+        uint256[] memory tokenIds = new uint256[](tokenAmounts.length);
+        uint256[] memory amounts = new uint256[](tokenAmounts.length);
+
+        for (uint256 i = 0; i < tokenAmounts.length; i++) {
+            TokenAmount memory tokenAmount = tokenAmounts[i];
+            tokenIds[i] = tokenAmount.tokenId;
+            amounts[i] = tokenAmount.amount;
+
+            require(tokenOwner[tokenAmount.tokenId] == msg.sender, "Not the owner of token");
+
+            erc1155Token.safeTransferFrom(
+                address(this), 
+                msg.sender, 
+                tokenAmount.tokenId, 
+                tokenAmount.amount, 
+                ""
+            );
+
+            isTokenMigrated[tokenAmount.tokenId] = false;
+            delete tokenOwner[tokenAmount.tokenId];
+        }
+
+        delete userMigratedTokenAmounts[msg.sender];
+        delete userMigratedTokenIds[msg.sender];
+
+        for (uint256 i = 0; i < migratedUsers.length; i++) {
+            if (migratedUsers[i] == msg.sender) {
+                migratedUsers[i] = migratedUsers[migratedUsers.length - 1];
+                migratedUsers.pop();
+                break;
+            }
+        }
+        hasUserMigrated[msg.sender] = false;
+
+        emit TokensWithdrawn(msg.sender, tokenIds, amounts, block.timestamp);
     }
 
-    function getTotalMintedAmount() external view returns (uint256) {
-        return totalMinted + totalEarlyClaimedPenalty + totalManagerFee;
+    function getUserMigratedTokens(address user) external view returns (uint256[] memory) {
+        return userMigratedTokenIds[user];
     }
 
-    receive() external payable {}
-
-    function deposit() external payable {
-        emit RewardDeposited(msg.value);
+    function getTotalMigratedUsers() external view returns (uint256) {
+        return migratedUsers.length;
     }
 
-    function emergencyWithdraw() external onlyRole(DEFAULT_ADMIN_ROLE) {
-        uint256 balance = address(this).balance;
-        require(balance > 0, "No balance to withdraw");
-
-        (bool success, ) = payable(msg.sender).call{value: balance}("");
-        require(success, "Emergency withdraw failed");
-
-        emit EmergencyWithdrawn(balance, msg.sender);
+    function getMigratedUserByIndex(uint256 index) external view returns (address) {
+        require(index < migratedUsers.length, "Index out of bounds");
+        return migratedUsers[index];
     }
 
-    function getContractBalance() external view returns (uint256) {
-        return address(this).balance;
+    function getMigrationStatus() external view returns (
+        bool migrationPaused,
+        bool withdrawPaused,
+        uint256 pauseTime
+    ) {
+        return (isMigrationPaused, isWithdrawPaused, migrationPausedTime);
     }
 }

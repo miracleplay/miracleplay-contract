@@ -129,6 +129,8 @@ contract BKOZEditionMigration is PermissionsEnumerable, Multicall, ContractMetad
             require(tokenOwner[tokenId] == msg.sender, "Not the owner of token");
             
             uint256 amount = userTokenAmounts[msg.sender][tokenId];
+            require(amount > 0, "No balance for token");
+
             erc1155Token.safeTransferFrom(address(this), msg.sender, tokenId, amount, "");
             amounts[i] = amount;
 
