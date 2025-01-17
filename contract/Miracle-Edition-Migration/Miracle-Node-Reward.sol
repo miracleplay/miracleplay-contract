@@ -59,6 +59,8 @@ contract MiracleNodeRewardManager is PermissionsEnumerable, Multicall, ContractM
 
     function updateReward(address user, uint256 month, uint256 amount, uint256 calculationTime) external onlyRole(FACTORY_ROLE) {
         require(user != address(0), "Invalid user address");
+        require(amount > 0, "Amount must be greater than 0");
+        
         RewardInfo storage reward = rewards[user][month];
         require(!reward.isRegistered, "Reward already registered");
 
@@ -105,7 +107,7 @@ contract MiracleNodeRewardManager is PermissionsEnumerable, Multicall, ContractM
         }
     }
 
-    function _processRewardClaim(address user, uint256 month) internal returns (uint256 claimAmount, uint256 fee) {
+    function _processRewardClaim(address user, uint256 month) internal returns (uint256 claimAmount, uint256 earlyClaimPenalty) {
         RewardInfo storage reward = rewards[user][month];
         require(reward.isRegistered, "Reward not registered");
         require(!reward.isClaimed, "Reward already claimed");
@@ -115,24 +117,25 @@ contract MiracleNodeRewardManager is PermissionsEnumerable, Multicall, ContractM
         uint256 rewardAmount = reward.amount;
 
         if (timeElapsed >= 3 * MONTH) {
-            fee = 0;
+            earlyClaimPenalty = 0;
         } else if (timeElapsed >= 2 * MONTH) {
-            fee = (rewardAmount * 25) / 100;
+            earlyClaimPenalty = (rewardAmount * 25) / 100;
         } else if (timeElapsed >= MONTH) {
-            fee = (rewardAmount * 50) / 100;
+            earlyClaimPenalty = (rewardAmount * 50) / 100;
         } else {
-            fee = (rewardAmount * 75) / 100;
+            earlyClaimPenalty = (rewardAmount * 75) / 100;
         }
 
-        uint256 managerFee = (rewardAmount * managerFeeRate) / 10000;
+        uint256 remainingAmount = rewardAmount - earlyClaimPenalty;
+        uint256 managerFee = (remainingAmount * managerFeeRate) / 10000;
         
-        claimAmount = rewardAmount - fee - managerFee;
+        claimAmount = remainingAmount - managerFee;
         reward.isClaimed = true;
 
-        if (fee > 0) {
-            (bool feeSuccess, ) = payable(daoAddress).call{value: fee}("");
+        if (earlyClaimPenalty > 0) {
+            (bool feeSuccess, ) = payable(daoAddress).call{value: earlyClaimPenalty}("");
             require(feeSuccess, "DAO fee transfer failed");
-            totalEarlyClaimedPenalty += fee;
+            totalEarlyClaimedPenalty += earlyClaimPenalty;
         }
 
         if (managerFee > 0) {
@@ -147,7 +150,7 @@ contract MiracleNodeRewardManager is PermissionsEnumerable, Multicall, ContractM
             totalMinted += claimAmount;
         }
 
-        emit RewardClaimed(user, month, claimAmount, fee);
+        emit RewardClaimed(user, month, claimAmount, earlyClaimPenalty);
     }
 
     function claimReward(uint256 month) external {
