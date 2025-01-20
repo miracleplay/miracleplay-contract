@@ -6,7 +6,7 @@
 //   |:  1   |:  1   |:  1   |:  1   |:  |   |:  1   |:  |:  |   |:  1   |   |:  1   |:  |   |:  1    |:  1   |
 //   |::.. . |::.. . |\:.. ./|::.. . |::.|   |::.. . |::.|::.|   |::.. . |   |::.. . |::.|:. |::.. .  |::.. . |
 //   `-------`-------' `---' `-------`--- ---`-------`---`--- ---`-------'   `-------`--- ---`-------'`-------'
-//   TournamentManager V1.0
+//   TournamentManager v0.1
 pragma solidity ^0.8.0;
 import "@thirdweb-dev/contracts/extension/PermissionsEnumerable.sol";
 import "@thirdweb-dev/contracts/extension/Multicall.sol";
@@ -54,16 +54,26 @@ contract  MiracleTournamentManager is PermissionsEnumerable, Multicall, Contract
         _setupRole(DEFAULT_ADMIN_ROLE, admin);
         _setupRole(FACTORY_ROLE, admin);
 
-        _setupRole(FACTORY_ROLE, 0x8914b41C3D0491E751d4eA3EbfC04c42D7275A75);
-        _setupRole(FACTORY_ROLE, 0x2fB586cD6bF507998e0816897D812d5dF2aF7677);
-        _setupRole(FACTORY_ROLE, 0x7C7f65a0f86a556aAA04FD9ceDb1AA6D943C35c3);
-        _setupRole(FACTORY_ROLE, 0xd278a5A5B9A83574852d25F08420029972fd2c6f);
-        _setupRole(FACTORY_ROLE, 0x7c35582e6b953b0D7980ED3444363B5c99d1ded3);
-        _setupRole(FACTORY_ROLE, 0xe463D4fdBc692D9016949881E6a5e18d815C4537);
-        _setupRole(FACTORY_ROLE, 0x622DfbD67fa2e87aa8c774e14fda2791656f282b);
-        _setupRole(FACTORY_ROLE, 0xbE810123C22046d93Afb018d7c4b7248df0088BE);
-        _setupRole(FACTORY_ROLE, 0xc184A36eac1EA5d62829cc80e8e57E7c4994D40B);
-        _setupRole(FACTORY_ROLE, 0xDCa74207a0cB028A2dE3aEeDdC7A9Be52109a785);
+        _setupRole(FACTORY_ROLE, 0x36205404Ca7dFe48db631B7BbADB57286A2E486a);
+        _setupRole(FACTORY_ROLE, 0xB839a747777141FD91E53DA00a986f022b5Ebe3e);
+        _setupRole(FACTORY_ROLE, 0xd5AB20464D55c85e5996770d14A567AA140e8fDe);
+        _setupRole(FACTORY_ROLE, 0x960c8465B6931C0153Dd233D7C53dfa0DaF45CDa);
+        _setupRole(FACTORY_ROLE, 0xF0357FA8D7eF4ad6FF099A9635e2b36eC77Fe979);
+        _setupRole(FACTORY_ROLE, 0xF8dc2c9e23298FeD0B721624CaCA7a79E092ED89);
+        _setupRole(FACTORY_ROLE, 0x0aa8202803e0Ab80DD2f63651F28BF4B892933fe);
+        _setupRole(FACTORY_ROLE, 0x4228dDEb08B1FD561b41Ecc7eebD0C95dee19099);
+        _setupRole(FACTORY_ROLE, 0xF5fe16F753E570A442a447817B9aEaEc342b3B72);
+        _setupRole(FACTORY_ROLE, 0xfa95EFAdC6Df2927cA23aEe93650979bA2FAe138);
+        _setupRole(FACTORY_ROLE, 0xf262b4A6B049c46bCee782f36ce755df04780369);
+        _setupRole(FACTORY_ROLE, 0x5E81b89CE9A5Fe9bE209a18BD5C6c96e77B4e0D9);
+        _setupRole(FACTORY_ROLE, 0xEd28Ca8715ee0EEdf6f07a6B3Fc6C514132Ec77C);
+        _setupRole(FACTORY_ROLE, 0x3f47Fb659a86e67BA5C1A983719FbA005aE27E3e);
+        _setupRole(FACTORY_ROLE, 0x2009a1D3590966020D7Cb1dac60b45c5667488cB);
+        _setupRole(FACTORY_ROLE, 0xa96C941DDb1DcD36E7E03D5FFbcD2A2825D3009D);
+        _setupRole(FACTORY_ROLE, 0xdC48C97939DeCb597FCb51cC8c9a55caE5ecd9B9);
+        _setupRole(FACTORY_ROLE, 0x0B47702Ee4A7619f9De9C2d0E3228FB990028AFa);
+        _setupRole(FACTORY_ROLE, 0x753e8Fc2dfe66D8ca0B9d2902D04B32226eAC4Db);
+        _setupRole(FACTORY_ROLE, 0xAb675dcb0Fe48689f6A44e188FaA8584d30e6ce2);
     }
 
     function _canSetContractURI() internal view virtual override returns (bool){
