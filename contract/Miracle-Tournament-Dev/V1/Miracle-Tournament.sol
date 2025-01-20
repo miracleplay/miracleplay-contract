@@ -6,7 +6,7 @@ interface IERC20 {
     function transfer(address recipient, uint256 amount) external returns (bool);
 }
 
-contract TournamentManager {
+contract TournamentManagerAutoDistribute {
 
     address public admin;
     uint256 public developerFeePercent;
