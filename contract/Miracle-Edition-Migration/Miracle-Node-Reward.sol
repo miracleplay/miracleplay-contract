@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// Miracle-Node-RewardManager 1.1.0
+// Miracle-Node-RewardManager 1.1.3
 pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
