@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// Miracle-Node-RewardManager 1.1.3
+// Miracle-Node-RewardManager 1.1.4
 pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
@@ -112,7 +112,7 @@ contract MiracleNodeRewardManager is
         }
     }
 
-    function _processRewardClaim(address user, uint256 month) internal nonReentrant returns (uint256 claimAmount, uint256 earlyClaimPenalty) {
+    function _processRewardClaim(address user, uint256 month) internal returns (uint256 claimAmount, uint256 earlyClaimPenalty) {
         // Checks
         RewardInfo storage reward = rewards[user][month];
         require(reward.isRegistered, "Reward not registered");
