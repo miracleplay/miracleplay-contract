@@ -10,6 +10,6 @@ module.exports = {
     },
   },
   paths: {
-    sources: "./contract/Miracle-Edition-Migration/",
+    sources: "./contract/Miracle-Upgradeable-Contract/",
   },
 };
