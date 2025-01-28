@@ -6,7 +6,7 @@ import "@thirdweb-dev/contracts/extension/PermissionsEnumerable.sol";
 import "@thirdweb-dev/contracts/extension/Multicall.sol";
 import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
 
-contract MiracleERC721 is 
+contract UpgradeableMiracleERC721 is 
     ERC721A,
     PermissionsEnumerable,
     Multicall,
@@ -81,6 +81,23 @@ contract MiracleERC721 is
     {
         maxTotalSupply = _maxTotalSupply;
         emit MaxTotalSupplyUpdated(_maxTotalSupply);
+    }
+
+    /// @dev 여러 토큰의 URI를 한 번에 설정
+    function batchSetTokenURI(
+        uint256[] memory _ids, 
+        string[] memory _uris
+    ) external onlyRole(FACTORY_ROLE) {
+        require(
+            _ids.length == _uris.length,
+            "Arrays length mismatch"
+        );
+        
+        for(uint256 i = 0; i < _ids.length; i++) {
+            require(_exists(_ids[i]), "Token does not exist");
+            _tokenURIs[_ids[i]] = _uris[i];
+            emit TokenURIUpdated(_ids[i], _uris[i]);
+        }
     }
 
     /// @dev 토큰 URI 조회
