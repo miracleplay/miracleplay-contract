@@ -1,1 +1,68 @@
-{"name":"BNW N4 2002 TURBO","description":"The first piece in our high-performance racing car NFT collection. This racing car features top-tier performance and design.","external_url":"https://miracleplay.gg","background_color":"","attributes":[{"trait_type":"Color","value":"Matrix Red"},{"trait_type":"Top Speed","value":"48"},{"trait_type":"Acceleration","value":"84"},{"trait_type":"Handling","value":"57"},{"trait_type":"Draft","value":"90"},{"trait_type":"Impact Absorption","value":"84"},{"trait_type":"Track Adaptation","value":"50"},{"trait_type":"Total Races","value":"50"},{"trait_type":"Wins","value":"32"},{"trait_type":"Losses","value":"18"}],"supply":0,"customImage":"","customAnimationUrl":""}
+{
+  "name": "BNW N4 2002 TURBO",
+  "description": "The first piece in our high-performance racing car NFT collection. This racing car features top-tier performance and design.",
+  "external_url": "https://miracleplay.gg",
+  "attributes": [
+    {
+      "trait_type": "Color",
+      "value": "Matrix Red"
+    },
+    {
+      "trait_type": "Top Speed",
+      "value": 48,
+      "max_value": 100,
+      "display_type": "number"
+    },
+    {
+      "trait_type": "Acceleration",
+      "value": 84,
+      "max_value": 100,
+      "display_type": "number"
+    },
+    {
+      "trait_type": "Handling",
+      "value": 57,
+      "max_value": 100,
+      "display_type": "number"
+    },
+    {
+      "trait_type": "Draft",
+      "value": 90,
+      "max_value": 100,
+      "display_type": "number"
+    },
+    {
+      "trait_type": "Impact Absorption",
+      "value": 84,
+      "max_value": 100,
+      "display_type": "number"
+    },
+    {
+      "trait_type": "Track Adaptation",
+      "value": 50,
+      "max_value": 100,
+      "display_type": "number"
+    },
+    {
+      "trait_type": "Total Races",
+      "value": 50,
+      "display_type": "number"
+    },
+    {
+      "trait_type": "Wins",
+      "value": 32,
+      "display_type": "number"
+    },
+    {
+      "trait_type": "Losses",
+      "value": 18,
+      "display_type": "number"
+    },
+    {
+      "trait_type": "Win Rate",
+      "value": 64,
+      "max_value": 100,
+      "display_type": "number"
+    }
+  ]
+}
