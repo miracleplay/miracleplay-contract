@@ -47,22 +47,22 @@
       "max_value": 100
     },
     {
-      "trait_type": "Total Races",
+      "trait_type": "Stats 1: Total Races",
       "value": 50,
       "display_type": "number"
     },
     {
-      "trait_type": "Wins",
+      "trait_type": "Stats 2: Wins",
       "value": 32,
       "display_type": "number"
     },
     {
-      "trait_type": "Losses",
+      "trait_type": "Stats 3: Losses",
       "value": 18,
       "display_type": "number"
     },
     {
-      "trait_type": "Win Rate",
+      "trait_type": "Stats 4: Win Rate",
       "value": 64,
       "display_type": "number"
     }
