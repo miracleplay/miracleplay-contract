@@ -5,59 +5,59 @@
   "attributes": [
     {
       "trait_type": "Color",
-      "value": "Matrix Blue"
+      "value": "Matrix Red"
     },
     {
-      "trait_type": "Top Speed",
+      "trait_type": "Spec 1: Top Speed",
       "value": 48,
       "max_value": 100,
       "display_type": "number"
     },
     {
-      "trait_type": "Acceleration",
+      "trait_type": "Spec 2: Acceleration",
       "value": 84,
       "max_value": 100,
       "display_type": "number"
     },
     {
-      "trait_type": "Handling",
+      "trait_type": "Spec 3: Handling",
       "value": 57,
       "max_value": 100,
       "display_type": "number"
     },
     {
-      "trait_type": "Draft",
+      "trait_type": "Spec 4: Draft",
       "value": 90,
       "max_value": 100,
       "display_type": "number"
     },
     {
-      "trait_type": "Impact Absorption",
+      "trait_type": "Spec 5: Impact Absorption",
       "value": 84,
       "max_value": 100,
       "display_type": "number"
     },
     {
-      "trait_type": "Track Adaptation",
+      "trait_type": "Spec 6: Track Adaptation",
       "value": 50,
       "max_value": 100,
       "display_type": "number"
     },
     {
-      "trait_type": "Total Races",
+      "trait_type": "Stats 1: Total Races",
       "value": 50,
       "display_type": "number"
     },
     {
-      "trait_type": "Wins",
+      "trait_type": "Stats 2: Wins",
       "value": 32
     },
     {
-      "trait_type": "Losses",
+      "trait_type": "Stats 3: Losses",
       "value": 18
     },
     {
-      "trait_type": "Win Rate",
+      "trait_type": "Stats 4: Win Rate",
       "value": 64
     }
   ]
