@@ -18,9 +18,9 @@ contract UpgradeableMiracleERC721 is
     string private _baseTokenURI;
     mapping(uint256 => string) private _tokenURIs;
 
-    // 최대 공급량
+    // 최대 발행 수량 변수 추가
     uint256 public maxTotalSupply;
-
+    
     // 이벤트
     event TokenURIUpdated(uint256 indexed tokenId, string newUri);
     event BaseURIUpdated(string newUri);
@@ -30,13 +30,12 @@ contract UpgradeableMiracleERC721 is
         address _defaultAdmin,
         string memory _name,
         string memory _symbol,
-        string memory _contractURI,
-        uint256 _maxTotalSupply
+        string memory _contractURI
     ) ERC721A(_name, _symbol) {
         _setupRole(DEFAULT_ADMIN_ROLE, _defaultAdmin);
         _setupRole(FACTORY_ROLE, _defaultAdmin);
         _setupContractURI(_contractURI);
-        maxTotalSupply = _maxTotalSupply;
+        maxTotalSupply = 10000;
     }
 
     /// @dev NFT 민팅 함수
@@ -44,10 +43,7 @@ contract UpgradeableMiracleERC721 is
         address _to,
         string memory _tokenURI
     ) external onlyRole(FACTORY_ROLE) {
-        require(
-            totalSupply() + 1 <= maxTotalSupply,
-            "Exceeds max supply"
-        );
+        require(totalSupply() + 1 <= maxTotalSupply, "Exceeds max supply");
         uint256 tokenId = _startTokenId();
         _safeMint(_to, 1);
         
@@ -64,6 +60,20 @@ contract UpgradeableMiracleERC721 is
         emit BaseURIUpdated(_newBaseURI);
     }
 
+    /// @dev 특정 ID로 NFT 민팅 함수
+    function mintWithTokenId(
+        address _to,
+        uint256 _tokenId,
+        string memory _tokenURI
+    ) external onlyRole(FACTORY_ROLE) {
+        require(totalSupply() + 1 <= maxTotalSupply, "Exceeds max supply");
+        require(!_exists(_tokenId), "Token already exists");
+        _safeMint(_to, 1);
+        
+        _tokenURIs[_tokenId] = _tokenURI;
+        emit TokenURIUpdated(_tokenId, _tokenURI);
+    }
+
     /// @dev 개별 토큰 URI 설정
     function setTokenURI(uint256 _tokenId, string memory _tokenURI) 
         external 
@@ -72,15 +82,6 @@ contract UpgradeableMiracleERC721 is
         require(_exists(_tokenId), "Token does not exist");
         _tokenURIs[_tokenId] = _tokenURI;
         emit TokenURIUpdated(_tokenId, _tokenURI);
-    }
-
-    /// @dev 최대 공급량 설정
-    function setMaxTotalSupply(uint256 _maxTotalSupply) 
-        external 
-        onlyRole(DEFAULT_ADMIN_ROLE) 
-    {
-        maxTotalSupply = _maxTotalSupply;
-        emit MaxTotalSupplyUpdated(_maxTotalSupply);
     }
 
     /// @dev 여러 토큰의 URI를 한 번에 설정
@@ -183,8 +184,16 @@ contract UpgradeableMiracleERC721 is
         return totalSupply();
     }
 
-    /// @dev 다음 발행될 NFT의 ID 조회
-    function getNextTokenId() public view returns (uint256) {
-        return _startTokenId();
+
+    /// @dev 토큰 ID로 소유자 주소 조회
+    function getOwnerOfToken(uint256 _tokenId) public view returns (address) {
+        require(_exists(_tokenId), "Token does not exist");
+        return ownerOf(_tokenId);
+    }
+
+    /// @dev 최대 발행 수량 설정
+    function setMaxTotalSupply(uint256 _maxTotalSupply) external onlyRole(FACTORY_ROLE) {
+        maxTotalSupply = _maxTotalSupply;
+        emit MaxTotalSupplyUpdated(_maxTotalSupply);
     }
 }
