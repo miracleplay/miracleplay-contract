@@ -9,8 +9,9 @@
       "value": "BNW N4 Turbo"
     },
     {
-      "trait_type": "Minted At",
-      "value": "2025-02-06T09:30:00Z"
+      "display_type": "date", 
+      "trait_type": "Created At", 
+      "value": 1546360800
     },
     {
       "trait_type": "Driving Style",
@@ -19,6 +20,45 @@
     {
       "trait_type": "Tournament Grade",
       "value": "Silver"
+    },
+    {
+      "Initial Spec":{
+        "Top Speed":200,
+        "Acceleration":75,
+        "Handling":80,
+        "Draft":200,
+        "Impact Absorption":75,
+        "Track Adaptation":80
+      }
+    },
+    {
+      "trait_type": "Top Speed",
+      "value": 200
+    },
+    {
+      "trait_type": "Acceleration",
+      "value": 75
+    },
+    {
+      "trait_type": "Handling",
+      "value": 80
+    },
+    {
+      "trait_type": "Draft",
+      "value": 200
+    },
+    {
+      "trait_type": "Impact Absorption",
+      "value": 75
+    },
+    {
+      "trait_type": "Track Adaptation",
+      "value": 80
+    },
+    {
+      "display_type": "boost_number", 
+      "trait_type": "Bonus Nitro Boost", 
+      "value": 10
     },
     {
       "display_type": "number",
@@ -30,64 +70,9 @@
       "trait_type": "Win Point",
       "value": 9
     },
-
-    {
-      "trait_type": "Initial Top Speed",
-      "value": 200
-    },
-    {
-      "trait_type": "Initial Acceleration",
-      "value": 75
-    },
-    {
-      "trait_type": "Initial Handling",
-      "value": 80
-    },
-    {
-      "trait_type": "Initial Draft",
-      "value": 200
-    },
-    {
-      "trait_type": "Initial Impact Absorption",
-      "value": 75
-    },
-    {
-      "trait_type": "Initial Track Adaptation",
-      "value": 80
-    },
-    {
-      "trait_type": "Bonus Nitro Boost",
-      "value": 10
-    },
-
-    {
-      "trait_type": "Current Top Speed",
-      "value": 210
-    },
-    {
-      "trait_type": "Current Acceleration",
-      "value": 75
-    },
-    {
-      "trait_type": "Current Handling",
-      "value": 80
-    },
-    {
-      "trait_type": "Current Draft",
-      "value": 200
-    },
-    {
-      "trait_type": "Current Impact Absorption",
-      "value": 75
-    },
-    {
-      "trait_type": "Current Track Adaptation",
-      "value": 80
-    },
-
     {
       "trait_type": "Joined Games",
-      "value": "game_25012300001, game_25012300002"
+      "value": "game_25012300001,game_25012300002"
     },
     {
       "trait_type": "AI Training Data",
@@ -99,7 +84,7 @@
     },
     {
       "trait_type": "Custom AI Behavior",
-      "value": "Sharp cornering, defending the opponent's gap, focusing on intuition"
+      "value": "Sharp cornering,defending the opponent's gap,focusing on intuition"
     }
   ]
 }
