@@ -191,9 +191,38 @@ contract UpgradeableMiracleERC721 is
         return ownerOf(_tokenId);
     }
 
+    /// @dev 여러 토큰 ID로 소유자 주소 조회
+    function getOwnerOfTokenBatch(uint256[] memory _tokenIds) public view returns (address[] memory) {
+        address[] memory owners = new address[](_tokenIds.length);
+
+        for (uint256 i = 0; i < _tokenIds.length; i++) {
+            require(_exists(_tokenIds[i]), "Token does not exist");
+            owners[i] = ownerOf(_tokenIds[i]);
+        }
+
+        return owners;
+    }
+
     /// @dev 최대 발행 수량 설정
     function setMaxTotalSupply(uint256 _maxTotalSupply) external onlyRole(FACTORY_ROLE) {
         maxTotalSupply = _maxTotalSupply;
         emit MaxTotalSupplyUpdated(_maxTotalSupply);
+    }
+
+    /// @dev 사용자 주소로 보유 중인 모든 NFT ID 조회
+    function getOwnedTokenIds(address _owner) public view returns (uint256[] memory) {
+        uint256 tokenCount = balanceOf(_owner);
+        uint256[] memory ownedTokenIds = new uint256[](tokenCount);
+        uint256 currentIndex = 0;
+        uint256 totalTokens = totalSupply();
+
+        for (uint256 i = 0; i < totalTokens; i++) {
+            if (ownerOf(i) == _owner) {
+                ownedTokenIds[currentIndex] = i;
+                currentIndex++;
+            }
+        }
+
+        return ownedTokenIds;
     }
 }
