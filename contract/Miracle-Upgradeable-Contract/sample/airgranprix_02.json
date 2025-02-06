@@ -1,44 +1,105 @@
 {
   "name": "Art's N4 Turbo",
   "description": "The first piece in our high-performance racing car NFT collection. This racing car features top-tier performance and design.",
-  "image": "https://storage.googleapis.com/opensea-prod.appspot.com/puffs/1.png>",
-  "minted_at": "2025-02-06T09:30:00Z",
-  "car_model": "BNW N4 Turbo",
-  "initial_stats": {
-    "Top_Speed": 200,
-    "Acceleration": 75,
-    "Handling": 80,
-    "Draft": 200,
-    "Impact_Absorption": 75,
-    "Track_Adaptation": 80
-  },
-  "bonus_stat": {
-    "nitro_boost": 10
-  },
-  "current_stats": {
-    "Top_Speed": 210,
-    "Acceleration": 75,
-    "Handling": 80,
-    "Draft": 200,
-    "Impact_Absorption": 75,
-    "Track_Adaptation": 80
-  },
-  "driving_style": "공격형",
-  "racing_experience": 15,
-  "win_point": 9,
-  "tournament_grade": "Silver",
-  "joined_game": [
+  "image": "https://storage.googleapis.com/opensea-prod.appspot.com/puffs/1.png",
+  
+  "attributes": [
     {
-      "game_id": "game_25012300001",
-      "replay_url": "ipfs://<replay_file_hash_1>"
+      "trait_type": "Car Model",
+      "value": "BNW N4 Turbo"
     },
     {
-      "game_id": "game_25012300002",
-      "replay_url": "ipfs://<replay_file_hash_2>"
-    }
-  ],
+      "trait_type": "Minted At",
+      "value": "2025-02-06T09:30:00Z"
+    },
+    {
+      "trait_type": "Driving Style",
+      "value": "공격형"
+    },
+    {
+      "trait_type": "Tournament Grade",
+      "value": "Silver"
+    },
+    {
+      "display_type": "number",
+      "trait_type": "Racing Experience",
+      "value": 15
+    },
+    {
+      "display_type": "number",
+      "trait_type": "Win Point",
+      "value": 9
+    },
 
-  "ai_training_data": "13584122001546.h1",
-  "ai_last_update": "2025-02-06T12:00:00Z",
-  "custom_ai_behavior": "Sharp cornering, defending the opponent's gap, focusing on intuition"
+    {
+      "trait_type": "Initial Top Speed",
+      "value": 200
+    },
+    {
+      "trait_type": "Initial Acceleration",
+      "value": 75
+    },
+    {
+      "trait_type": "Initial Handling",
+      "value": 80
+    },
+    {
+      "trait_type": "Initial Draft",
+      "value": 200
+    },
+    {
+      "trait_type": "Initial Impact Absorption",
+      "value": 75
+    },
+    {
+      "trait_type": "Initial Track Adaptation",
+      "value": 80
+    },
+    {
+      "trait_type": "Bonus Nitro Boost",
+      "value": 10
+    },
+
+    {
+      "trait_type": "Current Top Speed",
+      "value": 210
+    },
+    {
+      "trait_type": "Current Acceleration",
+      "value": 75
+    },
+    {
+      "trait_type": "Current Handling",
+      "value": 80
+    },
+    {
+      "trait_type": "Current Draft",
+      "value": 200
+    },
+    {
+      "trait_type": "Current Impact Absorption",
+      "value": 75
+    },
+    {
+      "trait_type": "Current Track Adaptation",
+      "value": 80
+    },
+
+    {
+      "trait_type": "Joined Games",
+      "value": "game_25012300001, game_25012300002"
+    },
+    {
+      "trait_type": "AI Training Data",
+      "value": "13584122001546.h1"
+    },
+    {
+      "trait_type": "AI Last Update",
+      "value": "2025-02-06T12:00:00Z"
+    },
+    {
+      "trait_type": "Custom AI Behavior",
+      "value": "Sharp cornering, defending the opponent's gap, focusing on intuition"
+    }
+  ]
 }
