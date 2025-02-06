@@ -22,30 +22,30 @@
       "trait_type": "Tournament Grade",
       "value": "Silver"
     },
-    
+
     {
       "trait_type": "Top Speed",
-      "value": 200
+      "value": 210
     },
     {
       "trait_type": "Acceleration",
-      "value": 75
+      "value": 85
     },
     {
       "trait_type": "Handling",
-      "value": 80
+      "value": 90
     },
     {
       "trait_type": "Draft",
-      "value": 200
+      "value": 210
     },
     {
       "trait_type": "Impact Absorption",
-      "value": 75
+      "value": 85
     },
     {
       "trait_type": "Track Adaptation",
-      "value": 80
+      "value": 90
     },
 
     {
