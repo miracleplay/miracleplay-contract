@@ -75,16 +75,11 @@
       "value": "game_25012300001,game_25012300002"
     },
     {
-      "trait_type": "AI Training Data",
-      "value": "13584122001546.h1"
-    },
-    {
-      "trait_type": "AI Last Update",
-      "value": "2025-02-06T12:00:00Z"
-    },
-    {
-      "trait_type": "Custom AI Behavior",
-      "value": "Sharp cornering,defending the opponent's gap,focusing on intuition"
+      "AI Setting":{
+        "AI Training Data":"13584122001546.h1",
+        "AI Last Update":"2025-02-06T12:00:00Z",
+        "Custom AI Behavior":"Sharp cornering,defending the opponent's gap,focusing on intuition"
+      }
     }
   ]
 }
