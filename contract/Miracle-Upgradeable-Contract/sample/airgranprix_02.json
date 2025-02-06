@@ -1,8 +1,8 @@
 {
-  "name": "Art's N4 Turbo#001",
+  "name": "Art's N4 Turbo#002",
   "description": "The first piece in our high-performance racing car NFT collection. This racing car features top-tier performance and design.",
   "image": "https://storage.googleapis.com/opensea-prod.appspot.com/puffs/1.png",
-  
+  "external_url": "https://miracleplay.gg",
   "attributes": [
     {
       "trait_type": "Car Model",
@@ -20,16 +20,6 @@
     {
       "trait_type": "Tournament Grade",
       "value": "Silver"
-    },
-    {
-      "Initial Spec":{
-        "Top Speed":200,
-        "Acceleration":75,
-        "Handling":80,
-        "Draft":200,
-        "Impact Absorption":75,
-        "Track Adaptation":80
-      }
     },
     {
       "trait_type": "Top Speed",
@@ -71,8 +61,30 @@
       "value": 9
     },
     {
-      "trait_type": "Joined Games",
-      "value": "game_25012300001,game_25012300002"
+      "Joined Games":{
+        "game_25012300001":{
+          "game_id":"game_25012300001",
+          "game_date":"2025-01-23T00:00:00Z",
+          "game_result":"Win",
+          "game_point":100
+        },
+        "game_25012300002":{
+          "game_id":"game_25012300002",
+          "game_date":"2025-01-23T00:00:00Z",
+          "game_result":"Lose",
+          "game_point":0
+        }
+      }
+    },
+    {
+      "Initial Spec":{
+        "Top Speed":200,
+        "Acceleration":75,
+        "Handling":80,
+        "Draft":200,
+        "Impact Absorption":75,
+        "Track Adaptation":80
+      }
     },
     {
       "AI Setting":{
