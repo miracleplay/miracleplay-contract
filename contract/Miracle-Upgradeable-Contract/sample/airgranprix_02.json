@@ -22,6 +22,7 @@
       "trait_type": "Tournament Grade",
       "value": "Silver"
     },
+    
     {
       "trait_type": "Top Speed",
       "value": 200
@@ -46,11 +47,38 @@
       "trait_type": "Track Adaptation",
       "value": 80
     },
+
     {
       "display_type": "boost_number", 
-      "trait_type": "Bonus Nitro Boost", 
+      "trait_type": "Top Speed", 
       "value": 10
     },
+    {
+      "display_type": "boost_number", 
+      "trait_type": "Acceleration", 
+      "value": 10
+    },
+    {
+      "display_type": "boost_number", 
+      "trait_type": "Handling", 
+      "value": 10
+    },
+    {
+      "display_type": "boost_number", 
+      "trait_type": "Draft", 
+      "value": 10
+    },
+    {
+      "display_type": "boost_number", 
+      "trait_type": "Impact Absorption", 
+      "value": 10
+    },
+    {
+      "display_type": "boost_number", 
+      "trait_type": "Track Adaptation", 
+      "value": 10
+    },
+
     {
       "display_type": "number",
       "trait_type": "Racing Experience",
