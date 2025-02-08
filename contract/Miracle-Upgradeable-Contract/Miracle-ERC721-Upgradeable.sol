@@ -25,6 +25,12 @@ contract UpgradeableMiracleERC721 is
     event TokenURIUpdated(uint256 indexed tokenId, string newUri);
     event BaseURIUpdated(string newUri);
     event MaxTotalSupplyUpdated(uint256 maxTotalSupply);
+    event TokenMinted(
+        address indexed to,
+        uint256 indexed tokenId,
+        string tokenURI,
+        string pairKey
+    );
 
     constructor(
         address _defaultAdmin,
@@ -41,14 +47,16 @@ contract UpgradeableMiracleERC721 is
     /// @dev NFT 민팅 함수
     function mint(
         address _to,
-        string memory _tokenURI
+        string memory _tokenURI,
+        string memory _pairKey
     ) external onlyRole(FACTORY_ROLE) {
         require(totalSupply() + 1 <= maxTotalSupply, "Exceeds max supply");
-        uint256 tokenId = _startTokenId();
+        uint256 tokenId = totalSupply();
         _safeMint(_to, 1);
         
         _tokenURIs[tokenId] = _tokenURI;
         emit TokenURIUpdated(tokenId, _tokenURI);
+        emit TokenMinted(_to, tokenId, _tokenURI, _pairKey);
     }
 
     /// @dev 베이스 URI 설정
@@ -61,18 +69,17 @@ contract UpgradeableMiracleERC721 is
     }
 
     /// @dev 특정 ID로 NFT 민팅 함수
-    function mintWithTokenId(
-        address _to,
-        uint256 _tokenId,
-        string memory _tokenURI
-    ) external onlyRole(FACTORY_ROLE) {
-        require(totalSupply() + 1 <= maxTotalSupply, "Exceeds max supply");
-        require(!_exists(_tokenId), "Token already exists");
-        _safeMint(_to, 1);
-        
-        _tokenURIs[_tokenId] = _tokenURI;
-        emit TokenURIUpdated(_tokenId, _tokenURI);
-    }
+    // function mintWithTokenId(
+    //     address _to,
+    //     uint256 _tokenId,
+    //     string memory _tokenURI
+    // ) external onlyRole(FACTORY_ROLE) {
+    //     require(totalSupply() + 1 <= maxTotalSupply, "Exceeds max supply");
+    //     require(!_exists(_tokenId), "Token already exists");
+    //     _safeMint(_to, 1);
+    //     _tokenURIs[_tokenId] = _tokenURI;
+    //     emit TokenURIUpdated(_tokenId, _tokenURI);
+    // }
 
     /// @dev 개별 토큰 URI 설정
     function setTokenURI(uint256 _tokenId, string memory _tokenURI) 
@@ -210,7 +217,7 @@ contract UpgradeableMiracleERC721 is
     }
 
     /// @dev 사용자 주소로 보유 중인 모든 NFT ID 조회
-    function getOwnedTokenIds(address _owner) public view returns (uint256[] memory) {
+    function getOwnerdTokenIds(address _owner) public view returns (uint256[] memory) {
         uint256 tokenCount = balanceOf(_owner);
         uint256[] memory ownedTokenIds = new uint256[](tokenCount);
         uint256 currentIndex = 0;

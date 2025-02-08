@@ -6,7 +6,7 @@
 //   |:  1   |:  1   |:  1   |:  1   |:  |   |:  1   |:  |:  |   |:  1   |   |:  1   |:  |   |:  1    |:  1   |
 //   |::.. . |::.. . |\:.. ./|::.. . |::.|   |::.. . |::.|::.|   |::.. . |   |::.. . |::.|:. |::.. .  |::.. . |
 //   `-------`-------' `---' `-------`--- ---`-------`---`--- ---`-------'   `-------`--- ---`-------'`-------'
-//   TournamentManager v0.1
+//   TournamentManager v2.0.0
 pragma solidity ^0.8.0;
 import "@thirdweb-dev/contracts/extension/PermissionsEnumerable.sol";
 import "@thirdweb-dev/contracts/extension/Multicall.sol";
@@ -28,21 +28,22 @@ contract  MiracleTournamentManager is PermissionsEnumerable, Multicall, Contract
 
     bytes32 public constant FACTORY_ROLE = keccak256("FACTORY_ROLE");
 
+    // 토너먼트 구조체 - 각 토너먼트의 정보를 저장
     struct Tournament {
-        uint256 id;
-        address creator;
-        address prizeTokenAddress;
-        address entryTokenAddress;
-        uint256 prizeAmount;
-        uint256 entryFee;
-        uint256 maxParticipants;
-        bool isActive;
-        bool isCancelled;
-        address[] participants;
-        uint256[] prizeDistribution;
-        mapping(address => uint256) winnerPrizes; // Each winner's prize amount
-        bool isPrizesSet; // Indicates if the prize distribution is set
-        bool isPrizesDistributed; // Indicates if the prizes have been distributed by admin
+        uint256 id;                     // 토너먼트 고유 ID
+        address creator;                // 토너먼트 생성자 주소
+        address prizeTokenAddress;      // 상금으로 지급될 토큰 주소
+        address entryTokenAddress;      // 참가비로 받을 토큰 주소
+        uint256 prizeAmount;           // 총 상금 금액
+        uint256 entryFee;             // 참가비 금액
+        uint256 maxParticipants;      // 최대 참가자 수
+        bool isActive;                // 토너먼트 활성화 상태
+        bool isCancelled;            // 토너먼트 취소 상태
+        address[] participants;      // 참가자 목록
+        uint256[] prizeDistribution; // 상금 분배 비율
+        mapping(address => uint256) winnerPrizes; // 각 우승자별 상금 금액
+        bool isPrizesSet;           // 상금 분배가 설정되었는지 여부
+        bool isPrizesDistributed;   // 상금이 분배되었는지 여부
     }
 
     mapping(uint256 => Tournament) private tournaments;
@@ -80,7 +81,7 @@ contract  MiracleTournamentManager is PermissionsEnumerable, Multicall, Contract
         return msg.sender == deployer;
     }
 
-    // Tournament creation
+    // 토너먼트 생성 함수
     function createTournament(
         uint256 _tournamentId,
         address _prizeTokenAddress,
@@ -110,7 +111,7 @@ contract  MiracleTournamentManager is PermissionsEnumerable, Multicall, Contract
         updatePrizeDistribution(_tournamentId, _prizeDistribution);
     }
 
-    // Update prize distribution
+    // 상금 분배 비율 업데이트 (내부 함수)
     function updatePrizeDistribution(uint256 _tournamentId, uint256[] memory _prizeDistribution) internal {
         Tournament storage tournament = tournaments[_tournamentId];
         require(tournament.id != 0, "Tournament does not exist.");
@@ -125,11 +126,12 @@ contract  MiracleTournamentManager is PermissionsEnumerable, Multicall, Contract
         tournament.prizeDistribution = _prizeDistribution;
     }
 
+    // Factory 권한으로 상금 분배 비율 업데이트
     function updatePrizeDistributionByFactory(uint256 _tournamentId, uint256[] memory _prizeDistribution) external onlyRole(FACTORY_ROLE) {
         updatePrizeDistribution(_tournamentId, _prizeDistribution);
     }
 
-    // Participate in a tournament
+    // 토너먼트 참가 함수
     function participateInTournament(uint256 _tournamentId) external {
         Tournament storage tournament = tournaments[_tournamentId];
         require(tournament.isActive, "Tournament is not active.");
@@ -143,7 +145,7 @@ contract  MiracleTournamentManager is PermissionsEnumerable, Multicall, Contract
         tournament.participants.push(msg.sender);
     }
 
-    // Remove participant
+    // 참가자 제거 함수 (Factory 권한 필요)
     function removeParticipant(uint256 _tournamentId, address _participant) external onlyRole(FACTORY_ROLE) {
         Tournament storage tournament = tournaments[_tournamentId];
         require(tournament.isActive, "Tournament is not active.");
@@ -161,7 +163,7 @@ contract  MiracleTournamentManager is PermissionsEnumerable, Multicall, Contract
         }
     }
 
-    // Shuffle participants
+    // 참가자 순서 무작위 섞기 (Factory 권한 필요)
     function shuffleParticipants(uint256 _tournamentId) external onlyRole(FACTORY_ROLE) {
         Tournament storage tournament = tournaments[_tournamentId];
         require(tournament.isActive, "Tournament must be active to shuffle participants.");
@@ -182,7 +184,7 @@ contract  MiracleTournamentManager is PermissionsEnumerable, Multicall, Contract
         }
     }
 
-    // Cancel tournament
+    // 토너먼트 취소 함수 (Factory 권한 필요)
     function cancelTournament(uint256 _tournamentId) external onlyRole(FACTORY_ROLE) {
         Tournament storage tournament = tournaments[_tournamentId];
         require(tournament.isActive, "Tournament is not active.");
@@ -201,7 +203,7 @@ contract  MiracleTournamentManager is PermissionsEnumerable, Multicall, Contract
         tournament.isCancelled = true;
     }
 
-    // End tournament and calculate claimable prizes
+    // 토너먼트 종료 및 상금 청구 설정 (Claim 방식)
     function endTournamentC(uint256 _tournamentId, address[] memory _winners) external onlyRole(FACTORY_ROLE) {
         Tournament storage tournament = tournaments[_tournamentId];
         require(tournament.isActive, "Tournament is not active.");
@@ -223,7 +225,7 @@ contract  MiracleTournamentManager is PermissionsEnumerable, Multicall, Contract
         tournament.isPrizesSet = true;
     }
 
-    // End tournament and automatically handle fees, prize setting, and distribution
+    // 토너먼트 종료 및 자동 상금 지급 (Auto 방식)
     function endTournamentA(uint256 _tournamentId, address[] memory _winners) external onlyRole(FACTORY_ROLE) {
         Tournament storage tournament = tournaments[_tournamentId];
         require(tournament.isActive, "Tournament is not active.");
@@ -245,7 +247,7 @@ contract  MiracleTournamentManager is PermissionsEnumerable, Multicall, Contract
         tournament.isPrizesDistributed = true;
     }
 
-    // Transfer and distribute fees (Prize and Entry fees)
+    // 수수료 전송 및 분배 (내부 함수)
     function TransferFees(uint256 totalPrize, uint256 totalEntryFee, address prizeTokenAddress, address entryTokenAddress) internal {
         IERC20 prizeToken = IERC20(prizeTokenAddress);
         IERC20 entryToken = IERC20(entryTokenAddress);
@@ -269,13 +271,13 @@ contract  MiracleTournamentManager is PermissionsEnumerable, Multicall, Contract
         entryToken.transfer(platformFeeAddress, platformEntryFee);
     }
 
-    // Calculate the adjusted prize for winners after fee deduction
+    // 수수료 공제 후 실제 지급될 상금 계산
     function calculateAdjustedPrize(uint256 totalPrize) internal view returns (uint256) {
         uint256 remainingPrize = totalPrize - (totalPrize * (developerFeePercent + winnerClubFeePercent + platformFeePercent)) / 100;
         return remainingPrize;
     }
 
-    // Set distribute prizes (Version 2 - Claim)
+    // 상금 분배 설정 (Claim 방식)
     function setDistributePrizes(uint256 _tournamentId, address[] memory _winners) internal {
         Tournament storage tournament = tournaments[_tournamentId];
         require(!tournament.isActive, "Tournament must be ended.");
@@ -295,7 +297,7 @@ contract  MiracleTournamentManager is PermissionsEnumerable, Multicall, Contract
         tournament.isPrizesDistributed = true;
     }
 
-    // Distribute prizes by admin (Version 1 - Auto distribute)
+    // 상금 즉시 분배 (Auto 방식)
     function distributePrizes(uint256 _tournamentId, address[] memory _winners) internal {
         Tournament storage tournament = tournaments[_tournamentId];
         require(!tournament.isActive, "Tournament must be ended before distributing prizes.");
@@ -314,7 +316,7 @@ contract  MiracleTournamentManager is PermissionsEnumerable, Multicall, Contract
         tournament.isPrizesDistributed = true;
     }
 
-    // Winner claims their prize (Version 2)
+    // 우승자 상금 청구 함수 (Claim 방식)
     function claimPrize(uint256 _tournamentId) external {
         Tournament storage tournament = tournaments[_tournamentId];
         require(!tournament.isActive, "Tournament must be ended to claim prizes.");
@@ -330,7 +332,7 @@ contract  MiracleTournamentManager is PermissionsEnumerable, Multicall, Contract
         prizeToken.transfer(msg.sender, prizeAmount);
     }
 
-    // View functions to retrieve data
+    // 토너먼트 정보 조회
     function getTournamentInfo(uint256 _tournamentId) external view returns (
         address creator,
         address prizeTokenAddress,
@@ -354,16 +356,19 @@ contract  MiracleTournamentManager is PermissionsEnumerable, Multicall, Contract
         );
     }
 
+    // 토너먼트 참가자 목록 조회
     function getTournamentParticipants(uint256 _tournamentId) external view returns (address[] memory) {
         Tournament storage tournament = tournaments[_tournamentId];
         return tournament.participants;
     }
 
+    // 토너먼트 상금 분배 비율 조회
     function getTournamentPrizeDistribution(uint256 _tournamentId) external view returns (uint256[] memory) {
         Tournament storage tournament = tournaments[_tournamentId];
         return tournament.prizeDistribution;
     }
 
+    // 토너먼트 수수료 정보 조회
     function getTournamentFees() external view returns (
         uint256 _developerFeePercent,
         uint256 _winnerClubFeePercent,
@@ -382,19 +387,27 @@ contract  MiracleTournamentManager is PermissionsEnumerable, Multicall, Contract
         );
     }
 
-    // Fee management functions
+    // 개발자 수수료 설정
     function setDeveloperFee(address _feeAddress, uint256 _feePercent) external onlyRole(DEFAULT_ADMIN_ROLE) {
         developerFeeAddress = _feeAddress;
         developerFeePercent = _feePercent;
     }
 
+    // 위너클럽 수수료 설정
     function setWinnerClubFee(address _feeAddress, uint256 _feePercent) external onlyRole(DEFAULT_ADMIN_ROLE) {
         winnerClubFeeAddress = _feeAddress;
         winnerClubFeePercent = _feePercent;
     }
 
+    // 플랫폼 수수료 설정
     function setPlatformFee(address _feeAddress, uint256 _feePercent) external onlyRole(DEFAULT_ADMIN_ROLE) {
         platformFeeAddress = _feeAddress;
         platformFeePercent = _feePercent;
+    }
+
+    // 청구 가능한 상금 조회
+    function getClaimablePrize(uint256 _tournamentId) external view returns (uint256) {
+        Tournament storage tournament = tournaments[_tournamentId];
+        return tournament.winnerPrizes[msg.sender];
     }
 }
