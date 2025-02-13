@@ -93,9 +93,9 @@
     },
     {
       "AISetting":{
-        "AITraining Data":"",
-        "AILastUpdate":"0000-00-00T00:00:00Z",
-        "CustomAIBehavior":""
+        "AITrainingData":"13584122001546.h1",
+        "AILastUpdate":"2025-02-06T12:00:00Z",
+        "CustomAIBehavior":"Sharp cornering,defending the opponent's gap,focusing on intuition"
       }
     }
   ]
