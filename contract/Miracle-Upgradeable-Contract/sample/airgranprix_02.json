@@ -6,120 +6,96 @@
   "background_color": "#020202",
   "attributes": [
     {
-      "trait_type": "Car Model",
+      "trait_type": "CarModel",
       "value": "BNW N4 Turbo"
     },
     {
-      "display_type": "date", 
-      "trait_type": "Created At", 
+      "display_type": "date",
+      "trait_type": "CreatedAt",
       "value": 1546360800
-    },
-    {
-      "trait_type": "Driving Style",
-      "value": "Offensive type"
-    },
-    {
-      "trait_type": "Tournament Grade",
-      "value": "Silver"
     },
 
     {
-      "trait_type": "Top Speed",
-      "value": 210
+      "trait_type": "TopSpeed",
+      "value": 115
     },
     {
       "trait_type": "Acceleration",
-      "value": 85
+      "value": 115
     },
     {
       "trait_type": "Handling",
-      "value": 90
+      "value": 115
     },
     {
       "trait_type": "Draft",
-      "value": 210
+      "value": 115
     },
     {
-      "trait_type": "Impact Absorption",
-      "value": 85
+      "trait_type": "ImpactAbsorption",
+      "value": 100
     },
     {
-      "trait_type": "Track Adaptation",
-      "value": 90
-    },
-
-    {
-      "display_type": "boost_number", 
-      "trait_type": "Top Speed", 
-      "value": 10
-    },
-    {
-      "display_type": "boost_number", 
-      "trait_type": "Acceleration", 
-      "value": 10
-    },
-    {
-      "display_type": "boost_number", 
-      "trait_type": "Handling", 
-      "value": 10
-    },
-    {
-      "display_type": "boost_number", 
-      "trait_type": "Draft", 
-      "value": 10
-    },
-    {
-      "display_type": "boost_number", 
-      "trait_type": "Impact Absorption", 
-      "value": 10
-    },
-    {
-      "display_type": "boost_number", 
-      "trait_type": "Track Adaptation", 
-      "value": 10
+      "trait_type": "TrackAdaptation",
+      "value": 100
     },
 
     {
-      "display_type": "number",
-      "trait_type": "Racing Experience",
+      "display_type": "boost_number",
+      "trait_type": "TopSpeed",
       "value": 15
     },
     {
+      "display_type": "boost_number",
+      "trait_type": "Acceleration",
+      "value": 15
+    },
+    {
+      "display_type": "boost_number",
+      "trait_type": "Handling",
+      "value": 15
+    },
+    {
+      "display_type": "boost_number",
+      "trait_type": "Draft",
+      "value": 15
+    },
+    {
+      "display_type": "boost_number",
+      "trait_type": "ImpactAbsorption",
+      "value": 0
+    },
+    {
+      "display_type": "boost_number",
+      "trait_type": "TrackAdaptation",
+      "value": 0
+    },
+
+    {
       "display_type": "number",
-      "trait_type": "Win Point",
+      "trait_type": "RacingExperience",
+      "value": 0
+    },
+    {
+      "display_type": "number",
+      "trait_type": "WinPoint",
       "value": 9
     },
     {
-      "Joined Games":{
-        "game_25012300001":{
-          "game_id":"game_25012300001",
-          "game_date":"2025-01-23T00:00:00Z",
-          "game_result":"Win",
-          "game_point":100
-        },
-        "game_25012300002":{
-          "game_id":"game_25012300002",
-          "game_date":"2025-01-23T00:00:00Z",
-          "game_result":"Lose",
-          "game_point":0
-        }
+      "InitialSpec":{
+        "TopSpeed":100,
+        "Acceleration":100,
+        "Handling":100,
+        "Draft":100,
+        "ImpactAbsorption":100,
+        "TrackAdaptation":100
       }
     },
     {
-      "Initial Spec":{
-        "Top Speed":200,
-        "Acceleration":75,
-        "Handling":80,
-        "Draft":200,
-        "Impact Absorption":75,
-        "Track Adaptation":80
-      }
-    },
-    {
-      "AI Setting":{
-        "AI Training Data":"13584122001546.h1",
-        "AI Last Update":"2025-02-06T12:00:00Z",
-        "Custom AI Behavior":"Sharp cornering,defending the opponent's gap,focusing on intuition"
+      "AISetting":{
+        "AITrainingData":"13584122001546.h1",
+        "AILastUpdate":"2025-02-06T12:00:00Z",
+        "CustomAIBehavior":"Sharp cornering,defending the opponent's gap,focusing on intuition"
       }
     }
   ]
