@@ -14,14 +14,6 @@
       "trait_type": "Created At",
       "value": 1546360800
     },
-    {
-      "trait_type": "Driving Style",
-      "value": "Offensive type"
-    },
-    {
-      "trait_type": "Tournament Grade",
-      "value": "Silver"
-    },
 
     {
       "trait_type": "Top Speed",
@@ -88,22 +80,6 @@
       "display_type": "number",
       "trait_type": "Win Point",
       "value": 9
-    },
-    {
-      "Joined Games":{
-        "game_25012300001":{
-          "game_id":"game_25012300001",
-          "game_date":"2025-01-23T00:00:00Z",
-          "game_result":"Win",
-          "game_point":100
-        },
-        "game_25012300002":{
-          "game_id":"game_25012300002",
-          "game_date":"2025-01-23T00:00:00Z",
-          "game_result":"Lose",
-          "game_point":0
-        }
-      }
     },
     {
       "Initial Spec":{
