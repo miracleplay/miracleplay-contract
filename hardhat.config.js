@@ -10,6 +10,6 @@ module.exports = {
     },
   },
   paths: {
-    sources: "./contract/Miracle-Upgradeable-Contract",
+    sources: "./contract/Miracle-Tournament-Dev",
   },
 };
