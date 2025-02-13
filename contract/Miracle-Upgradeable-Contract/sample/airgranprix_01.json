@@ -1,70 +1,126 @@
 {
-  "name": "BNW N4 2002 TURBO",
+  "name": "Art's N4 Turbo#003",
   "description": "The first piece in our high-performance racing car NFT collection. This racing car features top-tier performance and design.",
+  "image": "https://raw.githubusercontent.com/miracleplay/miracleplay-contract/refs/heads/main/contract/Miracle-Upgradeable-Contract/sample/Car_14H_Angle_40.png",
   "external_url": "https://miracleplay.gg",
+  "background_color": "#020202",
   "attributes": [
     {
-      "trait_type": "Color",
-      "value": "Matrix Red"
+      "trait_type": "Car Model",
+      "value": "BNW N4 Turbo"
     },
     {
-      "trait_type": "Creator",
-      "value": "@ArtWide"
-    },
-    {
-      "display_type": "date", 
-      "trait_type": "Created At", 
+      "display_type": "date",
+      "trait_type": "Created At",
       "value": 1546360800
     },
     {
+      "trait_type": "Driving Style",
+      "value": "Offensive type"
+    },
+    {
+      "trait_type": "Tournament Grade",
+      "value": "Silver"
+    },
+
+    {
       "trait_type": "Top Speed",
-      "value": 48,
-      "max_value": 100
+      "value": 115
     },
     {
       "trait_type": "Acceleration",
-      "value": 84,
-      "max_value": 100
+      "value": 115
     },
     {
       "trait_type": "Handling",
-      "value": 57,
-      "max_value": 100
+      "value": 115
     },
     {
       "trait_type": "Draft",
-      "value": 90,
-      "max_value": 100
+      "value": 115
     },
     {
       "trait_type": "Impact Absorption",
-      "value": 84,
-      "max_value": 100
+      "value": 100
     },
     {
       "trait_type": "Track Adaptation",
-      "value": 50,
-      "max_value": 100
+      "value": 100
+    },
+
+    {
+      "display_type": "boost_number",
+      "trait_type": "Top Speed",
+      "value": 15
     },
     {
-      "trait_type": "Stats 1: Total Races",
-      "value": 50,
-      "display_type": "number"
+      "display_type": "boost_number",
+      "trait_type": "Acceleration",
+      "value": 15
     },
     {
-      "trait_type": "Stats 2: Wins",
-      "value": 32,
-      "display_type": "number"
+      "display_type": "boost_number",
+      "trait_type": "Handling",
+      "value": 15
     },
     {
-      "trait_type": "Stats 3: Losses",
-      "value": 18,
-      "display_type": "number"
+      "display_type": "boost_number",
+      "trait_type": "Draft",
+      "value": 15
     },
     {
-      "trait_type": "Stats 4: Win Rate",
-      "value": 64,
-      "display_type": "number"
+      "display_type": "boost_number",
+      "trait_type": "Impact Absorption",
+      "value": 0
+    },
+    {
+      "display_type": "boost_number",
+      "trait_type": "Track Adaptation",
+      "value": 0
+    },
+
+    {
+      "display_type": "number",
+      "trait_type": "Racing Experience",
+      "value": 0
+    },
+    {
+      "display_type": "number",
+      "trait_type": "Win Point",
+      "value": 9
+    },
+    {
+      "Joined Games":{
+        "game_25012300001":{
+          "game_id":"game_25012300001",
+          "game_date":"2025-01-23T00:00:00Z",
+          "game_result":"Win",
+          "game_point":100
+        },
+        "game_25012300002":{
+          "game_id":"game_25012300002",
+          "game_date":"2025-01-23T00:00:00Z",
+          "game_result":"Lose",
+          "game_point":0
+        }
+      }
+    },
+    {
+      "Initial Spec":{
+        "Top Speed":100,
+        "Acceleration":100,
+        "Handling":100,
+        "Draft":100,
+        "Impact Absorption":100,
+        "Track Adaptation":100
+      }
+    },
+    {
+      "AI Setting":{
+        "AI Training Data":"",
+        "AI Last Update":"0000-00-00T00:00:00Z",
+        "Custom AI Behavior":""
+      }
     }
   ]
 }
