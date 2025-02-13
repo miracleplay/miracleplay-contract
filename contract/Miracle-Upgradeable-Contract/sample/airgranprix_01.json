@@ -6,17 +6,17 @@
   "background_color": "#020202",
   "attributes": [
     {
-      "trait_type": "Car Model",
+      "trait_type": "CarModel",
       "value": "BNW N4 Turbo"
     },
     {
       "display_type": "date",
-      "trait_type": "Created At",
+      "trait_type": "CreatedAt",
       "value": 1546360800
     },
 
     {
-      "trait_type": "Top Speed",
+      "trait_type": "TopSpeed",
       "value": 115
     },
     {
@@ -32,17 +32,17 @@
       "value": 115
     },
     {
-      "trait_type": "Impact Absorption",
+      "trait_type": "ImpactAbsorption",
       "value": 100
     },
     {
-      "trait_type": "Track Adaptation",
+      "trait_type": "TrackAdaptation",
       "value": 100
     },
 
     {
       "display_type": "boost_number",
-      "trait_type": "Top Speed",
+      "trait_type": "TopSpeed",
       "value": 15
     },
     {
@@ -62,40 +62,40 @@
     },
     {
       "display_type": "boost_number",
-      "trait_type": "Impact Absorption",
+      "trait_type": "ImpactAbsorption",
       "value": 0
     },
     {
       "display_type": "boost_number",
-      "trait_type": "Track Adaptation",
+      "trait_type": "TrackAdaptation",
       "value": 0
     },
 
     {
       "display_type": "number",
-      "trait_type": "Racing Experience",
+      "trait_type": "RacingExperience",
       "value": 0
     },
     {
       "display_type": "number",
-      "trait_type": "Win Point",
+      "trait_type": "WinPoint",
       "value": 9
     },
     {
       "Initial Spec":{
-        "Top Speed":100,
+        "TopSpeed":100,
         "Acceleration":100,
         "Handling":100,
         "Draft":100,
-        "Impact Absorption":100,
-        "Track Adaptation":100
+        "ImpactAbsorption":100,
+        "TrackAdaptation":100
       }
     },
     {
-      "AI Setting":{
-        "AI Training Data":"",
-        "AI Last Update":"0000-00-00T00:00:00Z",
-        "Custom AI Behavior":""
+      "AISetting":{
+        "AITraining Data":"",
+        "AILastUpdate":"0000-00-00T00:00:00Z",
+        "CustomAIBehavior":""
       }
     }
   ]
