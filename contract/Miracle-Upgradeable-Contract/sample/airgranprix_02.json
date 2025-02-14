@@ -7,7 +7,7 @@
   "attributes": [
     {
       "trait_type": "CarModel",
-      "value": "BNW N4 Turbo"
+      "value": "Sports"
     },
     {
       "display_type": "date",
@@ -80,6 +80,11 @@
       "display_type": "number",
       "trait_type": "WinPoint",
       "value": 9
+    },
+    {
+      "Custom": {
+        "carSelection": "car_model_sports.3ds"
+      }
     },
     {
       "InitialSpec":{

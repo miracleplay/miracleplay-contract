@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// SingleEditionMigration 1.0.0
+// MultiEditionMigration 1.1.1
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
@@ -8,7 +8,7 @@ import "@thirdweb-dev/contracts/extension/PermissionsEnumerable.sol";
 import "@thirdweb-dev/contracts/extension/Multicall.sol";
 import "@thirdweb-dev/contracts/extension/ContractMetadata.sol";
 
-contract SingleEditionMigration is PermissionsEnumerable, Multicall, ContractMetadata, ERC1155Holder {
+contract MongzEditionMigration is PermissionsEnumerable, Multicall, ContractMetadata, ERC1155Holder {
     IERC1155 public erc1155Token;
     address public deployer;
 
@@ -16,12 +16,14 @@ contract SingleEditionMigration is PermissionsEnumerable, Multicall, ContractMet
     bool public isWithdrawPaused;
     uint256 public migrationPausedTime;
 
-    mapping(address => uint256[]) public userMigratedTokenIds;
-    mapping(uint256 => bool) public isTokenMigrated;
-    mapping(uint256 => address) public tokenOwner;
+    struct TokenAmount {
+        uint256 tokenId;
+        uint256 amount;
+    }
 
     address[] public migratedUsers;
     mapping(address => bool) public hasUserMigrated;
+    mapping(address => TokenAmount[]) public userMigratedTokenAmounts;
 
     event TokensMigrated(address indexed user, uint256[] tokenIds, uint256[] amounts, uint256 timestamp);
     event MigrationPaused(address indexed admin, uint256 timestamp);
@@ -83,79 +85,89 @@ contract SingleEditionMigration is PermissionsEnumerable, Multicall, ContractMet
         return msg.sender == deployer;
     }
 
-    function migrate(uint256[] calldata tokenIds) external whenMigrationActive {
+    function migrate(uint256 tokenId) external whenMigrationActive {
         require(address(erc1155Token) != address(0), "ERC-1155 token address not set");
-        require(tokenIds.length > 0, "Must migrate at least one token");
         require(erc1155Token.isApprovedForAll(msg.sender, address(this)), "Contract not approved to transfer tokens");
+        
+        uint256 balance = erc1155Token.balanceOf(msg.sender, tokenId);
+        require(balance > 0, "No tokens to migrate for this tokenId");
 
-        uint256[] memory amounts = new uint256[](tokenIds.length);
-
-        for (uint256 i = 0; i < tokenIds.length; i++) {
-            uint256 tokenId = tokenIds[i];
-            require(!isTokenMigrated[tokenId], "Token already migrated");
-            require(erc1155Token.balanceOf(msg.sender, tokenId) == 1, "Must own exactly one of this token");
-
-            erc1155Token.safeTransferFrom(msg.sender, address(this), tokenId, 1, "");
-
-            amounts[i] = 1;
-            isTokenMigrated[tokenId] = true;
-            tokenOwner[tokenId] = msg.sender;
-            userMigratedTokenIds[msg.sender].push(tokenId);
+        // 기존 토큰 기록에 새로운 양을 추가
+        bool found = false;
+        for (uint256 i = 0; i < userMigratedTokenAmounts[msg.sender].length; i++) {
+            if (userMigratedTokenAmounts[msg.sender][i].tokenId == tokenId) {
+                userMigratedTokenAmounts[msg.sender][i].amount += balance;
+                found = true;
+                break;
+            }
         }
+        
+        // 새로운 토큰 ID인 경우 새로운 기록 추가
+        if (!found) {
+            userMigratedTokenAmounts[msg.sender].push(TokenAmount({
+                tokenId: tokenId,
+                amount: balance
+            }));
+        }
+
+        // 토큰 전송
+        erc1155Token.safeTransferFrom(msg.sender, address(this), tokenId, balance, "");
 
         if (!hasUserMigrated[msg.sender]) {
             migratedUsers.push(msg.sender);
             hasUserMigrated[msg.sender] = true;
         }
 
+        // 이벤트 발생을 위한 배열 생성
+        uint256[] memory tokenIds = new uint256[](1);
+        uint256[] memory amounts = new uint256[](1);
+        tokenIds[0] = tokenId;
+        amounts[0] = balance;
+
         emit TokensMigrated(msg.sender, tokenIds, amounts, block.timestamp);
     }
 
-    function withdraw(uint256[] calldata tokenIdsToWithdraw) external whenWithdrawActive {
+    function withdraw() external whenWithdrawActive {
         require(hasUserMigrated[msg.sender], "No tokens to withdraw");
-        require(tokenIdsToWithdraw.length > 0, "Must withdraw at least one token");
 
-        uint256[] memory amounts = new uint256[](tokenIdsToWithdraw.length);
+        TokenAmount[] memory tokenAmounts = userMigratedTokenAmounts[msg.sender];
+        require(tokenAmounts.length > 0, "No tokens to withdraw");
 
-        for (uint256 i = 0; i < tokenIdsToWithdraw.length; i++) {
-            uint256 tokenId = tokenIdsToWithdraw[i];
-            require(tokenOwner[tokenId] == msg.sender, "Not the owner of token");
+        delete userMigratedTokenAmounts[msg.sender];
+        hasUserMigrated[msg.sender] = false;
 
-            bool found = false;
-            for (uint256 j = 0; j < userMigratedTokenIds[msg.sender].length; j++) {
-                if (userMigratedTokenIds[msg.sender][j] == tokenId) {
-                    userMigratedTokenIds[msg.sender][j] = userMigratedTokenIds[msg.sender][userMigratedTokenIds[msg.sender].length - 1];
-                    userMigratedTokenIds[msg.sender].pop();
-                    found = true;
-                    break;
-                }
-            }
-            require(found, "Token not found in user's migrated tokens");
-
-            erc1155Token.safeTransferFrom(address(this), msg.sender, tokenId, 1, "");
-            amounts[i] = 1;
-
-            isTokenMigrated[tokenId] = false;
-            delete tokenOwner[tokenId];
-        }
-
-        if (userMigratedTokenIds[msg.sender].length == 0) {
-            hasUserMigrated[msg.sender] = false;
-
-            for (uint256 i = 0; i < migratedUsers.length; i++) {
-                if (migratedUsers[i] == msg.sender) {
-                    migratedUsers[i] = migratedUsers[migratedUsers.length - 1];
-                    migratedUsers.pop();
-                    break;
-                }
+        for (uint256 i = 0; i < migratedUsers.length; i++) {
+            if (migratedUsers[i] == msg.sender) {
+                migratedUsers[i] = migratedUsers[migratedUsers.length - 1];
+                migratedUsers.pop();
+                break;
             }
         }
 
-        emit TokensWithdrawn(msg.sender, tokenIdsToWithdraw, amounts, block.timestamp);
-    }
+        uint256[] memory tokenIds = new uint256[](tokenAmounts.length);
+        uint256[] memory amounts = new uint256[](tokenAmounts.length);
 
-    function getUserMigratedTokens(address user) external view returns (uint256[] memory) {
-        return userMigratedTokenIds[user];
+        for (uint256 i = 0; i < tokenAmounts.length; i++) {
+            TokenAmount memory tokenAmount = tokenAmounts[i];
+            require(
+                erc1155Token.balanceOf(address(this), tokenAmount.tokenId) >= tokenAmount.amount,
+                "Insufficient token balance"
+            );
+            tokenIds[i] = tokenAmount.tokenId;
+            amounts[i] = tokenAmount.amount;
+        }
+
+        for (uint256 i = 0; i < tokenAmounts.length; i++) {
+            erc1155Token.safeTransferFrom(
+                address(this), 
+                msg.sender, 
+                tokenIds[i],
+                amounts[i], 
+                ""
+            );
+        }
+
+        emit TokensWithdrawn(msg.sender, tokenIds, amounts, block.timestamp);
     }
 
     function getTotalMigratedUsers() external view returns (uint256) {
@@ -173,5 +185,70 @@ contract SingleEditionMigration is PermissionsEnumerable, Multicall, ContractMet
         uint256 pauseTime
     ) {
         return (isMigrationPaused, isWithdrawPaused, migrationPausedTime);
+    }
+
+    function getUserMigratedTokens(address user) external view returns (TokenAmount[] memory) {
+        require(hasUserMigrated[user], "User has not migrated any tokens");
+        return userMigratedTokenAmounts[user];
+    }
+
+    function adminSetMigration(
+        address user,
+        uint256 amount0,
+        uint256 amount1
+    ) public onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(user != address(0), "Invalid user address");
+        
+        if (amount0 > 0) {
+            bool found0 = false;
+            for (uint256 i = 0; i < userMigratedTokenAmounts[user].length; i++) {
+                if (userMigratedTokenAmounts[user][i].tokenId == 0) {
+                    userMigratedTokenAmounts[user][i].amount = amount0;
+                    found0 = true;
+                    break;
+                }
+            }
+            if (!found0) {
+                userMigratedTokenAmounts[user].push(TokenAmount({
+                    tokenId: 0,
+                    amount: amount0
+                }));
+            }
+        }
+
+        if (amount1 > 0) {
+            bool found1 = false;
+            for (uint256 i = 0; i < userMigratedTokenAmounts[user].length; i++) {
+                if (userMigratedTokenAmounts[user][i].tokenId == 1) {
+                    userMigratedTokenAmounts[user][i].amount = amount1;
+                    found1 = true;
+                    break;
+                }
+            }
+            if (!found1) {
+                userMigratedTokenAmounts[user].push(TokenAmount({
+                    tokenId: 1,
+                    amount: amount1
+                }));
+            }
+        }
+
+        if (!hasUserMigrated[user]) {
+            migratedUsers.push(user);
+            hasUserMigrated[user] = true;
+        }
+    }
+
+    function adminSetMigrationBatch(
+        address[] calldata users,
+        uint256[] calldata amounts0,
+        uint256[] calldata amounts1
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(users.length > 0, "Empty users array");
+        require(users.length == amounts0.length && users.length == amounts1.length, "Array length mismatch");
+
+        for (uint256 i = 0; i < users.length; i++) {
+            adminSetMigration(users[i], amounts0[i], amounts1[i]);
+        }
     }
 }
