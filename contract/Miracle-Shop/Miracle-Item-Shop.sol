@@ -70,6 +70,19 @@ contract MiracleStoreEscrow is PermissionsEnumerable, Multicall, ContractMetadat
         emit ItemRemoved(itemId, tokenAddress);
     }
 
+    function removeItemBatch(
+        uint256[] calldata itemIds,
+        address[] calldata tokenAddresses
+    ) external onlyRole(FACTORY_ROLE) {
+        require(itemIds.length == tokenAddresses.length, "Arrays length mismatch");
+        
+        for (uint256 i = 0; i < itemIds.length; i++) {
+            require(items[itemIds[i]][tokenAddresses[i]].exists, "Item does not exist");
+            delete items[itemIds[i]][tokenAddresses[i]];
+            emit ItemRemoved(itemIds[i], tokenAddresses[i]);
+        }
+    }
+
     function setPlatformAddress(address _platformAddress) external onlyRole(DEFAULT_ADMIN_ROLE) {
         platformAddress = _platformAddress;
     }
@@ -101,11 +114,29 @@ contract MiracleStoreEscrow is PermissionsEnumerable, Multicall, ContractMetadat
         emit ItemPurchased(itemId, msg.sender, tokenAddress, item.price);
     }
 
-    function updateItemPrice(uint256 itemId, address tokenAddress, uint256 newPrice) external onlyRole(FACTORY_ROLE) {
+    function updateItem(
+        uint256 itemId, 
+        address tokenAddress, 
+        uint256 newPrice,
+        string memory newName,
+        bool newExists,
+        address newDeveloperAddress,
+        uint256 newPlatformFeePercent,
+        uint256 newDeveloperFeePercent
+    ) external onlyRole(FACTORY_ROLE) {
         require(items[itemId][tokenAddress].exists, "Item does not exist");
         require(newPrice > 0, "Price must be greater than zero");
-        items[itemId][tokenAddress].price = newPrice;
-        emit ItemSet(itemId, tokenAddress, newPrice, items[itemId][tokenAddress].name);
+        require(newPlatformFeePercent + newDeveloperFeePercent <= 10000, "Total fee percentage cannot exceed 100%");
+
+        Item storage item = items[itemId][tokenAddress];
+        item.price = newPrice;
+        item.name = newName;
+        item.exists = newExists;
+        item.developerAddress = newDeveloperAddress;
+        item.platformFeePercent = newPlatformFeePercent;
+        item.developerFeePercent = newDeveloperFeePercent;
+
+        emit ItemSet(itemId, tokenAddress, newPrice, newName);
     }
 
     function withdrawTokens(address tokenAddress, uint256 amount) external onlyRole(DEFAULT_ADMIN_ROLE) {
