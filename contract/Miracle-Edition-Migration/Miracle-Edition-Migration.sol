@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// MultiEditionMigration 1.1.1
+// MultiEditionMigration 1.2.0
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
@@ -87,32 +87,34 @@ contract MiracleEditionMigration is PermissionsEnumerable, Multicall, ContractMe
 
     function migrate() external whenMigrationActive {
         require(address(erc1155Token) != address(0), "ERC-1155 token address not set");
-        require(!hasUserMigrated[msg.sender], "Must withdraw existing tokens before new migration");
         require(erc1155Token.isApprovedForAll(msg.sender, address(this)), "Contract not approved to transfer tokens");
+        require(!hasUserMigrated[msg.sender], "Must withdraw existing tokens before new migration");
+        
+        // 모든 토큰 ID(0,1,2)의 잔액 확인
+        uint256 totalBalance = 0;
+        for (uint256 id = 0; id < 3; id++) {
+            totalBalance += erc1155Token.balanceOf(msg.sender, id);
+        }
+        require(totalBalance > 0, "No tokens to migrate");
 
         uint256[] memory tokenIds = new uint256[](3);
         uint256[] memory amounts = new uint256[](3);
 
-        uint256 totalBalance = 0;
-        for (uint256 i = 0; i < 3; i++) {
-            uint256 balance = erc1155Token.balanceOf(msg.sender, i);
+        // 각 토큰 ID에 대해 처리
+        for (uint256 id = 0; id < 3; id++) {
+            uint256 balance = erc1155Token.balanceOf(msg.sender, id);
+            tokenIds[id] = id;
+            amounts[id] = balance;
+            
             if (balance > 0) {
-                tokenIds[i] = i;
-                amounts[i] = balance;
-                totalBalance += balance;
-
-                userMigratedTokenAmounts[msg.sender].push(TokenAmount({
-                    tokenId: i,
-                    amount: balance
-                }));
+                // 토큰 전송
+                erc1155Token.safeTransferFrom(msg.sender, address(this), id, balance, "");
             }
-        }
 
-        require(totalBalance > 0, "No tokens to migrate");
-        for (uint256 i = 0; i < 3; i++) {
-            if (amounts[i] > 0) {
-                erc1155Token.safeTransferFrom(msg.sender, address(this), i, amounts[i], "");
-            }
+            userMigratedTokenAmounts[msg.sender].push(TokenAmount({
+                tokenId: id,
+                amount: balance
+            }));
         }
 
         migratedUsers.push(msg.sender);

@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: MIT
-// MultiEditionMigration 1.1.1
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
@@ -16,6 +15,8 @@ contract MongzEditionMigration is PermissionsEnumerable, Multicall, ContractMeta
     bool public isWithdrawPaused;
     uint256 public migrationPausedTime;
 
+    bool public isAdminMigrationActive;
+
     struct TokenAmount {
         uint256 tokenId;
         uint256 amount;
@@ -31,6 +32,7 @@ contract MongzEditionMigration is PermissionsEnumerable, Multicall, ContractMeta
     event WithdrawalPaused(address indexed admin, uint256 timestamp);
     event WithdrawalResumed(address indexed admin, uint256 timestamp);
     event TokensWithdrawn(address indexed user, uint256[] tokenIds, uint256[] amounts, uint256 timestamp);
+    event AdminMigrationDeactivated(address indexed admin, uint256 timestamp);
 
     constructor(string memory _contractURI, address _deployer, address _erc1155TokenAddress) {
         _setupRole(DEFAULT_ADMIN_ROLE, _deployer);
@@ -39,6 +41,7 @@ contract MongzEditionMigration is PermissionsEnumerable, Multicall, ContractMeta
         _setupContractURI(_contractURI);
         isMigrationPaused = false;
         isWithdrawPaused = false;
+        isAdminMigrationActive = true;
     }
 
     modifier whenMigrationActive() {
@@ -48,6 +51,11 @@ contract MongzEditionMigration is PermissionsEnumerable, Multicall, ContractMeta
 
     modifier whenWithdrawActive() {
         require(!isWithdrawPaused, "Withdrawal is currently paused");
+        _;
+    }
+
+    modifier whenAdminMigrationActive() {
+        require(isAdminMigrationActive, "Admin migration is deactivated");
         _;
     }
 
@@ -92,21 +100,39 @@ contract MongzEditionMigration is PermissionsEnumerable, Multicall, ContractMeta
         uint256 balance = erc1155Token.balanceOf(msg.sender, tokenId);
         require(balance > 0, "No tokens to migrate for this tokenId");
 
-        // 기존 토큰 기록에 새로운 양을 추가
-        bool found = false;
+        // 토큰 ID 0 처리
+        bool found0 = false;
         for (uint256 i = 0; i < userMigratedTokenAmounts[msg.sender].length; i++) {
-            if (userMigratedTokenAmounts[msg.sender][i].tokenId == tokenId) {
-                userMigratedTokenAmounts[msg.sender][i].amount += balance;
-                found = true;
+            if (userMigratedTokenAmounts[msg.sender][i].tokenId == 0) {
+                if (tokenId == 0) {
+                    userMigratedTokenAmounts[msg.sender][i].amount += balance;
+                }
+                found0 = true;
                 break;
             }
         }
-        
-        // 새로운 토큰 ID인 경우 새로운 기록 추가
-        if (!found) {
+        if (!found0) {
             userMigratedTokenAmounts[msg.sender].push(TokenAmount({
-                tokenId: tokenId,
-                amount: balance
+                tokenId: 0,
+                amount: tokenId == 0 ? balance : 0
+            }));
+        }
+
+        // 토큰 ID 1 처리
+        bool found1 = false;
+        for (uint256 i = 0; i < userMigratedTokenAmounts[msg.sender].length; i++) {
+            if (userMigratedTokenAmounts[msg.sender][i].tokenId == 1) {
+                if (tokenId == 1) {
+                    userMigratedTokenAmounts[msg.sender][i].amount += balance;
+                }
+                found1 = true;
+                break;
+            }
+        }
+        if (!found1) {
+            userMigratedTokenAmounts[msg.sender].push(TokenAmount({
+                tokenId: 1,
+                amount: tokenId == 1 ? balance : 0
             }));
         }
 
@@ -192,45 +218,49 @@ contract MongzEditionMigration is PermissionsEnumerable, Multicall, ContractMeta
         return userMigratedTokenAmounts[user];
     }
 
+    function deactivateAdminMigration() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(isAdminMigrationActive, "Admin migration is already deactivated");
+        isAdminMigrationActive = false;
+        emit AdminMigrationDeactivated(msg.sender, block.timestamp);
+    }
+
     function adminSetMigration(
         address user,
         uint256 amount0,
         uint256 amount1
-    ) public onlyRole(DEFAULT_ADMIN_ROLE) {
+    ) public onlyRole(DEFAULT_ADMIN_ROLE) whenAdminMigrationActive {
         require(user != address(0), "Invalid user address");
         
-        if (amount0 > 0) {
-            bool found0 = false;
-            for (uint256 i = 0; i < userMigratedTokenAmounts[user].length; i++) {
-                if (userMigratedTokenAmounts[user][i].tokenId == 0) {
-                    userMigratedTokenAmounts[user][i].amount = amount0;
-                    found0 = true;
-                    break;
-                }
-            }
-            if (!found0) {
-                userMigratedTokenAmounts[user].push(TokenAmount({
-                    tokenId: 0,
-                    amount: amount0
-                }));
+        // 토큰 ID 0 처리
+        bool found0 = false;
+        for (uint256 i = 0; i < userMigratedTokenAmounts[user].length; i++) {
+            if (userMigratedTokenAmounts[user][i].tokenId == 0) {
+                userMigratedTokenAmounts[user][i].amount = amount0;
+                found0 = true;
+                break;
             }
         }
+        if (!found0) {
+            userMigratedTokenAmounts[user].push(TokenAmount({
+                tokenId: 0,
+                amount: amount0
+            }));
+        }
 
-        if (amount1 > 0) {
-            bool found1 = false;
-            for (uint256 i = 0; i < userMigratedTokenAmounts[user].length; i++) {
-                if (userMigratedTokenAmounts[user][i].tokenId == 1) {
-                    userMigratedTokenAmounts[user][i].amount = amount1;
-                    found1 = true;
-                    break;
-                }
+        // 토큰 ID 1 처리
+        bool found1 = false;
+        for (uint256 i = 0; i < userMigratedTokenAmounts[user].length; i++) {
+            if (userMigratedTokenAmounts[user][i].tokenId == 1) {
+                userMigratedTokenAmounts[user][i].amount = amount1;
+                found1 = true;
+                break;
             }
-            if (!found1) {
-                userMigratedTokenAmounts[user].push(TokenAmount({
-                    tokenId: 1,
-                    amount: amount1
-                }));
-            }
+        }
+        if (!found1) {
+            userMigratedTokenAmounts[user].push(TokenAmount({
+                tokenId: 1,
+                amount: amount1
+            }));
         }
 
         if (!hasUserMigrated[user]) {
@@ -243,7 +273,7 @@ contract MongzEditionMigration is PermissionsEnumerable, Multicall, ContractMeta
         address[] calldata users,
         uint256[] calldata amounts0,
         uint256[] calldata amounts1
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) whenAdminMigrationActive {
         require(users.length > 0, "Empty users array");
         require(users.length == amounts0.length && users.length == amounts1.length, "Array length mismatch");
 

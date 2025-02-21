@@ -6,7 +6,7 @@
 //   |:  1   |:  1   |:  1   |:  1   |:  |   |:  1   |:  |:  |   |:  1   |   |:  1   |:  |   |:  1    |:  1   |
 //   |::.. . |::.. . |\:.. ./|::.. . |::.|   |::.. . |::.|::.|   |::.. . |   |::.. . |::.|:. |::.. .  |::.. . |
 //   `-------`-------' `---' `-------`--- ---`-------`---`--- ---`-------'   `-------`--- ---`-------'`-------'
-//   TournamentManager v2.0.0
+//   TournamentManager v2.5.0 Native Coin Support
 pragma solidity ^0.8.0;
 import "@thirdweb-dev/contracts/extension/PermissionsEnumerable.sol";
 import "@thirdweb-dev/contracts/extension/Multicall.sol";
@@ -90,11 +90,17 @@ contract  MiracleTournamentManager is PermissionsEnumerable, Multicall, Contract
         uint256 _entryFee,
         uint256[] memory _prizeDistribution,
         uint256 _maxParticipants
-    ) external {
+    ) external payable {
         require(tournaments[_tournamentId].id == 0, "Tournament ID already exists.");
 
-        IERC20 prizeToken = IERC20(_prizeTokenAddress);
-        prizeToken.transferFrom(msg.sender, address(this), _prizeAmount);
+        if (_prizeAmount > 0) {
+            if (_prizeTokenAddress == address(0)) {
+                require(msg.value == _prizeAmount, "Incorrect native coin amount");
+            } else {
+                IERC20 prizeToken = IERC20(_prizeTokenAddress);
+                prizeToken.transferFrom(msg.sender, address(this), _prizeAmount);
+            }
+        }
 
         Tournament storage tournament = tournaments[_tournamentId];
         tournament.id = _tournamentId;
@@ -132,14 +138,18 @@ contract  MiracleTournamentManager is PermissionsEnumerable, Multicall, Contract
     }
 
     // 토너먼트 참가 함수
-    function participateInTournament(uint256 _tournamentId) external {
+    function participateInTournament(uint256 _tournamentId) external payable {
         Tournament storage tournament = tournaments[_tournamentId];
         require(tournament.isActive, "Tournament is not active.");
         require(tournament.participants.length < tournament.maxParticipants, "Maximum participants reached.");
 
         if (tournament.entryFee > 0) {
-            IERC20 entryToken = IERC20(tournament.entryTokenAddress);
-            entryToken.transferFrom(msg.sender, address(this), tournament.entryFee);
+            if (tournament.entryTokenAddress == address(0)) {
+                require(msg.value == tournament.entryFee, "Incorrect native coin amount");
+            } else {
+                IERC20 entryToken = IERC20(tournament.entryTokenAddress);
+                entryToken.transferFrom(msg.sender, address(this), tournament.entryFee);
+            }
         }
 
         tournament.participants.push(msg.sender);
@@ -155,8 +165,15 @@ contract  MiracleTournamentManager is PermissionsEnumerable, Multicall, Contract
                 tournament.participants[i] = tournament.participants[tournament.participants.length - 1];
                 tournament.participants.pop();
                 if (tournament.entryFee > 0) {
-                    IERC20 entryToken = IERC20(tournament.entryTokenAddress);
-                    entryToken.transfer(_participant, tournament.entryFee);
+                    if (tournament.entryTokenAddress == address(0)) {
+                        // Native coin refund
+                        (bool success, ) = _participant.call{value: tournament.entryFee}("");
+                        require(success, "Native coin transfer failed");
+                    } else {
+                        // ERC20 token refund
+                        IERC20 entryToken = IERC20(tournament.entryTokenAddress);
+                        entryToken.transfer(_participant, tournament.entryFee);
+                    }
                 }
                 break;
             }
@@ -189,15 +206,35 @@ contract  MiracleTournamentManager is PermissionsEnumerable, Multicall, Contract
         Tournament storage tournament = tournaments[_tournamentId];
         require(tournament.isActive, "Tournament is not active.");
 
-        for (uint256 i = 0; i < tournament.participants.length; i++) {
-            if (tournament.entryFee > 0) {
+        // 참가비 환불
+        if (tournament.entryFee > 0) {
+            if (tournament.entryTokenAddress == address(0)) {
+                // Native coin refund
+                for (uint256 i = 0; i < tournament.participants.length; i++) {
+                    (bool success, ) = tournament.participants[i].call{value: tournament.entryFee}("");
+                    require(success, "Native coin transfer failed");
+                }
+            } else {
+                // ERC20 token refund
                 IERC20 entryToken = IERC20(tournament.entryTokenAddress);
-                entryToken.transfer(tournament.participants[i], tournament.entryFee);
+                for (uint256 i = 0; i < tournament.participants.length; i++) {
+                    entryToken.transfer(tournament.participants[i], tournament.entryFee);
+                }
             }
         }
 
-        IERC20 prizeToken = IERC20(tournament.prizeTokenAddress);
-        prizeToken.transfer(tournament.creator, tournament.prizeAmount);
+        // 상금 반환
+        if (tournament.prizeAmount > 0) {
+            if (tournament.prizeTokenAddress == address(0)) {
+                // Native coin return
+                (bool success, ) = tournament.creator.call{value: tournament.prizeAmount}("");
+                require(success, "Native coin transfer failed");
+            } else {
+                // ERC20 token return
+                IERC20 prizeToken = IERC20(tournament.prizeTokenAddress);
+                prizeToken.transfer(tournament.creator, tournament.prizeAmount);
+            }
+        }
 
         tournament.isActive = false;
         tournament.isCancelled = true;
@@ -214,14 +251,15 @@ contract  MiracleTournamentManager is PermissionsEnumerable, Multicall, Contract
         uint256 totalPrize = tournament.prizeAmount;
         uint256 totalEntryFee = tournament.entryFee * tournament.participants.length;
 
-        // Step 1: Transfer and distribute fees (prize and entry fees)
+        // Step 1: Transfer and distribute fees
         TransferFees(totalPrize, totalEntryFee, tournament.prizeTokenAddress, tournament.entryTokenAddress);
+
+        // Finalize tournament state
+        tournament.isActive = false;
 
         // Step 2 and 3: Calculate and set prizes for claim
         setDistributePrizes(_tournamentId, _winners);
 
-        // Finalize tournament state
-        tournament.isActive = false;
         tournament.isPrizesSet = true;
     }
 
@@ -239,36 +277,83 @@ contract  MiracleTournamentManager is PermissionsEnumerable, Multicall, Contract
         // Step 1: Transfer fees (both prize and entry fees)
         TransferFees(totalPrize, totalEntryFee, tournament.prizeTokenAddress, tournament.entryTokenAddress);
 
+        // Finalize tournament state
+        tournament.isActive = false;
+
         // Step 2 and 3: Calculate and directly distribute prizes
         distributePrizes(_tournamentId, _winners);
 
-        // Finalize tournament state
-        tournament.isActive = false;
         tournament.isPrizesDistributed = true;
     }
 
     // 수수료 전송 및 분배 (내부 함수)
     function TransferFees(uint256 totalPrize, uint256 totalEntryFee, address prizeTokenAddress, address entryTokenAddress) internal {
-        IERC20 prizeToken = IERC20(prizeTokenAddress);
-        IERC20 entryToken = IERC20(entryTokenAddress);
 
-        // Distribute prize fees
         uint256 developerPrizeFee = (totalPrize * developerFeePercent) / 100;
         uint256 winnerClubPrizeFee = (totalPrize * winnerClubFeePercent) / 100;
         uint256 platformPrizeFee = (totalPrize * platformFeePercent) / 100;
 
-        prizeToken.transfer(developerFeeAddress, developerPrizeFee);
-        prizeToken.transfer(winnerClubFeeAddress, winnerClubPrizeFee);
-        prizeToken.transfer(platformFeeAddress, platformPrizeFee);
-
-        // Distribute entry fee
+        // Prize token transfers
+        if (prizeTokenAddress == address(0)) {
+            // Native coin transfer for prize
+            if (developerPrizeFee > 0) {
+                (bool success, ) = developerFeeAddress.call{value: developerPrizeFee}("");
+                require(success, "Native coin transfer failed");
+            }
+            if (winnerClubPrizeFee > 0) {
+                (bool success, ) = winnerClubFeeAddress.call{value: winnerClubPrizeFee}("");
+                require(success, "Native coin transfer failed");
+            }
+            if (platformPrizeFee > 0) {
+                (bool success, ) = platformFeeAddress.call{value: platformPrizeFee}("");
+                require(success, "Native coin transfer failed");
+            }
+        } else {
+            // ERC20 token transfer for prize
+            IERC20 prizeToken = IERC20(prizeTokenAddress);
+            if (developerPrizeFee > 0) {
+                prizeToken.transfer(developerFeeAddress, developerPrizeFee);
+            }
+            if (winnerClubPrizeFee > 0) {
+                prizeToken.transfer(winnerClubFeeAddress, winnerClubPrizeFee);
+            }
+            if (platformPrizeFee > 0) {
+                prizeToken.transfer(platformFeeAddress, platformPrizeFee);
+            }
+        }
+        
         uint256 developerEntryFee = (totalEntryFee * developerFeePercent) / 100;
         uint256 winnerClubEntryFee = (totalEntryFee * winnerClubFeePercent) / 100;
         uint256 platformEntryFee = (totalEntryFee * platformFeePercent) / 100;
 
-        entryToken.transfer(developerFeeAddress, developerEntryFee);
-        entryToken.transfer(winnerClubFeeAddress, winnerClubEntryFee);
-        entryToken.transfer(platformFeeAddress, platformEntryFee);
+        // Entry fee transfers
+        if (entryTokenAddress == address(0)) {
+            // Native coin transfer for entry fee
+            if (developerEntryFee > 0) {
+                (bool success, ) = developerFeeAddress.call{value: developerEntryFee}("");
+                require(success, "Native coin transfer failed");
+            }
+            if (winnerClubEntryFee > 0) {
+                (bool success, ) = winnerClubFeeAddress.call{value: winnerClubEntryFee}("");
+                require(success, "Native coin transfer failed");
+            }
+            if (platformEntryFee > 0) {
+                (bool success, ) = platformFeeAddress.call{value: platformEntryFee}("");
+                require(success, "Native coin transfer failed");
+            }
+        } else {
+            // ERC20 token transfer for entry fee
+            IERC20 entryToken = IERC20(entryTokenAddress);
+            if (developerEntryFee > 0) {
+                entryToken.transfer(developerFeeAddress, developerEntryFee);
+            }
+            if (winnerClubEntryFee > 0) {
+                entryToken.transfer(winnerClubFeeAddress, winnerClubEntryFee);
+            }
+            if (platformEntryFee > 0) {
+                entryToken.transfer(platformFeeAddress, platformEntryFee);
+            }
+        }
     }
 
     // 수수료 공제 후 실제 지급될 상금 계산
@@ -282,7 +367,6 @@ contract  MiracleTournamentManager is PermissionsEnumerable, Multicall, Contract
         Tournament storage tournament = tournaments[_tournamentId];
         require(!tournament.isActive, "Tournament must be ended.");
         require(!tournament.isPrizesDistributed, "Prizes have already been distributed.");
-        require(tournament.isPrizesSet, "Prizes have not been set.");
         require(_winners.length == tournament.prizeDistribution.length, "Winners and prize distribution length mismatch.");
 
         uint256 totalPrize = tournament.prizeAmount;
@@ -293,8 +377,6 @@ contract  MiracleTournamentManager is PermissionsEnumerable, Multicall, Contract
             uint256 adjustedPrize = (remainingPrize * tournament.prizeDistribution[i]) / totalPrize;
             tournament.winnerPrizes[_winners[i]] = adjustedPrize;
         }
-
-        tournament.isPrizesDistributed = true;
     }
 
     // 상금 즉시 분배 (Auto 방식)
@@ -302,15 +384,25 @@ contract  MiracleTournamentManager is PermissionsEnumerable, Multicall, Contract
         Tournament storage tournament = tournaments[_tournamentId];
         require(!tournament.isActive, "Tournament must be ended before distributing prizes.");
         require(!tournament.isPrizesDistributed, "Prizes have already been distributed.");
+        require(!tournament.isPrizesSet, "Prizes already set.");
         require(_winners.length == tournament.prizeDistribution.length, "Winners and prize distribution length mismatch.");
 
         uint256 totalPrize = tournament.prizeAmount;
         uint256 remainingPrize = calculateAdjustedPrize(totalPrize);
-        IERC20 prizeToken = IERC20(tournament.prizeTokenAddress);
 
         for (uint256 i = 0; i < _winners.length; i++) {
             uint256 adjustedPrize = (remainingPrize * tournament.prizeDistribution[i]) / totalPrize;
-            prizeToken.transfer(_winners[i], adjustedPrize);
+            if (adjustedPrize > 0) {
+                if (tournament.prizeTokenAddress == address(0)) {
+                    // Native coin transfer
+                    (bool success, ) = _winners[i].call{value: adjustedPrize}("");
+                    require(success, "Native coin transfer failed");
+                } else {
+                    // ERC20 token transfer
+                    IERC20 prizeToken = IERC20(tournament.prizeTokenAddress);
+                    prizeToken.transfer(_winners[i], adjustedPrize);
+                }
+            }
         }
 
         tournament.isPrizesDistributed = true;
@@ -328,8 +420,17 @@ contract  MiracleTournamentManager is PermissionsEnumerable, Multicall, Contract
 
         tournament.winnerPrizes[msg.sender] = 0; // Prevent double claim
 
-        IERC20 prizeToken = IERC20(tournament.prizeTokenAddress);
-        prizeToken.transfer(msg.sender, prizeAmount);
+        if (prizeAmount > 0) {
+            if (tournament.prizeTokenAddress == address(0)) {
+                // Native coin transfer
+                (bool success, ) = msg.sender.call{value: prizeAmount}("");
+                require(success, "Native coin transfer failed");
+            } else {
+                // ERC20 token transfer
+                IERC20 prizeToken = IERC20(tournament.prizeTokenAddress);
+                prizeToken.transfer(msg.sender, prizeAmount);
+            }
+        }
     }
 
     // 토너먼트 정보 조회
@@ -406,8 +507,12 @@ contract  MiracleTournamentManager is PermissionsEnumerable, Multicall, Contract
     }
 
     // 청구 가능한 상금 조회
-    function getClaimablePrize(uint256 _tournamentId) external view returns (uint256) {
+    function getClaimablePrize(address _participant, uint256 _tournamentId) external view returns (uint256) {
         Tournament storage tournament = tournaments[_tournamentId];
-        return tournament.winnerPrizes[msg.sender];
+        uint256 prizeAmount = tournament.winnerPrizes[_participant];
+        return prizeAmount;
     }
+
+    // Native coin을 받기 위한 receive 함수
+    receive() external payable {}
 }

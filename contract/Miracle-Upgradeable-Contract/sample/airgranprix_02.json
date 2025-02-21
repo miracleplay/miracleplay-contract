@@ -1,7 +1,8 @@
 {
   "name": "Art's N4 Turbo#003",
   "description": "The first piece in our high-performance racing car NFT collection. This racing car features top-tier performance and design.",
-  "image": "https://raw.githubusercontent.com/miracleplay/miracleplay-contract/refs/heads/main/contract/Miracle-Upgradeable-Contract/sample/Car_14H_Angle_40.png",
+  "image": "ipfs://bafkreibw6g23fapibnwzmwe2vo2mq3dqzatspefdbqznu3qp6s14drng44",
+  "animation_url": "ipfs://bafybeiap75uytxwi04f5cmvhjqhcqkows2hhpg5tyyhoisoxa6yvk5mb44",
   "external_url": "https://miracleplay.gg",
   "background_color": "#020202",
   "attributes": [
